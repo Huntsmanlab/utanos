@@ -1,0 +1,3 @@
+source /projects/molonc/huntsman_lab/madouglas/bin/conda2/py37_042021/miniconda3/bin/activate
+bamPEFragmentSize -hist fragmentSize_1.png -T "Fragment size of PE RNA-seq data" --maxFragmentLength 1000 -b ../aligned/VOA427C/VOA427C.pe.bwa.sorted.dup_rm.bam ../aligned/VOA1034A/VOA1034A.pe.bwa.sorted.dup_rm.bam ../aligned/VOA658/VOA658.pe.bwa.sorted.dup_rm.bam --samplesLabel sample1 sample2 sample3
+bamPEFragmentSize -hist fragmentSize_2.png -T "Fragment size of PE RNA-seq data" --maxFragmentLength 1000 -b ../../alignment_run/bams/VOA1034A-R13-C13.bam ../../alignment_run/bams/VOA626C-R22-C22.bam --samplesLabel sample1 sample2
