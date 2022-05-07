@@ -3,7 +3,6 @@
 
 # Packages
 suppressPackageStartupMessages({ 
-  library(dplyr)
   library(magrittr)
   library(dplyr)
   library(stringr)
@@ -28,17 +27,20 @@ suppressPackageStartupMessages({
 #
 # Return: ggplot
 ###
-plot_signature_exposures <- function (signatures, save_file = FALSE, 
+plot_signature_exposures <- function (signatures, save_path = FALSE, 
+                                      obj_name = 'sig_exposures_obj',
                                       order = FALSE, transpose = FALSE) {
   long_data <- gather(signatures)
-  long_data$max_sig <- rep(apply(output1, 2, function(x) which.max(x)), times = 1, each = nsigs)
+  long_data$max_sig <- rep(apply(output1, 2, function(x) which.max(x)), 
+                           times = 1, 
+                           each = nsigs)
   long_data$sigs <- rep(1:nsigs,dim(output1)[2])
   colnames(long_data) <- c('X', 'Z', 'max_sig', 'Y')
   long_data <- long_data %>% arrange(max_sig)
   long_data$X <- factor(long_data$X, levels = unique(long_data$X))
-  
+
   if (order != FALSE) {
-    slice$sample_id <- factor(slice$sample_id, level = order)
+    long_data$X <- factor(long_data$X, levels = order)
   }
   
   g <- ggplot(long_data, aes(X, Y, fill=Z)) +  
@@ -52,15 +54,29 @@ plot_signature_exposures <- function (signatures, save_file = FALSE,
           axis.text.y = element_text(size = 18), 
           legend.title = element_text(size = 18)) + 
     labs(fill = 'Signature \nExposure', x = "Samples", y = " ") + 
-    scale_y_discrete(limits = c('S1', 'S2', 'S3', 'S4', 'S5', 'S6')) +
+    scale_y_discrete(limits = paste0('S', 1:dim(signatures)[1])) +
     ggtitle("Signature exposures called per sample")
   g
-  ggsave(paste0(save_file,".png"), plot = g, width = 15, height = 10)
   
-  rownames(output1) <- c(1:7)
-  write.csv(output1, file = "~/repositories/cnsignatures/data/pancan_UCEC_output/signature_exposures_absolute_autosomesOnly_pancanUCEC_vanSignatures.csv")
+  if (transpose != FALSE) { 
+    g <- g + theme(plot.title = element_text(size = 20),
+                   axis.ticks.y = element_blank(),
+                   axis.text.x = element_text(size = 18),
+                   axis.title.x = element_text(size = 18),
+                   axis.text.y = element_blank(), 
+                   legend.title = element_text(size = 18)) + coord_flip()
+  }
+  if (save_path != FALSE) {
+    if (transpose != FALSE) {
+      ggsave(paste0(save_path, "signatures_heatmap_", obj_name,".png"), plot = g, width = 10, height = 15)
+    } else {
+      ggsave(paste0(save_path, "signatures_heatmap_", obj_name,".png"), plot = g, width = 15, height = 10)
+    }
+  }
   
-  return(g)
+  output <- list(plot = g, ordering = levels(long_data$X))
+  
+  return(output)
 }
 
 
@@ -73,14 +89,13 @@ plot_signature_exposures <- function (signatures, save_file = FALSE,
 #																		Required fields: (chr, start, cell_id, state)
 #   (String)  save_path:            Path where the PNG file will be saved (Default: cnv_heatmap.png)
 #   (Boolean) low_map_mask:         Specify whether or not to filter regions with low mappability from the heatmap
-#		(String)	view:									Specify alternative views for data (Default: "")
-#																			altState: Show copy numbers specified by the alternative state provided
-#																			compare:	Show copy number differences between the state and altenative state (state - altState)
-# Return: Void
+#		(FALSE or char vector)	order:	If false used the sorted ordering of the heatmap, if true use new ordering.
+#
+# Return: list of ggplot and the ordering of the heatmap in sample names.
 ###
-swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = "cnv_heatmap", 
+swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = FALSE, 
                               obj_name = "gyne_cancer_obj", 
-                              low_map_mask = FALSE,
+                              # low_map_mask = FALSE,
                               order = FALSE) {
   
   if(nrow(reads) == 0) { stop("No reads data provided.") }                      # If reads DF is empty, return
@@ -94,7 +109,7 @@ swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = "cnv_heatmap",
   }
   
   # Overwrite copy number state if region has low mappability
-  if (low_map_mask) { reads$state[reads$is_low_mappability == TRUE] <- 'low mappability'}
+  # if (low_map_mask) { reads$state[reads$is_low_mappability == TRUE] <- 'low mappability'}
   
   reads <- reads[, c("chromosome", "start", "sample_id", "state")]
   
@@ -131,8 +146,11 @@ swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = "cnv_heatmap",
     labs(x = "Chromosomes", y = "Samples", fill = "Copy Number") + 
     ggtitle("Absolute copy number calls across the genome")
   
-  ggsave(paste0(save_path, "cnv_heatmap_", obj_name,".png"), plot = g, width = 24, height = 24)
-  return(g)
+  if (save_path != FALSE) {
+    ggsave(paste0(save_path, "cnv_heatmap_", obj_name,".png"), plot = g, width = 24, height = 24)
+  }
+  output <- list(plot = g, ordering = levels(slice$sample_id))
+  return(output)
 }
 
 ###

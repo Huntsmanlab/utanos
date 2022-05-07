@@ -194,7 +194,7 @@ annotation_cr <- function(queryset, targetset) {
   return(queryset[queryset_matches,])
 }
 
-segments_to_copy_number <- function(segs, bin_size, genome = 'autosomes') {
+segments_to_copy_number <- function(segs, bin_size, genome = 'hg19', Xincluded = FALSE) {
   
   # Stop execution if we don't have the required input
   stopifnot(is.list(segs))
@@ -205,10 +205,16 @@ segments_to_copy_number <- function(segs, bin_size, genome = 'autosomes') {
   stopifnot("segVal" %in% names(segs[[1]]), is.numeric(segs[[1]]$segVal))
   # Create template binned genome 
   genome_chrs <- 22
-  if (genome == 'Xchr_included') { genome_chrs <- 23}
-  chroms <- getChromInfoFromUCSC("hg19") %>% 
-    head(genome_chrs) %>%
-    dplyr::mutate(nbins = ceiling(size/bin_size))
+  if (Xincluded) { genome_chrs <- 23}
+  if (genome == 'hg38') {
+    chroms <- getChromInfoFromUCSC("hg38", map.NCBI=TRUE) %>% 
+      head(genome_chrs) %>%
+      dplyr::mutate(nbins = ceiling(size/bin_size))
+  } else {
+    chroms <- getChromInfoFromUCSC("hg19") %>% 
+      head(genome_chrs) %>%
+      dplyr::mutate(nbins = ceiling(size/bin_size)) 
+  }
   chroms$chrom <- sub('chr', '', chroms$chrom)
   genome_template <- data.frame(chromosome = rep(chroms$chrom, chroms$nbins), 
                                 start = rep(rep(1,dim(chroms)[1]), chroms$nbins),
@@ -325,7 +331,7 @@ compare_bin_CNs <- function(objs, sample, bin_area) {
 # data - 
 removeBlacklist <- function(data) {
   # Read in blacklist file
-  blacklist = as.data.frame(read.table(file = "~/Documents/projects/cn_sigs_swgs/data/external_datasets/binBlacklist.txt", sep = '', header = TRUE))
+  blacklist = as.data.frame(data.table::fread(file = "~/repos/cnsignatures/data/external_datasets/binBlacklist.txt", sep = ' ', header = TRUE))
   
   # Convert blacklist and data to GRanges objects and find indices of overlaps
   grBL = makeGRangesFromDataFrame(blacklist)
