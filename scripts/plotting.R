@@ -95,21 +95,10 @@ plot_signature_exposures <- function (signatures, save_path = FALSE,
 ###
 swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = FALSE, 
                               obj_name = "gyne_cancer_obj", 
-                              # low_map_mask = FALSE,
-                              order = FALSE) {
+                              order = FALSE, ret_order = FALSE) {
   
   if(nrow(reads) == 0) { stop("No reads data provided.") }                      # If reads DF is empty, return
   reads = removeBlacklist(reads)                                                # remove blacklist regions from hg19
-  
-  # Determine if experimental condition is included in the data and build corresponding dataframe
-  exp = FALSE
-  if("condition" %in% colnames(reads)) {
-    exp_cond = distinct(reads[, c("cell_id", "condition")]) 
-    exp = TRUE
-  }
-  
-  # Overwrite copy number state if region has low mappability
-  # if (low_map_mask) { reads$state[reads$is_low_mappability == TRUE] <- 'low mappability'}
   
   reads <- reads[, c("chromosome", "start", "sample_id", "state")]
   
@@ -149,7 +138,10 @@ swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = FALSE,
   if (save_path != FALSE) {
     ggsave(paste0(save_path, "cnv_heatmap_", obj_name,".png"), plot = g, width = 24, height = 24)
   }
-  output <- list(plot = g, ordering = levels(slice$sample_id))
+  if (ret_order != FALSE) {
+    output <- list(plot = g, ordering = levels(slice$sample_id))
+  }
+  
   return(output)
 }
 
@@ -319,5 +311,128 @@ plot_BABAM <- function(reads = data.frame(), save_path, obj_name) {
           legend.position="none") + coord_flip()
   
   ggsave(paste0(save_path, "colourbars_bioIndicator_clustered_", obj_name, ".png"), plot = p1, width = 20, height = 24)
+}
+
+
+### Plot metadata values in heatmap form (essentially make annotation bars)
+# DESCRIPTION
+# Parameters: 
+#   (DF)      met_basic: Basic metadata dataframe
+#   (DF)      met_bio: Biologic metadata
+#   (DF)      met_quality: Quality metrics metadata dataframe
+#   (DF)      met_vafs: VAFs and Cellularities per sample
+#
+# Return:
+#   (ggplot)  output: A cowplot combination of several heatmap bars
+###
+plot_metadata_heatmaps <- function(met_basic, met_bio = FALSE, met_quality = FALSE, met_vafs = FALSE) {
+  
+  
+  stopifnot("The first argument must be a dataframe and should contain 
+            basic metadata pertaining to your samples." = is.data.frame(met_basic), 
+            "The basic metadata DF must contain a column for the names 
+            of the samples titled 'sample_id'." = 'sample_id' %in% colnames(test))
+  
+  
+  # Massage data into a single dataframe
+
+  metadata <- data.frame(sample_id = met_basic$sample_id)
+  
+  if (is.data.frame(met_bio)) {
+    met_bio$ihc_data_present <- is.na(met_bio$`CCNE1 H score`) & is.na(met_bio$`GRB7 IHC H score`)
+    met_bio <- met_bio %>% dplyr::rename(sample_id = other_aliases,
+                                         CCNE1_H = `CCNE1 H score`, 
+                                         GRB7_H = `GRB7 IHC H score`, 
+                                         BABAM_H = `BABAM IHC H Score`) %>% 
+                           dplyr::mutate(HER2_H = suppressWarnings(as.numeric(`HER2 IHC int`) * as.numeric(`HER2 % pos`)))
+    met_bio$normality_classification <- 'abnormal'
+    met_bio$normality_classification[met_bio$notes == 'looks pretty normal'] <- 'looks normal'
+    met_bio$normality_classification[met_bio$notes == 'normal looking but with odd half-ploidy changes'] <- 'near normal'
+    met_bio$CCNE1_H <- minmax_column(met_bio$CCNE1_H)
+    met_bio$GRB7_H <- minmax_column(met_bio$GRB7_H)
+    met_bio$BABAM_H <- minmax_column(met_bio$BABAM_H)
+    met_bio$HER2_H <- minmax_column(met_bio$HER2_H)
+    
+    met_bio <- met_bio %>% dplyr::select(sample_id, ihc_data_present, BABAM_H, 
+                                         normality_classification,
+                                         CCNE1_H, GRB7_H, HER2_H)
+    metadata <- metadata %>% dplyr::left_join(met_bio, by = c('sample_id'))
+  }
+
+  if (is.data.frame(met_quality)) {
+    met_quality <- met_quality %>% dplyr::select(sample_id, nreads, percent_coverage, 
+                                         mean_X_coverage, std_dev, mad, contains('quality_'))
+    metadata <- metadata %>% dplyr::left_join(met_quality, by = c('sample_id'))
+  }
+  
+  if (is.data.frame(met_vafs)) {
+    celstab <- met_vafs
+    
+    # To simplify matters lets sum all unique vafs for a given gene/sample and treat them as a single vaf
+    met_vafs[,8:13] <- as.data.frame(apply(met_vafs[,8:13],
+                                           MARGIN = c(1,2),
+                                           function(x) sum_delimited_elements(x, ';')))
+    # Select maximum vaf
+    celstab$max_vaf <- as.numeric(NA, rep(dim(celstab)[1]))
+    for (i in 1:dim(met_vafs)[1]) {
+      vafs <- met_vafs[i,]
+      if (is.na(vafs$sample_id[1])) next                                          # If there isn't a vaf for the sample skip finding an ACN
+      vafs <- vafs %>% dplyr::select(-c(sample_id, batch, tissue, sample_type, cancer_type, status, cellularity))
+      vaf_idx <- which.max(as.double(vafs[1,]))                                   # Choose max vaf
+      if (length(vaf_idx) == 0) next                                              # If there isn't a vaf for the sample skip finding an ACN
+      celstab[celstab$sample_id == met_vafs$sample_id[i],]$max_vaf <- as.double(vafs[1, ..vaf_idx])
+    }
+    celstab$max_vaf[celstab$max_vaf > 100] <- 100
+    celstab$minmaxed_cel <- minmax_column(celstab$cellularity)
+    celstab$minmaxed_vaf <- minmax_column(celstab$max_vaf)
+    
+    browser()
+    # test
+    xx <- met_vafs %>% mutate(maxvaf = apply(X = met_vafs, MARGIN = 1, function(x) select_max_element(x)))
+    
+    celstab <- celstab %>% dplyr::select(sample_id, minmaxed_cel, minmaxed_vaf, max_vaf)
+    metadata <- metadata %>% dplyr::left_join(celstab, by = c('sample_id'))
+  }
+  
+  browser()
+  metadata$sample_id <- factor(metadata$sample_id, levels = metadata$sample_id)
+  metadata$swgs <- c('swgs_sample')
+  # # ETL
+  # p1 <- ggplot(metadata, aes(sample_id, swgs)) + 
+  #   geom_tile(aes(fill = sd_dev)) + 
+  #   scale_fill_gradientn(colors = c('blue', 'red'), values = c(0, 0.6, 1) ) + 
+  #   theme(axis.text.x = element_blank(), 
+  #         # axis.text.y = element_blank(),
+  #         axis.title.x = element_blank(),
+  #         axis.title.y = element_blank(),
+  #         legend.position="none") + 
+  #   labs(title = 'std.dev') + coord_flip()
+  # p2 <- ggplot(metadata, aes(sample_id, swgs)) + 
+  #   geom_tile(aes(fill = mad)) + 
+  #   scale_fill_gradientn(colors = c('blue', 'red'), values = c(0, 0.6, 1) ) + 
+  #   theme(axis.text.x = element_blank(), 
+  #         axis.text.y = element_blank(),
+  #         axis.title.x = element_blank(),
+  #         axis.title.y = element_blank(),
+  #         legend.position="none") +
+  #   labs(title = 'med.abs.dev') + coord_flip()
+  # p3 <- ggplot(metadata, aes(sample_id, swgs)) + 
+  #   geom_tile(aes(fill = max_vaf)) + 
+  #   scale_fill_gradientn(colors = c('blue', 'red'), values = c(0, 0.6, 1), na.value = "white") + 
+  #   theme(axis.text.x = element_blank(), 
+  #         axis.text.y = element_blank(),
+  #         axis.title.x = element_blank(),
+  #         axis.title.y = element_blank(),
+  #         legend.position="none") +
+  #   labs(title = 'max. VAF') + coord_flip()
+  # 
+  # p <- plot_grid(p1, p2, p3, p4, p5, p6, p7, p8, nrow = 1, rel_widths = c(1.5,1,1,1,1,1,1,1))
+  # ggsave2(plot = p, filename = '~/Downloads/quality_heatmaps.pdf', width = 10, height = 25)
+}
+
+select_max_element <- function (element_vector) {
+  element_vector <- element_vector[grepl('vaf', names(element_vector), fixed = TRUE)]
+  max_value <- max(as.numeric(element_vector), na.rm = TRUE)
+  return(max_value)
 }
 

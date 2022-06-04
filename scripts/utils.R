@@ -28,6 +28,7 @@ suppressPackageStartupMessages({
 # getOptimalMADSolutions
 # get_segmented_rcn_for_gene
 # sum_delimited_elements
+# minmax_column
 #
 # gene_cr
 # annotation_cr
@@ -170,6 +171,12 @@ sum_delimited_elements <- function (element, delimiter) {
   elements <- str_split(element, pattern = delimiter)[[1]]
   element <- sum(as.numeric(elements))
   return(element)
+}
+
+minmax_column <- function (df_col) {
+  preproc2 <- preProcess(as.data.frame(df_col), method=c("range"))
+  minmaxed <- predict(preproc2, as.data.frame(df_col))
+  return(minmaxed[,1])
 }
 
 gene_cr <- function(queryset, targetset) {
