@@ -2,6 +2,8 @@ suppressPackageStartupMessages({
   library(ggplot2)
   library(dplyr)
   library(stringr)
+  library(magrittr)
+  library(data.table)
 })
 
 # Declare paths
@@ -93,3 +95,57 @@ p <- ggplot(per_sample, aes(x=batch, y=read_count, color=batch)) +
   scale_y_continuous(limits = c(0, 4e7)) +
   ggtitle("Read count per sample")
 p
+
+######################
+######################
+# Targeted panel seq. depth - histogram version
+input_path <- '~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/per_sample/CC-LAV-0630/bedtools_coverage_3.txt'
+input1 <- data.table::fread(file = input_path, sep = '\t', fill = TRUE)
+hist_data <- input %>% dplyr::filter(V1 == 'all') %>% dplyr::select(!c(V6,V7,V8))
+# Targeted panel seq. depth - mean depth version
+input_path <- '~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/per_sample/CC-LAV-0630/bedtools_coverage_2.txt'
+input2 <- data.table::fread(file = input_path, sep = '\t', fill = TRUE)
+hist_data <- input %>% dplyr::filter(V1 == 'all') %>% dplyr::select(!c(V6,V7,V8))
+# Targeted panel seq. depth - multicov. depth version
+input_path <- '~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/bedtools_multicoverage.txt'
+input3 <- data.table::fread(file = input_path, sep = '\t', fill = TRUE)
+# Targeted panel seq. depth - multicov. depth version
+input_path <- '~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/bedtools_multicoverage_2.txt'
+input4 <- data.table::fread(file = input_path, sep = '\t', fill = TRUE)
+
+# Read-in data
+input_path <- '~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/coverage_files/'
+combined <- data.frame()
+table_list <- list()
+allfiles <- list.files(input_path, full.names = TRUE)
+sample_names <- list.files(input_path, full.names = FALSE)
+sample_names <- str_replace_all(sample_names, '_bedtools_coverage_2.txt', '')
+for (i in 1:length(allfiles)) {
+  cov_tab <- read.table(allfiles[i], header = F, stringsAsFactors = F)
+  table_list[[sample_names[i]]] <- cov_tab
+  png(filename = paste0("~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/coverage_plots/", sample_names[i], "_depth_histogram.png"), 
+      width=2000, height=1800, pointsize = 30, units = 'px')
+  hist(cov_tab$V5, breaks = 2000, main = paste0("Average count depth per region for " , 
+                                                sample_names[i], " \n Axis cut-off at 3000 \n", 
+                                                "Proportion of regions > 250: ", as.character(signif(sum(cov_tab$V5 > 250)/dim(cov_tab)[1], digits = 3)), " ; ", 
+                                                " > 500: ", as.character(signif(sum(cov_tab$V5 > 500)/dim(cov_tab)[1], digits = 3)), " ; ",
+                                                " > 1000: ", as.character(signif(sum(cov_tab$V5 > 1000)/dim(cov_tab)[1], digits = 3))), 
+       xlim = c(0,3000), xlab = c('Depth'))
+  dev.off()
+}
+
+# Filtered coverage histogram plots
+input_path <- '~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/bedtools_multicoverage_2.txt'
+cov_tab <- read.table(input_path, header = F, stringsAsFactors = F)
+sample_names <- c('CC-RJH0119', 'CC-RJH0132', 'CC-RJH0175', 'CC-RJH0177', 'CC-HAM-0374', 'CC-HAM-0454')
+for (i in 5:dim(cov_tab)[2]) {
+  png(filename = paste0("~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/coverage_plots/", sample_names[i-4], "_depth_histogram_filtered.png"), 
+      width=2000, height=1800, pointsize = 30, units = 'px')
+  hist(cov_tab[,i], breaks = 2000, main = paste0("Average count depth per region for " , 
+                                                sample_names[i-4], " \n Axis cut-off at 3000 \n", 
+                                                "Proportion of regions > 250: ", as.character(signif(sum(cov_tab[,i] > 250)/dim(cov_tab)[1], digits = 3)), " ; ", 
+                                                " > 500: ", as.character(signif(sum(cov_tab[,i] > 500)/dim(cov_tab)[1], digits = 3)), " ; ",
+                                                " > 1000: ", as.character(signif(sum(cov_tab[,i] > 1000)/dim(cov_tab)[1], digits = 3))), 
+       xlim = c(0,3000), xlab = c('Depth'))
+  dev.off()
+}
