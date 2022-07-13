@@ -3,6 +3,9 @@
 
 library(RMySQL)
 library(GenomicRanges)
+library(plyr)
+library(magrittr)
+library(stringr)
 
 copy_number_segments_new <- function(copy_number) {
   
@@ -34,7 +37,7 @@ copy_number_segments_new <- function(copy_number) {
     )
 }
 
-genHumanReadableCNprofile <- function(object, binsize) {
+genHumanReadableRCNprofile <- function(object, binsize) {
   # Expects gl cghcall object
   
   # Create collapsed segments table
@@ -84,7 +87,7 @@ genHumanReadableCNprofile <- function(object, binsize) {
                                 'sum_of_bin_lengths', 'cytobands', 'coordinates', 'size')
   # save segment tables
   # collapsed_segs <- collapsed_segs %>% dplyr::group_by(samples)
-  save_dir <- '/Users/maxwell/Documents/projects/cn_signatures_shallowWGS/data/relativeCN_segs_and_cytoband_tables/'
+  save_dir <- '~/Documents/projects/cn_signatures_shallowWGS/data/relativeCN_segs_and_cytoband_tables/'
   dir.create(file.path(save_dir, binsize))
   for (i in unique(collapsed_segs$sample)) {
     temp <- collapsed_segs[collapsed_segs$sample == i, ]
@@ -95,10 +98,65 @@ genHumanReadableCNprofile <- function(object, binsize) {
   return(collapsed_segs)
 }
 
+genHumanReadableACNprofile <- function(object, save_path) {
+  
+  # Get Chromosome cytobands, coordinates (in bp), and lengths of regions
+  connection <- dbConnect(MySQL(), user="genome", host="genome-mysql.cse.ucsc.edu", dbname="hg19")
+  cytobands <- dbGetQuery(conn=connection, statement="SELECT chrom, chromStart, chromEnd, name FROM cytoBand")
+  cyto_ranges <- makeGRangesFromDataFrame(cytobands)
+  
+  # Add cytobands
+  collapsed_segs <- plyr::ldply(object, data.frame, .id = 'sample')
+  collapsed_segs <- collapsed_segs %>% transform(chromosome = as.character(chromosome))
+  collapsed_segs$chromosome[collapsed_segs$chromosome == 23] <- 'X'
+  ranges <- makeGRangesFromDataFrame(collapsed_segs)
+  seqlevelsStyle(ranges) <-'UCSC'
+  hits <- findOverlaps(ranges, cyto_ranges)
+  temp <- data.frame(ranges = hits@from, cyto_ranges = hits@to, cytobands = cytobands$name[hits@to])
+  temp <- temp[,c('ranges','cytobands')]
+  
+  # collapse cytobands
+  temp <- temp %>%
+    dplyr::group_by(ranges) %>%
+    dplyr::summarise(cytobands = paste(cytobands, collapse = ",")) %>%
+    dplyr::ungroup()
+  for (i in c(1:dim(temp)[1])) {
+    entry <- str_split(temp$cytobands[i], pattern = ',')[[1]]
+    if ( length(entry) > 1 ) {
+      temp$cytobands[i] <- paste0(entry[1], '-', entry[length(entry)])
+    }
+  }
+  
+  # Re-format for output
+  collapsed_segs$cytobands <- temp$cytobands
+  collapsed_segs$coordinates <- paste0(seqnames(ranges), ':', ranges(ranges))
+  collapsed_segs <- collapsed_segs %>% mutate(size = end - start)
+  collapsed_segs$segment <- NULL
+  colnames(collapsed_segs) <- c('sample', 'chromosome', 'start', 'end', 
+                                'absolute_copy_number', 'cytobands', 
+                                'coordinates', 'size')
+  collapsed_segs <- collapsed_segs %>% mutate(chromosome = replace(chromosome, 
+                                                         chromosome=="X", '23')) %>% 
+                          dplyr::group_by(sample) %>% 
+                          dplyr::arrange(as.integer(chromosome), .by_group = TRUE) %>% 
+                          mutate(chromosome = replace(as.character(chromosome), 
+                                                      chromosome=='23', 'X'))
+  # save segment tables
+  dir.create(save_path)
+  for (i in unique(collapsed_segs$sample)) {
+    temp <- collapsed_segs[collapsed_segs$sample == i, ]
+    write.table(temp, file = paste0(save_path, i, '_segsCytobandsTable.tsv'), 
+                sep = '\t', col.names = TRUE, row.names = FALSE)
+  }
+  dbDisconnect(connection)
+  return(collapsed_segs)
+}
+
 # obj1 <- genHumanReadableCNprofile(cgh15kb, '15kb')
-ccnvFILT_obj <- readRDS(file = '~/Documents/projects/cn_signatures_shallowWGS/qdnaseq_copy_number/batch_1-12/Xchr_included/15kb_rCN_comCNVfilt.rds')
-ccnvFILT_obj <- readRDS(file = '~/Documents/projects/cn_signatures_shallowWGS/qdnaseq_copy_number/batch_1-12/Xchr_included/15kb_gl_rCN.rds')
-obj1 <- genHumanReadableCNprofile(ccnvFILT_obj, '15kb')
+ccnvFILT_obj <- readRDS(file = '~/Documents/projects/cn_sigs_swgs/copy_number_objects/Xchr_included/30kb_rCN_comCNVfilt.rds')
+acn_obj <- readRDS(file = '~/Documents/projects/cn_sigs_swgs/copy_number_objects/Xchr_included/30kb_comCNVfilt_rascal_CN_Collapsed_segments_optimalVAF.rds')
+obj1 <- genHumanReadableRCNprofile(ccnvFILT_obj, '30kb')
+obj1 <- genHumanReadableACNprofile(acn_obj, '~/Documents/projects/cn_sigs_swgs/data/comCNV_filtered_segs_and_cytoband_tables_Xchr_included/')
 
 # Scratch
 test <- data.frame(chr = cgh15kb@featureData@data[["Chromosome"]], 

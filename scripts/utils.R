@@ -111,6 +111,8 @@ calculate_vaf_acns <- function (rascal_batch_solutions, relative_cns, acn_seg_pa
 }
 
 # Add highest MAD column to rascal solutions table
+# Then create and save list of segment tables 
+# Corollary to calculate_vaf_acns function.
 # input_file: input path 
 getOptimalMADSolutions <- function (input_file, rcn_file, segs_file, save_file = TRUE) {
   
@@ -205,6 +207,9 @@ annotation_cr <- function(queryset, targetset) {
   return(queryset[queryset_matches,])
 }
 
+# A true 'utils' function
+# Transforms segment tables into per-bin copy-number tables
+# It is an expansion of the calls into per-bin style, where the bin size is user defined.
 segments_to_copy_number <- function(segs, bin_size, genome = 'hg19', Xincluded = FALSE) {
   
   # Stop execution if we don't have the required input
@@ -257,6 +262,7 @@ segments_to_copy_number <- function(segs, bin_size, genome = 'hg19', Xincluded =
   return(out)
 }
 
+# Convert a string of genome ranges into GRanges object
 StringToGRanges <- function(regions, sep = c("-", "-"), ...) {
   # Code taken from Signac
   # https://github.com/timoast/signac/blob/master/R/utilities.R
@@ -288,7 +294,6 @@ GetGRangesFromEnsDb <- function(
   if (standard.chromosomes) {
     whole.genome <- keepStandardChromosomes(whole.genome, pruning.mode = "coarse")
   }
-  
   # extract genes from each chromosome
   if (verbose) {
     tx <- sapply(X = seq_along(whole.genome), FUN = function(x){
@@ -305,7 +310,6 @@ GetGRangesFromEnsDb <- function(
         columns = c("tx_id", "gene_name", "gene_id", "gene_biotype")))
     })
   }
-  
   # combine
   tx <- do.call(what = c, args = tx)
   tx <- tx[tx$gene_biotype %in% biotypes]

@@ -110,7 +110,7 @@ hist_data <- input %>% dplyr::filter(V1 == 'all') %>% dplyr::select(!c(V6,V7,V8)
 input_path <- '~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/bedtools_multicoverage.txt'
 input3 <- data.table::fread(file = input_path, sep = '\t', fill = TRUE)
 # Targeted panel seq. depth - multicov. depth version
-input_path <- '~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/bedtools_multicoverage_2.txt'
+input_path <- '~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/bedtools_multicoverage_mapqFiltered.txt'
 input4 <- data.table::fread(file = input_path, sep = '\t', fill = TRUE)
 
 # Read-in data
@@ -135,9 +135,27 @@ for (i in 1:length(allfiles)) {
 }
 
 # Filtered coverage histogram plots
-input_path <- '~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/bedtools_multicoverage_2.txt'
+input_path <- '~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/bedtools_multicoverage_mapqFiltered.txt'
 cov_tab <- read.table(input_path, header = F, stringsAsFactors = F)
-sample_names <- c('CC-RJH0119', 'CC-RJH0132', 'CC-RJH0175', 'CC-RJH0177', 'CC-HAM-0374', 'CC-HAM-0454')
+# sample_names <- c('CC-RJH0119', 'CC-RJH0132', 'CC-RJH0175', 'CC-RJH0177', 'CC-HAM-0374', 'CC-HAM-0454')
+sample_names <- c('CC-HAM-0369', 'CC-HAM-0374', 'CC-HAM-0379', 'CC-HAM-0383', 'CC-HAM-0385', 
+                  'CC-HAM-0387', 'CC-HAM-0392', 'CC-HAM-0394', 'CC-HAM-0396', 'CC-HAM-0402', 
+                  'CC-HAM-0405', 'CC-HAM-0406', 'CC-HAM-0407', 'CC-HAM-0421', 'CC-HAM-0422', 
+                  'CC-HAM-0423', 'CC-HAM-0424', 'CC-HAM-0427', 'CC-HAM-0429', 'CC-HAM-0432', 
+                  'CC-HAM-0435', 'CC-HAM-0438', 'CC-HAM-0442', 'CC-HAM-0446', 'CC-HAM-0448', 
+                  'CC-HAM-0449', 'CC-HAM-0450', 'CC-HAM-0453', 'CC-HAM-0454', 'CC-HAM-0458', 
+                  'CC-HAM-0459', 'CC-HAM-0461', 'CC-JGH-0469', 'CC-JGH-0487', 'CC-JGH-0492', 
+                  'CC-JGH-0499', 'CC-JGH-0500', 'CC-JGH-0506', 'CC-JGH-0508', 'CC-JGH-0510', 
+                  'CC-JGH-0511', 'CC-JGH-0515', 'CC-JGH-0523', 'CC-JGH-0525', 'CC-LAV-0570', 
+                  'CC-LAV-0577', 'CC-LAV-0578', 'CC-LAV-0586', 'CC-LAV-0587', 'CC-LAV-0590', 
+                  'CC-LAV-0598', 'CC-LAV-0600', 'CC-LAV-0615', 'CC-LAV-0616', 'CC-LAV-0630', 
+                  'CC-LAV-0646', 'CC-LAV-0649', 'CC-LAV-0660', 'CC-LAV-0664', 'CC-LAV-0671', 
+                  'CC-LAV-0681', 'CC-LAV-0687', 'CC-LAV-0698', 'CC-LAV-0699', 'CC-LAV-0719', 
+                  'CC-LAV-0725', 'CC-LAV-0726', 'CC-LGH-0979', 'CC-NSH-0243', 'CC-NSH-0253', 
+                  'CC-NSH-0254', 'CC-NSH-0269', 'CC-NSH-0279', 'CC-NSH-0285', 'CC-NSH-0309', 
+                  'CC-NSH-0337', 'CC-NSH-0338', 'CC-NSH-0351', 'CC-NSH-0356', 'CC-RJH0119', 
+                  'CC-RJH0132', 'CC-RJH0175', 'CC-RJH0177', 'CC-RJH0178', 'CC-RJH0182', 
+                  'CC-RJH0201', 'CC-SMH-0751')
 for (i in 5:dim(cov_tab)[2]) {
   png(filename = paste0("~/Documents/projects/cn_sigs_swgs/targeted_panel_seq/coverage_plots/", sample_names[i-4], "_depth_histogram_filtered.png"), 
       width=2000, height=1800, pointsize = 30, units = 'px')
