@@ -1,3 +1,5 @@
+# cn-sigs-utils
+
 ### File list:
 * __main_functions.R__ - Central logic functions used in the calling of copy-number signatures. Needs to be re-named.
 * __helper_functions.R__ - Functions assisting in the calling of copy-number signatures.  Needs to be re-named.
@@ -14,9 +16,6 @@
 * __makeFilteredCNSummaryTable.R__ - Functions to generate output tables useful to wetlab researchers.
 * __make_qualityMetricsFile.R__ - Random scripting not ready for package integration. Just being kept here for now.
 * __get_acns_from_vafs_rascal.R__ - Somewhat redundant set of functions - they should already exist in the 'utils.R' file.
-
-
-
 
 
 
@@ -97,5 +96,3 @@ ggpubr
 NbClust
 kableExtra
 
- 
-# cn-sigs-utils
