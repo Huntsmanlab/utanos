@@ -1,3 +1,28 @@
+### File list:
+* __main_functions.R__ - Central logic functions used in the calling of copy-number signatures. Needs to be re-named.
+* __helper_functions.R__ - Functions assisting in the calling of copy-number signatures.  Needs to be re-named.
+* __utils.R__ - General purpose utility functions for anything related to the package.
+* __plotting.R__ - General purpose functions for anything related to plotting data analyzed using the package.
+* __rascal_batch_and_plots.R__ - Script that needs to be 'pipeline-i-fied' (2nd half). A plotting function needs to be extracted. The workflow described needs to be copied into a vignette and then described.
+* __coverage_plots.R__ - First half of this script should probably be converted to a proper function and added to the 'plotting.R' file. Second half relates to targeted panel seq.
+* __compare_signature_by_component.R__ - File contains a somewhat tricky function that tries to make a plot comparing component-by-signature matrices (described elsewhere). Likely worth fixing-up and adding to the 'plotting.R' file.
+* __gainLoss_qdnaseq.R__ - First half of file creates summary plots for rCN data out of QDNAseq. Probably should be extracted and placed in a vignette. 2nd half of file is a modified version of a QDNAseq function (adds the ability to filter CN change calls that fall below a given threshold).
+* __shallowHRD_hg19_1.13_QDNAseq_chrX.R__ - Script from the shallowHRD repo that was more useful to just copy over to this directory. (https://github.com/aeeckhou/shallowHRD). Might be worth just contacting the authors to see if they would be willing to allow us to integrate it into the package.
+* __britrocSampleProcessing.R__ - Some scripting very early on in the sWGS CN-Sigs project, might not be terribly useful atm.
+* __filter_segmented_CN_calls.R__ - The end needs to be converted into a vignette (demonstrate use). THe functions should already have been added to the 'utils.R' file.
+* __getHumanReadableCNprofile.R__ - Functions to generate output tables useful to wetlab researchers.
+* __makeFilteredCNSummaryTable.R__ - Functions to generate output tables useful to wetlab researchers.
+* __make_qualityMetricsFile.R__ - Random scripting not ready for package integration. Just being kept here for now.
+* __get_acns_from_vafs_rascal.R__ - Somewhat redundant set of functions - they should already exist in the 'utils.R' file.
+
+
+
+
+
+
+_______________________________________________________________________________________________________________________
+README for the CN-Signatures portion of the package
+
 This repository contains all code and documentation necessary to reproduce the analysis undertaken in the 
 manuscript [Copy-number signatures and mutational processes in ovarian carcinoma](https://www.biorxiv.org/content/early/2017/09/04/174201)
 
