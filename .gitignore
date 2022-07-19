@@ -11,4 +11,5 @@ data/britroc/
 data/britroc_output/
 GRCh37_hg19_common_variants_20200225.tsv
 data/tcga_ucs_output/
+test-data
 cn_signatures_runscript.R
