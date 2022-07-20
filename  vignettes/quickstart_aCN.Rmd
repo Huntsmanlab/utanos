@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 The goal of the "CN-Signatures Utils" package is to be a swiss army knife in analyzing shallow/low-pass whole genome sequencing data. Specifically, the focus of the package is to be on functions to re-structure data, with a focus on effective visualization and analysis of CN signatures. 
 
 ```{r, echo = FALSE}
-knitr::include_graphics("images/utils_flow.png")
+knitr::include_graphics("../images/utils_flow.png")
 ```
 
 
@@ -24,7 +24,7 @@ library(rascal)
 library(data.table)
 
 # Reading in test data
-qdnaseq_output <- readRDS("test-data/30kb_rCN_comCNVfilt.rds")
+qdnaseq_output <- readRDS("../test-data/30kb_rCN_comCNVfilt.rds")
 
 # QDNAseq object
 dplyr::glimpse(qdnaseq_output)
@@ -53,7 +53,7 @@ The output format can be chosen by the user. In this case, running `rascal` outp
 
 ```{r}
 # Reading in csv with all solutions
-rascal_all_solutions <- fread("test-data/30kb_aCNsolutions.csv")
+rascal_all_solutions <- fread("../test-data/30kb_aCNsolutions.csv")
 
 head(rascal_all_solutions)
 ```
@@ -68,7 +68,7 @@ rascal_segs <- getOptimalMADSolutions(input_file = "30kb_aCNsolutions.csv", rcn_
 The output of this function is as follows
 
 ```{r}
-rascal_segtables <- readRDS("test-data/cnCollapsedSegs_30kb_autosomesOnly_MADoptimal_absCN_comCNVfiltered_bashashati_subset.rds")
+rascal_segtables <- readRDS("../test-data/cnCollapsedSegs_30kb_autosomesOnly_MADoptimal_absCN_comCNVfiltered_bashashati_subset.rds")
 
 # Output for one sample 
 dplyr::glimpse(rascal_segtables$CC.HAM.0396)
@@ -85,7 +85,7 @@ vaf_sols <- calculate_vaf_acns(solutions = "30kb_aCNsolutions.csv", rcn_segs = q
 The output of this function is as follows
 
 ```{r}
-vaf_segtables <- readRDS("test-data/30kb_comCNVfilt_rascal_CN_Collapsed_segments_optimalVAF.rds")
+vaf_segtables <- readRDS("../test-data/30kb_comCNVfilt_rascal_CN_Collapsed_segments_optimalVAF.rds")
 
 # Output for one sample 
 dplyr::glimpse(vaf_segtables$CC.HAM.0396)
@@ -154,13 +154,13 @@ The following downstream analyses follow after the absolute copy number calling 
 
 
 ```{r, echo = FALSE}
-knitr::include_graphics("images/distc.png")
+knitr::include_graphics("../images/distc.png")
 ```
 
 2. Apply non-megative matrix factorization to visualize the tumor-by-signature matrix, the signature-by-component matrix and copy numbers by the copy number features which is an important end-result of this package. Ideally, we want to add an intelligent plotting function that is capable of plotting these visualizations side-by-side with annotations for metadata, etc. 
 
 ```{r, echo = FALSE}
-knitr::include_graphics("images/papf.png")
+knitr::include_graphics("../images/papf.png")
 ```
 
 (from [(Macintyre et al., 2018)](https://www.nature.com/articles/s41588-018-0179-8.pdf))
@@ -168,7 +168,7 @@ knitr::include_graphics("images/papf.png")
 ### Ideal Package Output
 
 ```{r, echo = FALSE}
-knitr::include_graphics("images/cronfig.png")
+knitr::include_graphics("../images/cronfig.png")
 ```
 
 **Note:** Sample quality evaluation at this stage is a key need this package aims to meet. Currently there are no well established methods to evaluate the quality of these signature calls. 

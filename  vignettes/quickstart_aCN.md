@@ -7,7 +7,7 @@ Specifically, the focus of the package is to be on functions to
 re-structure data, with a focus on effective visualization and analysis
 of CN signatures.
 
-![](images/utils_flow.png)<!-- -->
+![](../images/utils_flow.png)<!-- -->
 
 The flowchart represents the steps involved in the analysis of
 shallow/low-pass whole genome sequencing data for copy number
@@ -24,14 +24,14 @@ library(rascal)
 library(data.table)
 
 # Reading in test data
-qdnaseq_output <- readRDS("test-data/30kb_rCN_comCNVfilt.rds")
+qdnaseq_output <- readRDS("../test-data/30kb_rCN_comCNVfilt.rds")
 
 # QDNAseq object
 dplyr::glimpse(qdnaseq_output)
 ```
 
     ## Formal class 'QDNAseqCopyNumbers' [package "QDNAseq"] with 7 slots
-    ##   ..@ assayData        :<environment: 0x7fce464c1528> 
+    ##   ..@ assayData        :<environment: 0x7fe1f03b6640> 
     ##   ..@ phenoData        :Formal class 'AnnotatedDataFrame' [package "Biobase"] with 4 slots
     ##   ..@ featureData      :Formal class 'AnnotatedDataFrame' [package "Biobase"] with 4 slots
     ##   ..@ experimentData   :Formal class 'MIAME' [package "Biobase"] with 13 slots
@@ -81,7 +81,7 @@ and cellularity solutions.
 
 ``` r
 # Reading in csv with all solutions
-rascal_all_solutions <- fread("test-data/30kb_aCNsolutions.csv")
+rascal_all_solutions <- fread("../test-data/30kb_aCNsolutions.csv")
 
 head(rascal_all_solutions)
 ```
@@ -112,7 +112,7 @@ rascal_segs <- getOptimalMADSolutions(input_file = "30kb_aCNsolutions.csv", rcn_
 The output of this function is as follows
 
 ``` r
-rascal_segtables <- readRDS("test-data/cnCollapsedSegs_30kb_autosomesOnly_MADoptimal_absCN_comCNVfiltered_bashashati_subset.rds")
+rascal_segtables <- readRDS("../test-data/cnCollapsedSegs_30kb_autosomesOnly_MADoptimal_absCN_comCNVfiltered_bashashati_subset.rds")
 
 # Output for one sample 
 dplyr::glimpse(rascal_segtables$CC.HAM.0396)
@@ -142,7 +142,7 @@ vaf_sols <- calculate_vaf_acns(solutions = "30kb_aCNsolutions.csv", rcn_segs = q
 The output of this function is as follows
 
 ``` r
-vaf_segtables <- readRDS("test-data/30kb_comCNVfilt_rascal_CN_Collapsed_segments_optimalVAF.rds")
+vaf_segtables <- readRDS("../test-data/30kb_comCNVfilt_rascal_CN_Collapsed_segments_optimalVAF.rds")
 
 # Output for one sample 
 dplyr::glimpse(vaf_segtables$CC.HAM.0396)
@@ -240,7 +240,7 @@ contains functions for these which need to be modified next:
     corresponds to the figure below [(Macintyre et al.,
     2018)](https://www.nature.com/articles/s41588-018-0179-8.pdf).
 
-![](images/distc.png)<!-- -->
+![](../images/distc.png)<!-- -->
 
 2.  Apply non-megative matrix factorization to visualize the
     tumor-by-signature matrix, the signature-by-component matrix and
@@ -249,14 +249,14 @@ contains functions for these which need to be modified next:
     plotting function that is capable of plotting these visualizations
     side-by-side with annotations for metadata, etc.
 
-![](images/papf.png)<!-- -->
+![](../images/papf.png)<!-- -->
 
 (from [(Macintyre et al.,
 2018)](https://www.nature.com/articles/s41588-018-0179-8.pdf))
 
 ### Ideal Package Output
 
-![](images/cronfig.png)<!-- -->
+![](../images/cronfig.png)<!-- -->
 
 **Note:** Sample quality evaluation at this stage is a key need this
 package aims to meet. Currently there are no well established methods to
