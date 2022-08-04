@@ -1,4 +1,4 @@
-# cn-sigs-utils
+# utanos
 
 ### File list:
 * __main_functions.R__ - Central logic functions used in the calling of copy-number signatures. Needs to be re-named.
