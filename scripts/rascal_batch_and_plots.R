@@ -81,18 +81,19 @@ write_csv(weighted_sols, file = '/Users/maxwell/Documents/projects/cn_signatures
 ##############
 ## MAD optimal column addition and segs table creation
 ##############
-solutions <- "~/Documents/projects/cn_signatures_shallowWGS/qdnaseq_copy_number/batch_1-13/Xchr_included/30kb_copyNumbersSegmented_solutions.txt"
-rcn_segs <- "~/Documents/projects/cn_signatures_shallowWGS/qdnaseq_copy_number/batch_1-13/autosomes_only/30kb_copyNumbersSegmented.tsv"
+solutions <- "~/Documents/projects/cn_signatures_shallowWGS/qdnaseq_copy_number/batch_1-13/Xchr_included/30kb_comCNVfilt_solutions.csv"
+rcn_segs <- "~/Documents/projects/cn_signatures_shallowWGS/qdnaseq_copy_number/batch_1-13/Xchr_included/30kb_rCN_comCNVfilt.tsv"
 acn_segs <- "~/Documents/projects/cn_signatures_shallowWGS/qdnaseq_copy_number/batch_1-13/Xchr_included/30kb_comCNVfilt_rascal_CN_Collapsed_segments_optimalMAD.rds"
-getOptimalMADSolutions(solutions, acn_segs)
+getOptimalMADSolutions(input_file = solutions, rcn_file = rcn_segs, segs_file = acn_segs, TRUE)
 
 ##############
 ## Add VAF column to rascal solutions and create corresponding segs table
 ##############
-solutions <- "~/Documents/projects/cn_signatures_shallowWGS/qdnaseq_copy_number/batch_1-13/Xchr_included/30kb_copyNumbersSegmented_solutions.txt"
+solutions <- "~/Documents/projects/cn_signatures_shallowWGS/qdnaseq_copy_number/batch_1-13/Xchr_included/30kb_comCNVfilt_rascal_solutions.csv"
 rcn_segs <- "~/Documents/projects/cn_signatures_shallowWGS/qdnaseq_copy_number/batch_1-13/autosomes_only/30kb_rCN_comCNVfilt.tsv"
 acn_segs_save_path <- "~/Documents/projects/cn_signatures_shallowWGS/qdnaseq_copy_number/batch_1-13/Xchr_included/30kb_comCNVfilt_rascal_CN_Collapsed_segments_optimalVAF.rds"
-calculate_vaf_acns(solutions, rcn_segs, acn_segs_save_path)
+vaf_table <- '~/Documents/projects/cn_signatures_shallowWGS/metadata/vafs_and_cellularities.tsv'
+calculate_vaf_acns(solutions, rcn_segs, acn_segs_save_path, vaf_table)
 
 ####################################
 # Create CN-Collapsed Segment Tables
@@ -100,6 +101,13 @@ calculate_vaf_acns(solutions, rcn_segs, acn_segs_save_path)
 ####################################
 
 
+
+####################################
+# Create Cytoband .tsv tables
+# Single chosen solutions
+####################################
+acn_obj <- readRDS(file = '~/Documents/projects/cn_sigs_swgs/copy_number_objects/Xchr_included/30kb_comCNVfilt_rascal_CN_Collapsed_segments_optimalVAF.rds')
+cytoband_table <- genHumanReadableACNprofile(acn_obj, '~/Documents/projects/cn_sigs_swgs/data/comCNV_filtered_segs_and_cytoband_tables_Xchr_included/')
 
 ####################################
 # Create Rascal CN-plots

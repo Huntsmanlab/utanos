@@ -74,15 +74,17 @@ chooseNumberSignatures<-function(sample_by_component, outfile="numSigs.pdf", min
 
 }
 
-extractCopynumberFeatures<-function(CN_data, cores = 1, multi_sols_data = FALSE)
+extractCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
 {
-    #get chromosome lengths
-    chrlen<-read.table("data/hg19.chrom.sizes.txt",sep="\t",stringsAsFactors = F)[1:24,]
-    
-    #get centromere locations
-    gaps<-read.table("data/gap_hg19.txt",sep="\t",header=F,stringsAsFactors = F)
-    centromeres<-gaps[gaps[,8]=="centromere",]
-    
+    # get chromosome and centromere locations
+    if (genome == 'hg19') {
+      chrlen<-read.table("data/hg19.chrom.sizes.txt",sep="\t",stringsAsFactors = F)[1:24,]
+      gaps<-read.table("data/gap_hg19.txt",sep="\t",header=F,stringsAsFactors = F)
+      centromeres<-gaps[gaps[,8]=="centromere",]
+    } else if (genome == 'hg38') {
+      chrlen<-read.table("data/hg38.chrom.sizes.txt",sep="\t",stringsAsFactors = F)[1:24,]
+      centromeres<-read.table("data/centromeres_hg38.txt",sep="\t",header=T,stringsAsFactors = F)
+    }
     if(cores > 1) {
         require(foreach)
         doMC::registerDoMC(cores)
@@ -122,15 +124,17 @@ extractCopynumberFeatures<-function(CN_data, cores = 1, multi_sols_data = FALSE)
     }
 }
 
-extractRelativeCopynumberFeatures<-function(CN_data, cores = 1, multi_sols_data = FALSE)
+extractRelativeCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
 {
-    #get chromosome lengths
-    chrlen<-read.table("data/hg19.chrom.sizes.txt",sep="\t",stringsAsFactors = F)[1:24,]
-    
-    #get centromere locations
-    gaps<-read.table("data/gap_hg19.txt",sep="\t",header=F,stringsAsFactors = F)
-    centromeres<-gaps[gaps[,8]=="centromere",]
-    
+    # get chromosome and centromere locations
+    if (genome == 'hg19') {
+      chrlen<-read.table("data/hg19.chrom.sizes.txt",sep="\t",stringsAsFactors = F)[1:24,]
+      gaps<-read.table("data/gap_hg19.txt",sep="\t",header=F,stringsAsFactors = F)
+      centromeres<-gaps[gaps[,8]=="centromere",]
+    } else if (genome == 'hg38') {
+      chrlen<-read.table("data/hg38.chrom.sizes.txt",sep="\t",stringsAsFactors = F)[1:24,]
+      centromeres<-read.table("data/centromeres_hg38.txt",sep="\t",header=T,stringsAsFactors = F)
+    }
     if(cores > 1) {
         require(foreach)
         doMC::registerDoMC(cores)
