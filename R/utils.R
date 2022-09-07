@@ -50,7 +50,7 @@
 #' calculate_vaf_acns()
 #'
 #' @export
-calculate_vaf_acns <- function (rascal_batch_solutions, relative_cns, acn_seg_path, vafs) {
+CalculateVafAcns <- function (rascal_batch_solutions, relative_cns, acn_seg_path, vafs) {
 
   qdnaseq_segs <- relative_cns
   qdnaseq_segs <- read.table(file = qdnaseq_segs, header = TRUE)
@@ -113,7 +113,7 @@ calculate_vaf_acns <- function (rascal_batch_solutions, relative_cns, acn_seg_pa
 # Corollary to calculate_vaf_acns function.
 # input_file: input path
 #' @export
-getOptimalMADSolutions <- function (input_file, rcn_file, segs_file, save_file = TRUE) {
+GetOptimalMadSolutions <- function (input_file, rcn_file, segs_file, save_file = TRUE) {
 
   rascal_batch_solutions <- read.table(file = input_file, sep = ',', header = TRUE)
   rascal_batch_solutions$sample <- str_replace_all(rascal_batch_solutions$sample, "-", ".")
@@ -156,7 +156,7 @@ getOptimalMADSolutions <- function (input_file, rcn_file, segs_file, save_file =
 
 # 1. Look up vaf gene start and end in genome reference
 # 2. Filter rcn obj (ex. QDNAseq obj) for seg. CN at the vaf gene location
-get_segmented_rcn_for_gene <- function (rcn_obj, gene) {
+GetSegmentedRcnForGene <- function (rcn_obj, gene) {
 
   granges_gene <- genes(EnsDb.Hsapiens.v75, filter = ~ gene_name == gene)
   grRCN = makeGRangesFromDataFrame(rcn_obj)
@@ -172,19 +172,19 @@ get_segmented_rcn_for_gene <- function (rcn_obj, gene) {
   }
 }
 
-sum_delimited_elements <- function (element, delimiter) {
+SumDelimitedElements <- function (element, delimiter) {
   elements <- str_split(element, pattern = delimiter)[[1]]
   element <- sum(as.numeric(elements))
   return(element)
 }
 
-minmax_column <- function (df_col) {
+MinmaxColumn <- function (df_col) {
   preproc2 <- preProcess(as.data.frame(df_col), method=c("range"))
   minmaxed <- predict(preproc2, as.data.frame(df_col))
   return(minmaxed[,1])
 }
 
-gene_cr <- function(queryset, targetset) {
+GeneCr <- function(queryset, targetset) {
   queryset_matches <- c()
   for (i in 1:dim(targetset)[1]) {
     line <- str_split(targetset$all[i], pattern = ',')[[1]]
@@ -196,7 +196,7 @@ gene_cr <- function(queryset, targetset) {
   return(targetset[unique(queryset_matches),])
 }
 
-annotation_cr <- function(queryset, targetset) {
+AnnotationCr <- function(queryset, targetset) {
   queryset_matches <- c()
   for (i in 1:dim(targetset)[1]) {
     line <- str_split(targetset$all[i], pattern = ',')[[1]]
@@ -210,7 +210,7 @@ annotation_cr <- function(queryset, targetset) {
 # Transforms segment tables into per-bin copy-number tables
 # It is an expansion of the calls into per-bin style, where the bin size is user defined.
 #' @export
-segments_to_copy_number <- function(segs, bin_size, genome = 'hg19', Xincluded = FALSE) {
+SegmentsToCopyNumber <- function(segs, bin_size, genome = 'hg19', Xincluded = FALSE) {
 
   # Stop execution if we don't have the required input
   stopifnot(is.list(segs))
@@ -320,7 +320,7 @@ GetGRangesFromEnsDb <- function(
 # function for extracting the copy number for a given sample
 # can handle QDNAseqCopyNumbers object or a copy number data frame
 #' @export
-compare_bin_CNs <- function(objs, sample, bin_area) {
+CompareBinCNs <- function(objs, sample, bin_area) {
   outlist <- vector(mode = "list", length = length(objs))
   for (i in 1:length(objs)) {
     obj <- objs[[i]][,sample]
@@ -346,7 +346,7 @@ compare_bin_CNs <- function(objs, sample, bin_area) {
 # DESCRIPTION
 # Parameters:
 # data -
-removeBlacklist <- function(data) {
+RemoveBlacklist <- function(data) {
   # Read in blacklist file
   blacklist = as.data.frame(data.table::fread(file = "~/repos/cnsignatures/data/external_datasets/binBlacklist.txt", sep = ' ', header = TRUE))
 
@@ -367,7 +367,7 @@ removeBlacklist <- function(data) {
 # Parameters:
 # data -
 #' @export
-genHumanReadableRCNprofile <- function(object, binsize) {
+GenHumanReadableRcnProfile <- function(object, binsize) {
   # Expects gl cghcall object
 
   # Create collapsed segments table
@@ -433,7 +433,7 @@ genHumanReadableRCNprofile <- function(object, binsize) {
 # Parameters:
 # data -
 #' @export
-genHumanReadableACNprofile <- function(object, save_path) {
+GenHumanReadableAcnProfile <- function(object, save_path) {
 
   # Get Chromosome cytobands, coordinates (in bp), and lengths of regions
   connection <- dbConnect(MySQL(), user="genome", host="genome-mysql.cse.ucsc.edu", dbname="hg19")
@@ -492,7 +492,7 @@ genHumanReadableACNprofile <- function(object, save_path) {
 # Parameters:
 # data -
 #' @export
-copy_number_segments_new <- function(copy_number) {
+CopyNumberSegmentsNew <- function(copy_number) {
 
   stopifnot(is.data.frame(copy_number))
   stopifnot("sample" %in% names(copy_number))
@@ -528,7 +528,7 @@ copy_number_segments_new <- function(copy_number) {
 # This means that NMFfit objects must be saved in the cn_signatures_pilot.R script.
 
 #' @export
-compare_signature_by_component <- function (cs_matrix_list, mat_names, saveFile) {
+CompareSignatureByComponent <- function (cs_matrix_list, mat_names, saveFile) {
 
   nsig <- 7
   # britroc feat_sig matrix
@@ -572,7 +572,7 @@ compare_signature_by_component <- function (cs_matrix_list, mat_names, saveFile)
 }
 
 #' @export
-create_shallowHRDinput <- function (input_obj, temp_path, output_path) {
+CreateShallowHRDInput <- function (input_obj, temp_path, output_path) {
 
   dir.create(file.path(output_path), showWarnings = FALSE, recursive = TRUE)
   exportBins(input_obj, file = paste0(temp_path, "/logtransCNs.txt"), type = 'copynumber', format="tsv")
