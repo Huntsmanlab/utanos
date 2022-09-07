@@ -5,25 +5,26 @@ locationOfThisScript = function() # Function LocationOfThisScript returns the lo
     for (i in -(1:sys.nframe())) {
         if (identical(sys.function(i), base::source)) this.file = (normalizePath(sys.frame(i)$ofile))
     }
-    
+
     if (!is.null(this.file)) return(dirname(this.file))
-    
+
     # But it may also be called from the command line
     cmd.args = commandArgs(trailingOnly = FALSE)
     cmd.args.trailing = commandArgs(trailingOnly = TRUE)
     cmd.args = cmd.args[seq.int(from=1, length.out=length(cmd.args) - length(cmd.args.trailing))]
     res = gsub("^(?:--file=(.*)|.*)$", "\\1", cmd.args)
-    
+
     # If multiple --file arguments are given, R uses the last one
     res = tail(res[res != ""], 1)
     if (0 < length(res)) return(dirname(res))
-    
+
     # Both are not the case. Maybe we are in an R GUI?
     return(NULL)
 }
-this_path<-locationOfThisScript()
-source(paste(this_path,"helper_functions.R",sep="/"))
+# this_path<-locationOfThisScript()
+# source(paste(this_path,"helper_functions.R",sep="/"))
 
+#' @export
 quantifySignatures<-function(sample_by_component, component_by_signature=NULL)
 {
     if (component_by_signature == 'rbritroc91') {
@@ -45,25 +46,27 @@ quantifySignatures<-function(sample_by_component, component_by_signature=NULL)
     signature_by_sample
 }
 
+#' @export
 generateSignatures<-function(sample_by_component,nsig,seed=77777,nmfalg="brunet", cores=4)
 {
     NMF::nmf(t(sample_by_component),nsig,seed=seed,nrun=1000,method=nmfalg,.opt = paste0("p", cores) )
 }
 
+#' @export
 chooseNumberSignatures<-function(sample_by_component, outfile="numSigs.pdf", min_sig=3, max_sig=12, iter=100, cores=4)
 {
 
     nmfalg<-"brunet"
     seed<-77777
-    
+
     estim.r <- NMF::nmfEstimateRank(t(sample_by_component), min_sig:max_sig,seed = seed,nrun=iter,
                                verbose=FALSE, method=nmfalg, .opt=list(shared.memory=FALSE, paste0("p", cores) ) )
 
     V.random <- NMF::randomize(t(sample_by_component))
     estim.r.random <- NMF::nmfEstimateRank(V.random, min_sig:max_sig, seed =seed,nrun=iter,
                                       verbose=FALSE, method=nmfalg, .opt=list(shared.memory=FALSE, paste0("p", cores) ) )
-    
-    p<-NMF::plot(estim.r,estim.r.random, 
+
+    p<-NMF::plot(estim.r,estim.r.random,
             what = c("cophenetic", "dispersion","sparseness", "silhouette"),
             xname="Observed",yname="Randomised",main="")
     pdf(file=outfile, width=10, height=10 )
@@ -74,6 +77,7 @@ chooseNumberSignatures<-function(sample_by_component, outfile="numSigs.pdf", min
 
 }
 
+#' @export
 extractCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
 {
     # get chromosome and centromere locations
@@ -124,6 +128,7 @@ extractCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data 
     }
 }
 
+#' @export
 extractRelativeCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
 {
     # get chromosome and centromere locations
@@ -138,7 +143,7 @@ extractRelativeCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_so
     if(cores > 1) {
         require(foreach)
         doMC::registerDoMC(cores)
-        
+
         temp_list = foreach::foreach(i=1:6) %dopar% {
             if(i == 1){
                 list(segsize = getSegsize(CN_data) )
@@ -174,6 +179,7 @@ extractRelativeCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_so
     }
 }
 
+#' @export
 fitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min_prior=0.001, model_selection="BIC",
                             nrep=1, niter=1000, cores = 1, featsToFit = seq(1, 6))
 {
@@ -186,37 +192,37 @@ fitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min
         temp_list = foreach(i=1:6) %dopar% {
 
             if(i == 1 & i %in% featsToFit ){
-            
+
                 dat<-as.numeric(CN_features[["segsize"]][,2])
                 list( segsize = fitComponent(dat,seed=seed,model_selection=model_selection,
                     min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
-            
+
             } else if (i == 2 & i %in% featsToFit ) {
-            
+
                 dat<-as.numeric(CN_features[["bp10MB"]][,2])
                 list( bp10MB = fitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
                     min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
             } else if (i == 3 & i %in% featsToFit ) {
-            
+
                 dat<-as.numeric(CN_features[["osCN"]][,2])
                 list( osCN = fitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
                     min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
-            
+
             } else if (i == 4 & i %in% featsToFit ) {
-            
+
                 dat<-as.numeric(CN_features[["bpchrarm"]][,2])
                 list( bpchrarm = fitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
                     min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
-            
+
             } else if (i == 5 & i %in% featsToFit ) {
-            
+
                 dat<-as.numeric(CN_features[["changepoint"]][,2])
                 list( changepoint = fitComponent(dat,seed=seed,model_selection=model_selection,
                     min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
             } else if (i == 6 & i %in% featsToFit) {
-            
+
                 dat<-as.numeric(CN_features[["copynumber"]][,2])
                 list( copynumber = fitComponent(dat,seed=seed,model_selection=model_selection,
                     nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000) )
@@ -224,7 +230,7 @@ fitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min
             }
 
         }
-        unlist( temp_list, recursive = FALSE ) 
+        unlist( temp_list, recursive = FALSE )
     } else {
         dat<-as.numeric(CN_features[["segsize"]][,2])
         segsize_mm<-fitComponent(dat,seed=seed,model_selection=model_selection,
@@ -241,7 +247,7 @@ fitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min
         dat<-as.numeric(CN_features[["bpchrarm"]][,2])
         bpchrarm_mm<-fitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
                                   min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
-    
+
         dat<-as.numeric(CN_features[["changepoint"]][,2])
         changepoint_mm<-fitComponent(dat,seed=seed,model_selection=model_selection,
                                      min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
@@ -254,6 +260,7 @@ fitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min
     }
 }
 
+#' @export
 generateSampleByComponentMatrix<-function(CN_features, all_components=NULL, cores = 1, rowIter = 1000, subcores = 2)
 {
     if (is.null(all_components)) {
@@ -262,15 +269,15 @@ generateSampleByComponentMatrix<-function(CN_features, all_components=NULL, core
         if (class(all_components) == 'character') {
             all_components<-readRDS(file = paste0("data/mixture_models/component_parameters_", all_components, ".rds"))
         }
-        
+
         if(cores > 1){
             require(foreach)
-    
+
             feats = c( "segsize", "bp10MB", "osCN", "changepoint", "copynumber", "bpchrarm" )
             doMC::registerDoMC(cores)
-    
+
             full_mat = foreach(feat=feats, .combine=cbind) %dopar% {
-                calculateSumOfPosteriors(CN_features[[feat]],all_components[[feat]], 
+                calculateSumOfPosteriors(CN_features[[feat]],all_components[[feat]],
                     feat, rowIter = rowIter, cores = subcores)
             }
         } else {
@@ -282,7 +289,7 @@ generateSampleByComponentMatrix<-function(CN_features, all_components=NULL, core
             calculateSumOfPosteriors(CN_features[["copynumber"]],all_components[["copynumber"]],"copynumber"),
             calculateSumOfPosteriors(CN_features[["bpchrarm"]],all_components[["bpchrarm"]],"bpchrarm"))
         }
-    
+
         rownames(full_mat)<-unique(CN_features[["segsize"]][,1])
         full_mat[is.na(full_mat)]<-0
         full_mat
