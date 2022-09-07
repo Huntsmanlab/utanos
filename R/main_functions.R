@@ -1,4 +1,4 @@
-locationOfThisScript = function() # Function LocationOfThisScript returns the location of this .R script (may be needed to source other files in same dir)
+LocationOfThisScript = function() # Function LocationOfThisScript returns the location of this .R script (may be needed to source other files in same dir)
 {
     this.file = NULL
     # This file may be 'sourced'
@@ -25,7 +25,7 @@ locationOfThisScript = function() # Function LocationOfThisScript returns the lo
 # source(paste(this_path,"helper_functions.R",sep="/"))
 
 #' @export
-quantifySignatures<-function(sample_by_component, component_by_signature=NULL)
+QuantifySignatures<-function(sample_by_component, component_by_signature=NULL)
 {
     if (component_by_signature == 'rbritroc91') {
         component_by_signature <- basis(readRDS(file = "data/britroc_output/QDNA_30kb_custSigs_7sigs_component_by_signature_rbritroc91.rds"))
@@ -47,13 +47,13 @@ quantifySignatures<-function(sample_by_component, component_by_signature=NULL)
 }
 
 #' @export
-generateSignatures<-function(sample_by_component,nsig,seed=77777,nmfalg="brunet", cores=4)
+GenerateSignatures<-function(sample_by_component,nsig,seed=77777,nmfalg="brunet", cores=4)
 {
     NMF::nmf(t(sample_by_component),nsig,seed=seed,nrun=1000,method=nmfalg,.opt = paste0("p", cores) )
 }
 
 #' @export
-chooseNumberSignatures<-function(sample_by_component, outfile="numSigs.pdf", min_sig=3, max_sig=12, iter=100, cores=4)
+ChooseNumberSignatures<-function(sample_by_component, outfile="numSigs.pdf", min_sig=3, max_sig=12, iter=100, cores=4)
 {
 
     nmfalg<-"brunet"
@@ -78,7 +78,7 @@ chooseNumberSignatures<-function(sample_by_component, outfile="numSigs.pdf", min
 }
 
 #' @export
-extractCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
+ExtractCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
 {
     # get chromosome and centromere locations
     if (genome == 'hg19') {
@@ -129,7 +129,7 @@ extractCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data 
 }
 
 #' @export
-extractRelativeCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
+ExtractRelativeCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
 {
     # get chromosome and centromere locations
     if (genome == 'hg19') {
@@ -180,7 +180,7 @@ extractRelativeCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_so
 }
 
 #' @export
-fitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min_prior=0.001, model_selection="BIC",
+FitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min_prior=0.001, model_selection="BIC",
                             nrep=1, niter=1000, cores = 1, featsToFit = seq(1, 6))
 {
 
@@ -261,7 +261,7 @@ fitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min
 }
 
 #' @export
-generateSampleByComponentMatrix<-function(CN_features, all_components=NULL, cores = 1, rowIter = 1000, subcores = 2)
+GenerateSampleByComponentMatrix<-function(CN_features, all_components=NULL, cores = 1, rowIter = 1000, subcores = 2)
 {
     if (is.null(all_components)) {
         stop("Please define the mixture modelling on which components you would like to use. Ex. 'britroc', 'vancouver', or 'vancouver_newCN'.")
