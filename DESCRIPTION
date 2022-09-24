@@ -46,3 +46,6 @@ Imports:
     TxDb.Hsapiens.UCSC.hg19.knownGene,
     viridis,
     YAPSA
+Depends: 
+    R (>= 2.10)
+LazyData: true
