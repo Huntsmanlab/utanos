@@ -348,7 +348,7 @@ CompareBinCNs <- function(objs, sample, bin_area) {
 # data -
 RemoveBlacklist <- function(data) {
   # Read in blacklist file
-  blacklist = as.data.frame(data.table::fread(file = "~/repos/cnsignatures/data/external_datasets/binBlacklist.txt", sep = ' ', header = TRUE))
+  blacklist = hg19.blacklistBins
 
   # Convert blacklist and data to GRanges objects and find indices of overlaps
   grBL = makeGRangesFromDataFrame(blacklist)
