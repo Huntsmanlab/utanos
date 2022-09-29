@@ -617,3 +617,95 @@ CreateShallowHRDInput <- function (input_obj, temp_path, output_path) {
   chromosome.lengths
 }
 
+#'  Relative copy number plotting functions 
+#'
+#' @description Function to split chromosome names into the separate columns with the chromosome number, start and ending position
+#' @details A QDNAseq object generally contains the chromosome and position information in the following format chromosome:start-end. This often needs to be separated into three columns for plotting relative copy numbers and other data wrangling.
+#' @param x *dataframe* containing the copy number segments in long format: chr column with format chromosome:start-stop, sample and segVal
+#' @return dataframe containing three separate columns for the chromosome number, sample and segVal
+#' 
+ChromosomeSplit <- function(x) {
+  x$chr <- str_split_fixed(x$chr, ":", n = 2)
+  x$chromosome <- x$chr[,1] 
+  x$pos <- str_split_fixed(x$chr[,2], "-", n = 2)
+  x$start <- x$pos[,1]
+  x$end <- x$pos[,2]
+  x$pos <- NULL
+  x$chr <- NULL
+  x[, c("segVal", "start", "end")] <- lapply(x[, c("segVal", "start", "end")], as.numeric)
+  return(x)
+}
+
+plotWisecondorProfiles <- function (input_path) {
+  
+  # Read in files
+  bin_files <- list.files(input_path, pattern = '*_bins.bed', full.names = TRUE)                            # grab just 1
+  samples <- list.files(input_path, pattern = '*_bins.bed')
+  samples <- sub('_bins.bed', '', samples)
+  seg_files <- list.files(input_path, pattern = '*_segments.bed', full.names = TRUE)
+  stats_files <- list.files(input_path, pattern = '*_statistics.txt', full.names = TRUE)
+  cns <- plyr::ldply(seq_along(bin_files), function(x) {
+    df <- data.table::fread(bin_files[[x]], sep = '\t', col.names = c('chromosome', 'start', 'end', 'id', 'ratio', 'zscore'), nThread = 4)
+    df <- df[,c(1,2,3,5)]
+    df$sample_id <- samples[x]
+    colnames(df) = c('chromosome', 'start', 'end', 'state', 'sample_id')
+    df})
+  # NaNs to NAs
+  cns$state[is.nan(cns$state)] <- NA
+  # Exponeniate 
+  cns$state <- exp(cns$state)
+  segs <- lapply(seg_files, function(x) {
+    df <- data.table::fread(x, sep = '\t', col.names = c('chromosome', 'start', 'end', 'segVal', 'zscore'))
+    df <- df[,c(1,2,3,4)]
+    df})
+  names(segs) <- samples
+  segs <- segs %>% 
+    purrr::map(~mutate_at(.x, vars("segVal"), function(x) {exp(x)}))
+  stats <- plyr::ldply(seq_along(stats_files), function(x) {
+    read_count <- as.integer(sub("Number of reads: ", "", readLines(stats_files[[x]])[26]))
+    df <- data.frame(name = samples[x], 
+                     total_reads = read_count, 
+                     stringsAsFactors=FALSE)
+    df})
+  rownames(stats) <- samples
+  # Create the copynumber object
+  cns_wide <- tidyr::spread(cns, sample_id, state)
+  dim_names <- paste0(cns_wide$chromosome, ':', cns_wide$start, '-', cns_wide$end)       # create bin dimnames
+  copynumbers <- matrix(NA_real_, nrow=nrow(cns_wide), ncol=length(bin_files),
+                        dimnames=list(dim_names, samples))
+  copynumbers[,1:length(bin_files)] <- as.matrix(cns_wide[,4:(length(bin_files)+3)])
+  # Create the segment object
+  segs_long <- SegmentsToCopyNumber(segs, bin_size = 30000, genome = 'hg19', Xincluded = TRUE)
+  segs_wide <- spread(segs_long, sample_id, state)
+  segments <- matrix(NA_real_, nrow=nrow(segs_wide), ncol=length(seg_files),
+                     dimnames=list(dim_names, samples))
+  segments[,1:length(seg_files)] <- as.matrix(segs_wide[,4:(length(seg_files)+3)])
+  # Create the bins
+  bins <- matrix(NA_integer_, nrow=nrow(cns_wide), ncol=4,
+                 dimnames=list(dim_names, c('chromosome', 'start', 'end', 'use')))
+  bins[,1:3] <- as.matrix(cns_wide[,1:3])
+  bins[,4] <- complete.cases(segments)
+  bins <- Biobase::AnnotatedDataFrame(as.data.frame(bins))
+  bins@data$chromosome <- factor(bins@data$chromosome, levels = c(as.character(c(1:22)),'X'))
+  bins@data$start <- as.integer(bins@data$start)
+  bins@data$end <- as.integer(bins@data$end)
+  bins@data$use <- as.logical(bins@data$use)
+  
+  # Assemble QDNAseq object
+  wx_qdnaobj <- new('QDNAseqCopyNumbers', bins=bins, copynumber=copynumbers, phenodata=stats)
+  assayDataElement(wx_qdnaobj, "segmented") <- segments
+  # Change to total.reads
+  colnames(wx_qdnaobj@phenoData@data) <- c("name", "total.reads")
+  # Calculate expected variance 
+  expected.variance <- rep(NA_real_, 262)
+  for (i in seq_len(262)) {
+    expected.variance[i] <- (sum(QDNAseq:::binsToUse(wx_qdnaobj[,i])) / wx_qdnaobj[,i]$total.reads)
+  }
+  wx_qdnaobj@phenoData@data$expected.variance <- expected.variance
+  metadata <-  matrix(NA_integer_, nrow= 3, ncol= 1,
+                      dimnames=list(c('name', 'total.reads', 'expected.variance')))
+  colnames(metadata) <- "labelDescription"
+  wx_qdnaobj@phenoData@varMetadata <- as.data.frame(metadata)
+  return(wx_qdnaobj)
+}
+
