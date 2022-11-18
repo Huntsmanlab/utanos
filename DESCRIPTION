@@ -2,9 +2,9 @@ Package: utanos
 Title: Utilities for The Analysis of Shallow WGS in R
 Version: 0.0.0.9000
 Authors@R: 
-    c(person("Maxwell", "Douglas", , "jmdougla@ualberta.ca", role = c("aut", "cre"), 
-    person("Nirupama", "Tamvada", , "ntamvada@bccrc.ca", role = c("aut", "cre"),
-    person("Rodrigo", "Vallejos", , "rvallejos@bccrc.ca", role = c("aut", "cre"))
+    c(person("Maxwell", "Douglas", email = "jmdougla@ualberta.ca", role = c("aut", "cre")), 
+    person("Nirupama", "Tamvada" , "ntamvada@bccrc.ca", role = "aut"),
+    person("Rodrigo", "Vallejos", "rvallejos@bccrc.ca", role = "aut"))
 Description: A set of functions that assist in the analysis of shallow/low-pass 
     whole genome sequencing (WGS) and subsequent visualization. It includes 
     built-in options for evaluating sample quality, visualizing copy-number
@@ -31,7 +31,6 @@ Imports:
     ggrepel,
     gridExtra,
     hrbrthemes,
-    ks,
     magrittr,
     NMF,
     org.Hs.eg.db,
@@ -40,9 +39,6 @@ Imports:
     purrr,
     QDNAseq,
     readr,
-    RMySQL,
     stringr,
     tidyr,
-    TxDb.Hsapiens.UCSC.hg19.knownGene,
-    viridis,
-    YAPSA
+    viridis
