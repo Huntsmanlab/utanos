@@ -1,7 +1,11 @@
-README.rmd
+README
 ================
 
 <!-- badges: start -->
+
+[![R CMD
+Check](https://github.com/ntmv/utanos/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ntmv/utanos/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->.
 
 # utanos
 
@@ -136,6 +140,4 @@ README.rmd
     knitr RColorBrewer ggplot2 plyr dplyr QDNAseq Biobase survival
     survcomp flexmix DOSE ppcor VariantAnnotation org.Hs.eg.db
     TxDb.Hsapiens.UCSC.hg19.knownGene rtracklayer ReactomePA Hmisc
-    corrplot ggpubr NbClust kableExtra [![R CMD
-    Check](https://github.com/ntmv/utanos/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ntmv/utanos/actions/workflows/R-CMD-check.yaml)
-    <!-- badges: end -->.
+    corrplot ggpubr NbClust kableExtra
