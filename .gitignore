@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+vignettes/*.R
 .DS_Store
 /output
 /plots
