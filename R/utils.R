@@ -617,16 +617,16 @@ CreateShallowHRDInput <- function (input_obj, temp_path, output_path) {
   chromosome.lengths
 }
 
-#'  Relative copy number plotting functions 
+#'  Relative copy number plotting functions
 #'
 #' @description Function to split chromosome names into the separate columns with the chromosome number, start and ending position
 #' @details A QDNAseq object generally contains the chromosome and position information in the following format chromosome:start-end. This often needs to be separated into three columns for plotting relative copy numbers and other data wrangling.
 #' @param x *dataframe* containing the copy number segments in long format: chr column with format chromosome:start-stop, sample and segVal
 #' @return dataframe containing three separate columns for the chromosome number, sample and segVal
-#' 
+#'
 ChromosomeSplit <- function(x) {
   x$chr <- str_split_fixed(x$chr, ":", n = 2)
-  x$chromosome <- x$chr[,1] 
+  x$chromosome <- x$chr[,1]
   x$pos <- str_split_fixed(x$chr[,2], "-", n = 2)
   x$start <- x$pos[,1]
   x$end <- x$pos[,2]
@@ -636,10 +636,18 @@ ChromosomeSplit <- function(x) {
   return(x)
 }
 
-plotWisecondorProfiles <- function (input_path) {
-  
+#'  Build a QDNAseq object out of the WisecondorX output.
+#'
+#' @description Function to create a QDNAseq object out of the WisecondorX output files.
+#' @param input_path *character vector* Path to the output files from WisecondorX.
+#' @param genome_used The genome used for alignment. One of 'hg19' or 'hg38'.
+#' @return QDNAseq object containing the WisecondorX segmented copynumber output.
+#' @export
+#'
+BuildWisexQdnaObject <- function (input_path, genome_used = 'hg19') {
+
   # Read in files
-  bin_files <- list.files(input_path, pattern = '*_bins.bed', full.names = TRUE)                            # grab just 1
+  bin_files <- list.files(input_path, pattern = '*_bins.bed', full.names = TRUE)
   samples <- list.files(input_path, pattern = '*_bins.bed')
   samples <- sub('_bins.bed', '', samples)
   seg_files <- list.files(input_path, pattern = '*_segments.bed', full.names = TRUE)
@@ -652,31 +660,47 @@ plotWisecondorProfiles <- function (input_path) {
     df})
   # NaNs to NAs
   cns$state[is.nan(cns$state)] <- NA
-  # Exponeniate 
+  # Exponeniate
   cns$state <- exp(cns$state)
   segs <- lapply(seg_files, function(x) {
     df <- data.table::fread(x, sep = '\t', col.names = c('chromosome', 'start', 'end', 'segVal', 'zscore'))
     df <- df[,c(1,2,3,4)]
     df})
   names(segs) <- samples
-  segs <- segs %>% 
+  segs <- segs %>%
     purrr::map(~mutate_at(.x, vars("segVal"), function(x) {exp(x)}))
   stats <- plyr::ldply(seq_along(stats_files), function(x) {
+    df <- data.table::fread(stats_files[[x]], sep = '\t', )
     read_count <- as.integer(sub("Number of reads: ", "", readLines(stats_files[[x]])[26]))
-    df <- data.frame(name = samples[x], 
-                     total_reads = read_count, 
+    df <- data.frame(name = samples[x],
+                     total_reads = read_count,
                      stringsAsFactors=FALSE)
     df})
   rownames(stats) <- samples
   # Create the copynumber object
-  cns_wide <- tidyr::spread(cns, sample_id, state)
+  cns_wide <- spread(cns, sample_id, state)
+  # Logic to correct the end bin of each chromosome and arrange the rows in chromosomal order
+  chroms <- GenomeInfoDb::getChromInfoFromUCSC(genome_used) %>%
+    head(23) %>%                                                # WisecondorX output includes the X chromosome and not the Y
+    dplyr::mutate(nbins = ceiling(size/30000))
+  chroms$chrom <- sub('chr', '', chroms$chrom)
+  cns_wide$chromosome <- factor(cns_wide$chromosome, levels = chroms$chrom)
+  cns_wide <- cns_wide %>% arrange(chromosome)
+  cns_wide[,1:3] <- cns_wide %>% dplyr::select(chromosome, start, end) %>%
+    dplyr::group_by(chromosome) %>%
+    dplyr::mutate(end = if_else(end == max(end),
+                                chroms$size[chroms$chrom == dplyr::first(chromosome)],
+                                end))
+
   dim_names <- paste0(cns_wide$chromosome, ':', cns_wide$start, '-', cns_wide$end)       # create bin dimnames
   copynumbers <- matrix(NA_real_, nrow=nrow(cns_wide), ncol=length(bin_files),
                         dimnames=list(dim_names, samples))
   copynumbers[,1:length(bin_files)] <- as.matrix(cns_wide[,4:(length(bin_files)+3)])
   # Create the segment object
-  segs_long <- SegmentsToCopyNumber(segs, bin_size = 30000, genome = 'hg19', Xincluded = TRUE)
+  segs_long <- SegmentsToCopyNumber(segs, bin_size = 30000, genome = genome_used, Xincluded = TRUE)
   segs_wide <- spread(segs_long, sample_id, state)
+  segs_wide$chromosome <- factor(segs_wide$chromosome, levels = chroms$chrom)
+  segs_wide <- segs_wide %>% arrange(chromosome)
   segments <- matrix(NA_real_, nrow=nrow(segs_wide), ncol=length(seg_files),
                      dimnames=list(dim_names, samples))
   segments[,1:length(seg_files)] <- as.matrix(segs_wide[,4:(length(seg_files)+3)])
@@ -690,13 +714,13 @@ plotWisecondorProfiles <- function (input_path) {
   bins@data$start <- as.integer(bins@data$start)
   bins@data$end <- as.integer(bins@data$end)
   bins@data$use <- as.logical(bins@data$use)
-  
+
   # Assemble QDNAseq object
   wx_qdnaobj <- new('QDNAseqCopyNumbers', bins=bins, copynumber=copynumbers, phenodata=stats)
-  assayDataElement(wx_qdnaobj, "segmented") <- segments
+  Biobase::assayDataElement(wx_qdnaobj, "segmented") <- segments
   # Change to total.reads
   colnames(wx_qdnaobj@phenoData@data) <- c("name", "total.reads")
-  # Calculate expected variance 
+  # Calculate expected variance
   expected.variance <- rep(NA_real_, 262)
   for (i in seq_len(262)) {
     expected.variance[i] <- (sum(QDNAseq:::binsToUse(wx_qdnaobj[,i])) / wx_qdnaobj[,i]$total.reads)
