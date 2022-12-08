@@ -2,9 +2,11 @@
 .Rhistory
 .RData
 .Ruserdata
+.DS_Store
 .html
 GRCh37_hg19_common_variants_20200225.tsv
 cn_signatures_runscript.R
+vignettes/*.R
 /manuscript_Rmarkdown
 /output
 /plots
