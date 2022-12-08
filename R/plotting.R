@@ -492,16 +492,16 @@ testSummaryPlot <- function (x, main='Summary Plot', gaincol='blue', losscol='re
 }
 
 #'
-#' @description Function to plot the copy number profile from relative copy numbers 
-#' @details Vosualizing relative copy number calls from WiseCondorX and QDNASeq as heatmaps 
+#' @description Function to plot the copy number profile from relative copy numbers
+#' @details Vosualizing relative copy number calls from WiseCondorX and QDNASeq as heatmaps
 #' @param x *dataframe* containing the copy number segments in long format: columns should be start, sample id (named sample) and segmented
-#' @param order_by optional *character vector* containing the order the samples in the heatmap should be in 
+#' @param order_by optional *character vector* containing the order the samples in the heatmap should be in
 #' @param order_by optional *character vector* to plot a subset of samples
 #' @param breaks *vector* containing the limits of your colour gradient. Passed to scale_fill_gradientn
 #' @param limits *vector* containing the limits of your colour gradient. Passed to scale_fill_gradientn
 #' @return Heatmap of relative copy number calls
-#' 
-#' 
+#'
+#'
 rCNplotProfile <- function(x, order_by = NULL, cluster = TRUE, subset = NULL, limits = c(-1, 1), breaks = c(-2.5, -1, -0.75, 0, 0.75, 1)) {
   if(isTRUE(cluster)) {
     sort_heatmap(x)
@@ -517,16 +517,15 @@ rCNplotProfile <- function(x, order_by = NULL, cluster = TRUE, subset = NULL, li
     x <- x %>%
       filter(sample_id %in% subset)
   }
-  
-  p <- ggplot(x, aes(start, sample, 
-                     fill = segmented)) + geom_tile() + 
+
+  p <- ggplot(x, aes(start, sample, fill = segmented)) +
+    geom_tile() +
     facet_grid(~ chromosome, scales = "free", space = "free", switch = "x") +
-    scale_x_continuous(expand = c(0, 0), breaks = NULL) + 
-    theme(panel.spacing = unit(0.1, "lines")) + scale_fill_gradientn(colours = c( "blue", "grey", "red"), 
-                                                                     breaks = breaks, limits = limits + theme_bw() + 
-                                                                       guides(fill = guide_legend(override.aes = list(size = 5))) + labs(fill = "Relative Copy Number")
-                                                                     return(p)
-                                                                     
+    scale_x_continuous(expand = c(0, 0), breaks = NULL) +
+    theme(panel.spacing = unit(0.1, "lines")) +
+    scale_fill_gradientn(colours = c( "blue", "grey", "red"), breaks = breaks, limits = limits) +
+    theme_bw() + guides(fill = guide_legend(override.aes = list(size = 5))) + labs(fill = "Relative Copy Number")
+  return(p)
 }
 
 #' @description Updated QDNASeq unction to plot the segments for relative copy number calls from WiseCondorX
@@ -545,15 +544,15 @@ setMethod("plot", signature(x="QDNAseqSignals", y="missing"),
                     xlab=NULL, ylab=NULL, ylim=NULL, xaxt="s", yaxp=NULL,
                     showDataPoints=TRUE, showSD=TRUE, doSegments=TRUE, doCalls=TRUE, ...,
                     verbose=getOption("QDNAseq::verbose", TRUE)) {
-            
+
             oopts <- options("QDNAseq::verbose"=verbose)
             on.exit(options(oopts))
-            
+
             ## Import private functions
             ns <- asNamespace("CGHbase")
             .getChromosomeLengths <- get(".getChromosomeLengths", envir=ns, mode="function")
             .makeSegments <- get(".makeSegments", envir=ns, mode="function")
-            
+
             if (inherits(x, c("QDNAseqCopyNumbers", "QDNAseqReadCounts"))) {
               condition <- QDNAseq:::binsToUse(x)
             } else {
