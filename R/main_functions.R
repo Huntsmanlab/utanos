@@ -27,18 +27,10 @@ LocationOfThisScript = function() # Function LocationOfThisScript returns the lo
 #' @export
 QuantifySignatures<-function(sample_by_component, component_by_signature=NULL)
 {
-    if (component_by_signature == 'rbritroc91') {
-        component_by_signature <- basis(readRDS(file = "data/britroc_output/QDNA_30kb_custSigs_7sigs_component_by_signature_rbritroc91.rds"))
-    } else if (component_by_signature == 'absbritroc') {
-        component_by_signature <- basis(readRDS(file = "data/britroc_output/QDNA_30kb_component_by_signature_absbritroc.rds"))
-    } else if (component_by_signature == 'VAFrascalEndoVan7sigs') {
-        component_by_signature <- basis(readRDS(file = 'data/endometrium_output/VAFrascal_30kb_7sigs_custSigs_component_by_signature.rds'))
-    } else if (component_by_signature == 'VAFrascalEndoVan4sigs') {
-        component_by_signature <- basis(readRDS(file = 'data/endometrium_output/VAFrascal_30kb_4sigs_custSigs_component_by_signature.rds'))
-    } else if (component_by_signature == 'VAFrascalHQendoVan6sigs') {
-        component_by_signature <- basis(readRDS(file = 'data/endometrium_output/VAFrascal_30kb_HQ_6sigs_custSigs_component_by_signature.rds'))
-    } else if (is.null(component_by_signature)) {
-        component_by_signature <- readRDS(file = "data/feat_sig_mat.rds")
+    if (file.exists(component_by_signature)) {
+        component_by_signature <- basis(readRDS(file = component_by_signature))
+    } else {
+      stop("Unable to resolve path in component_by_signature variable to a file.")
     }
     signature_by_sample<-YAPSA::LCD(t(sample_by_component),
                                     YAPSA:::normalize_df_per_dim(component_by_signature,2))
@@ -82,12 +74,12 @@ ExtractCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data 
 {
     # get chromosome and centromere locations
     if (genome == 'hg19') {
-      chrlen<-read.table("data/hg19.chrom.sizes.txt",sep="\t",stringsAsFactors = F)[1:24,]
-      gaps<-read.table("data/gap_hg19.txt",sep="\t",header=F,stringsAsFactors = F)
+      chrlen <- as.data.frame(hg19.chrom.sizes[1:24,])
+      centromeres <- gaps.hg19[gaps.hg19[,8] == "centromere",]
       centromeres<-gaps[gaps[,8]=="centromere",]
     } else if (genome == 'hg38') {
-      chrlen<-read.table("data/hg38.chrom.sizes.txt",sep="\t",stringsAsFactors = F)[1:24,]
-      centromeres<-read.table("data/centromeres_hg38.txt",sep="\t",header=T,stringsAsFactors = F)
+      chrlen <- as.data.frame(hg38.chrom.sizes[1:24,])
+      centromeres <- centromeres.hg38
     }
     if(cores > 1) {
         require(foreach)
@@ -129,16 +121,15 @@ ExtractCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data 
 }
 
 #' @export
-ExtractRelativeCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
+ExtractRelativeCopynumberFeatures <- function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
 {
     # get chromosome and centromere locations
     if (genome == 'hg19') {
-      chrlen<-read.table("data/hg19.chrom.sizes.txt",sep="\t",stringsAsFactors = F)[1:24,]
-      gaps<-read.table("data/gap_hg19.txt",sep="\t",header=F,stringsAsFactors = F)
-      centromeres<-gaps[gaps[,8]=="centromere",]
+      chrlen <- as.data.frame(hg19.chrom.sizes[1:24,])
+      centromeres <- gaps.hg19[gaps.hg19[,8] == "centromere",]
     } else if (genome == 'hg38') {
-      chrlen<-read.table("data/hg38.chrom.sizes.txt",sep="\t",stringsAsFactors = F)[1:24,]
-      centromeres<-read.table("data/centromeres_hg38.txt",sep="\t",header=T,stringsAsFactors = F)
+      chrlen <- as.data.frame(hg38.chrom.sizes[1:24,])
+      centromeres <- centromeres.hg38
     }
     if(cores > 1) {
         require(foreach)
@@ -266,8 +257,8 @@ GenerateSampleByComponentMatrix<-function(CN_features, all_components=NULL, core
     if (is.null(all_components)) {
         stop("Please define the mixture modelling on which components you would like to use. Ex. 'britroc', 'vancouver', or 'vancouver_newCN'.")
     } else {
-        if (class(all_components) == 'character') {
-            all_components<-readRDS(file = paste0("data/mixture_models/component_parameters_", all_components, ".rds"))
+        if ((class(all_components) == 'character') && (file.exists(component_by_signature))) {
+            all_components<-readRDS(file = all_components)
         }
 
         if(cores > 1){
