@@ -420,7 +420,7 @@ MinmaxColumn <- function (df_col) {
 GeneCr <- function(queryset, targetset) {
   queryset_matches <- c()
   for (i in 1:dim(targetset)[1]) {
-    line <- str_split(targetset$all[i], pattern = ',')[[1]]
+    line <- stringr::str_split(targetset$all[i], pattern = ',')[[1]]
     line <- unique(line[line != ""])
     if (sum(toupper(queryset$Gene) %in% toupper(line)) > 0) {
       queryset_matches <- c(queryset_matches, i)
@@ -432,7 +432,7 @@ GeneCr <- function(queryset, targetset) {
 AnnotationCr <- function(queryset, targetset) {
   queryset_matches <- c()
   for (i in 1:dim(targetset)[1]) {
-    line <- str_split(targetset$all[i], pattern = ',')[[1]]
+    line <- stringr::str_split(targetset$all[i], pattern = ',')[[1]]
     line <- unique(line[line != ""])
     queryset_matches <- c(queryset_matches, which(toupper(queryset$gene_name) %in% toupper(line)))
   }
@@ -522,11 +522,12 @@ GetBinnedChromosomes <- function(genome, Xincluded = FALSE, bin_size) {
 }
 
 # Convert a string of genome ranges into GRanges object
+#' @export
 StringToGRanges <- function(regions, sep = c("-", "-"), ...) {
   # Code taken from Signac
   # https://github.com/timoast/signac/blob/master/R/utilities.R
   ranges.df <- data.frame(ranges = regions)
-  ranges.df <- separate(
+  ranges.df <- tidyr::separate(
     data = ranges.df,
     col = "ranges",
     sep = paste0(sep[[1]], "|", sep[[2]]),
@@ -540,7 +541,7 @@ StringToGRanges <- function(regions, sep = c("-", "-"), ...) {
 GetGRangesFromEnsDb <- function(
     ensdb,
     standard.chromosomes = TRUE,
-    biotypes = c(listGenebiotypes(ensdb)),
+    biotypes = c(ensembldb::listGenebiotypes(ensdb)),
     verbose = TRUE
 ) {
   # Code taken from Signac
@@ -550,9 +551,9 @@ GetGRangesFromEnsDb <- function(
          "https://www.bioconductor.org/packages/biovizBase/")
   }
   # convert seqinfo to granges
-  whole.genome <-  as(object = seqinfo(x = ensdb), Class = "GRanges")
+  whole.genome <-  as(object = GenomeInfoDb::seqinfo(x = ensdb), Class = "GRanges")
   if (standard.chromosomes) {
-    whole.genome <- keepStandardChromosomes(whole.genome, pruning.mode = "coarse")
+    whole.genome <- GenomeInfoDb::keepStandardChromosomes(whole.genome, pruning.mode = "coarse")
   }
   # extract genes from each chromosome
   if (verbose) {
