@@ -84,9 +84,8 @@ CalculateACNs <- function (relative_cns, rascal_sols, variants = FALSE, acnmetho
   relative_cns <- read.table(file = relative_cns, header = TRUE)
   relative_segments <- relative_cns %>% tidyr::gather(sample, segmented, 5:dim(.)[2], factor_key=TRUE)    # Convert to long
   segments <- CopyNumberSegments(relative_segments)                            # Collapse to continuous segments
-
   rascal_batch_solutions <- read.table(file = rascal_sols, sep = ',', header = TRUE)
-  rascal_batch_solutions$sample <- str_replace_all(rascal_batch_solutions$sample, "-", ".")
+  rascal_batch_solutions$sample <- stringr::str_replace_all(rascal_batch_solutions$sample, "-", ".")
 
   if (variants != FALSE) {
     if(class(variants)[1] == 'character') {
@@ -102,18 +101,18 @@ CalculateACNs <- function (relative_cns, rascal_sols, variants = FALSE, acnmetho
                                            starts_with('vaf')) %>%
       dplyr::mutate(vaf = dplyr::select(., starts_with('vaf')) %>% rowSums(na.rm = TRUE)) %>%
       dplyr::group_by(sample_id, gene_name) %>%
-      summarise(sample_id = dplyr::first(sample_id),
+      dplyr::summarise(sample_id = dplyr::first(sample_id),
                 gene_name = dplyr::first(gene_name),
                 vaf = max(vaf))
-    variants$sample_id <- str_replace_all(variants$sample_id, "-", ".")
+    variants$sample_id <- stringr::str_replace_all(variants$sample_id, "-", ".")
   }
 
   if ((length(acnmethod) == 1) && (acnmethod == 'maxvaf')) {
-    variants <- variants %>% group_by(sample_id) %>% dplyr::filter(vaf == max(vaf))
+    variants <- variants %>% dplyr::group_by(sample_id) %>% dplyr::filter(vaf == max(vaf))
     variants <- variants[!duplicated(variants$sample_id),]
     output <- GenVafAcns(segments, rascal_batch_solutions, variants)
   } else if (length(acnmethod) > 1) {
-    variants <- variants %>% group_by(sample_id) %>%
+    variants <- variants %>% dplyr::group_by(sample_id) %>%
       dplyr::filter(gene_name %in% acnmethod | vaf == max(vaf, na.rm = TRUE)) %>%
       dplyr::filter(gene_name == c(intersect(acnmethod, gene_name), setdiff(gene_name, acnmethod))[1])
     output <- GenVafAcns(segments, rascal_batch_solutions, variants)
@@ -136,6 +135,7 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants) {
 
   chosenSegmentTablesList <- list()
   j <- 1
+
   for (i in unique(rascal_batch_solutions$sample)) {
     sample_segments <- dplyr::filter(segments, sample == i)
     solutions <- rascal_batch_solutions %>% dplyr::filter(sample == i)
@@ -155,7 +155,7 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants) {
 
     sol_idx <- which.min(abs(as.double(vafs$vaf) - (solution_set$tumour_fraction*100)))
     solution_set <- solution_set[,]
-    absolute_segments <- mutate(sample_segments,
+    absolute_segments <- dplyr::mutate(sample_segments,
                                 copy_number = rascal::relative_to_absolute_copy_number(copy_number,
                                                                                solution_set[sol_idx,]$ploidy,
                                                                                solution_set[sol_idx,]$cellularity))
@@ -177,7 +177,7 @@ GetOptimalMadSolutions <- function (input_file, rcn_file, segs_file, save_file =
   rascal_batch_solutions <- read.table(file = input_file, sep = ',', header = TRUE)
   rascal_batch_solutions$sample <- str_replace_all(rascal_batch_solutions$sample, "-", ".")
   temp <- rascal_batch_solutions %>%
-    group_by(sample) %>%
+    dplyr::group_by(sample) %>%
     mutate(mad_optimal = (min(distance) == distance))
   temp <- temp[temp$mad_optimal,] %>%
     mutate(mad_optimal = (max(cellularity) == cellularity)) %>%
@@ -217,15 +217,16 @@ GetOptimalMadSolutions <- function (input_file, rcn_file, segs_file, save_file =
 # 2. Filter rcn obj (ex. QDNAseq obj) for seg. CN at the vaf gene location
 GetSegmentedRcnForGene <- function (rcn_obj, gene) {
   granges_gene <- GenomicFeatures::genes(EnsDb.Hsapiens.v75::EnsDb.Hsapiens.v75, filter = ~ gene_name == gene)
-  grRCN <- makeGRangesFromDataFrame(rcn_obj)
-  hits <- findOverlaps(grRCN, granges_gene)
+  grRCN <- GenomicRanges::makeGRangesFromDataFrame(rcn_obj)
+  hits <- IRanges::findOverlaps(grRCN, granges_gene)
 
   if (length(hits) == 0) {
     return(FALSE)
   } else {
-    overlaps <- pintersect(grRCN[queryHits(hits)], granges_gene[subjectHits(hits)])
-    percentOverlap <- width(overlaps) / width(granges_gene[subjectHits(hits)])
-    idx <- queryHits(hits)[which.max(percentOverlap)]
+    overlaps <- GenomicRanges::pintersect(grRCN[S4Vectors::queryHits(hits)],
+                                          granges_gene[S4Vectors::subjectHits(hits)])
+    percentOverlap <- width(overlaps) / width(granges_gene[S4Vectors::subjectHits(hits)])
+    idx <- S4Vectors::queryHits(hits)[which.max(percentOverlap)]
     return(rcn_obj$copy_number[idx])
   }
 }
@@ -294,7 +295,7 @@ SegmentsToCopyNumber <- function(segs, bin_size, genome = 'hg19', Xincluded = FA
                                 start = rep(rep(1,dim(chroms)[1]), chroms$nbins),
                                 end = rep(chroms$size, chroms$nbins)) %>%
     dplyr::group_by(chromosome,start,end) %>%
-    dplyr::mutate(id = row_number()) %>%
+    dplyr::mutate(id = dplyr::n()) %>%
     dplyr::mutate(start = start + ((id-1) * bin_size),
                   end = start + bin_size - 1) %>%
     dplyr::select(-id) %>%
@@ -305,8 +306,8 @@ SegmentsToCopyNumber <- function(segs, bin_size, genome = 'hg19', Xincluded = FA
     sample <- segs[[name]] %>% dplyr::mutate(size = end - start + 1) %>%
       dplyr::mutate(nbins = size/bin_size)
     sample <- as.data.frame(lapply(sample, rep, sample$nbins)) %>%
-      group_by(start,end,segVal) %>%
-      dplyr::mutate(id = row_number()) %>%
+      dplyr::group_by(start,end,segVal) %>%
+      dplyr::mutate(id = dplyr::n()) %>%
       dplyr::mutate(chromosome = as.character(chromosome),
                     start = (floor(start/bin_size) * bin_size + 1) + ((id-1) * bin_size),
                     end = start + bin_size - 1) %>%
@@ -331,7 +332,7 @@ StringToGRanges <- function(regions, sep = c("-", "-"), ...) {
     sep = paste0(sep[[1]], "|", sep[[2]]),
     into = c("chr", "start", "end")
   )
-  granges <- makeGRangesFromDataFrame(df = ranges.df, ...)
+  granges <- GenomicRanges::makeGRangesFromDataFrame(df = ranges.df, ...)
   return(granges)
 }
 
@@ -409,8 +410,8 @@ RemoveBlacklist <- function(data) {
   blacklist = hg19.blacklistBins
 
   # Convert blacklist and data to GRanges objects and find indices of overlaps
-  grBL = makeGRangesFromDataFrame(blacklist)
-  grData = makeGRangesFromDataFrame(data)
+  grBL = GenomicRanges::makeGRangesFromDataFrame(blacklist)
+  grData = GenomicRanges::makeGRangesFromDataFrame(data)
   overlaps = findOverlaps(grData, grBL)
 
   # Replace state of data rows with chr and start overlapping with blacklist
@@ -432,7 +433,7 @@ GenHumanReadableRcnProfile <- function(object, binsize) {
   # Add Chromosome cytoband, coordinates (in bp), length of region, and gain or loss tag to each entry
   connection <- dbConnect(MySQL(), user="genome", host="genome-mysql.cse.ucsc.edu", dbname="hg19")
   cytobands <- dbGetQuery(conn=connection, statement="SELECT chrom, chromStart, chromEnd, name FROM cytoBand")
-  cyto_ranges <- makeGRangesFromDataFrame(cytobands)
+  cyto_ranges <- GenomicRanges::makeGRangesFromDataFrame(cytobands)
 
   segmented <- gather(as.data.frame(segmented(object)), sample, segmented)
   segmented$gainP <- gather(as.data.frame(probgain(object)), sample, probgain)$probgain
@@ -449,7 +450,7 @@ GenHumanReadableRcnProfile <- function(object, binsize) {
 
   collapsed_segs <- collapsed_segs %>% transform(chromosome = as.character(chromosome))
   collapsed_segs$chromosome[collapsed_segs$chromosome == 23] <- 'X'
-  ranges <- makeGRangesFromDataFrame(collapsed_segs)
+  ranges <- GenomicRanges::makeGRangesFromDataFrame(collapsed_segs)
   seqlevelsStyle(ranges) <-'UCSC'
   hits <- findOverlaps(ranges, cyto_ranges)
   temp <- data.frame(ranges = hits@from, cyto_ranges = hits@to, cytobands = cytobands$name[hits@to])
@@ -496,13 +497,13 @@ GenHumanReadableAcnProfile <- function(object, save_path) {
   # Get Chromosome cytobands, coordinates (in bp), and lengths of regions
   connection <- dbConnect(MySQL(), user="genome", host="genome-mysql.cse.ucsc.edu", dbname="hg19")
   cytobands <- dbGetQuery(conn=connection, statement="SELECT chrom, chromStart, chromEnd, name FROM cytoBand")
-  cyto_ranges <- makeGRangesFromDataFrame(cytobands)
+  cyto_ranges <- GenomicRanges::makeGRangesFromDataFrame(cytobands)
 
   # Add cytobands
   collapsed_segs <- plyr::ldply(object, data.frame, .id = 'sample')
   collapsed_segs <- collapsed_segs %>% transform(chromosome = as.character(chromosome))
   collapsed_segs$chromosome[collapsed_segs$chromosome == 23] <- 'X'
-  ranges <- makeGRangesFromDataFrame(collapsed_segs)
+  ranges <- GenomicRanges::makeGRangesFromDataFrame(collapsed_segs)
   seqlevelsStyle(ranges) <-'UCSC'
   hits <- findOverlaps(ranges, cyto_ranges)
   temp <- data.frame(ranges = hits@from, cyto_ranges = hits@to, cytobands = cytobands$name[hits@to])
@@ -563,7 +564,10 @@ CopyNumberSegments <- function(copy_number) {
     dplyr::filter(!is.na(segmented)) %>%
     dplyr::mutate(length = end - start + 1) %>%
     dplyr::arrange(sample, chromosome, start) %>%
-    dplyr::mutate(new_segment = row_number() == 1 | !(sample == lag(sample) & chromosome == lag(chromosome) & segmented == lag(segmented))) %>%
+    dplyr::mutate(new_segment = dplyr::row_number() == 1 |
+                    !(sample == dplyr::lag(sample) &
+                        chromosome == dplyr::lag(chromosome) &
+                        segmented == dplyr::lag(segmented))) %>%
     dplyr::mutate(segment = cumsum(new_segment)) %>%
     dplyr::group_by(segment) %>%
     dplyr::summarise(
@@ -574,7 +578,7 @@ CopyNumberSegments <- function(copy_number) {
       gain_probability = if ("gainP" %in% colnames(.)) dplyr::first(gainP) + dplyr::first(ampP) else NA,
       loss_probability = if ("lossP" %in% colnames(.)) dplyr::first(lossP) + dplyr::first(dlossP) else NA,
       copy_number = dplyr::first(segmented),
-      bin_count = n(),
+      bin_count = dplyr::n(),
       sum_of_bin_lengths = sum(length),
       weight = sum(length) / median(length)
     )
