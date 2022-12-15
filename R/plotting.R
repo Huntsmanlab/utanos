@@ -1,6 +1,32 @@
 # This is a script containing plotting functions for shallow WGS analysis
 # January 18th, 2022
 
+
+PlotAbsCopyNumber <- function(x, sample, sample_segments, sample_cns, output) {
+  ploidy <- as.numeric(x["ploidy"])
+  cellularity <- as.numeric(x["cellularity"])
+  chr_order <- c(as.character(1:22), 'X')
+  absolute_segments <- dplyr::mutate(sample_segments,
+                                     copy_number = relative_to_absolute_copy_number(copy_number, ploidy, cellularity))
+  absolute_copy_number <- dplyr::mutate(sample_cns, across(c(copy_number, segmented), relative_to_absolute_copy_number, ploidy, cellularity))
+  chromosomes <- chromosome_offsets(absolute_copy_number)
+  # chromosomes <- chromosomes %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
+  genomic_copy_number <- convert_to_genomic_coordinates(absolute_copy_number, "position", chromosomes)
+  # genomic_copy_number <- genomic_copy_number %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
+  genomic_segments <- convert_to_genomic_coordinates(absolute_segments, c("start", "end"), chromosomes)
+  # genomic_segments <- genomic_segments %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
+  p <- genome_copy_number_plot(genomic_copy_number, genomic_segments, chromosomes,
+                               min_copy_number = 0, max_copy_number = 15,
+                               copy_number_breaks = 0:15,
+                               point_colour = "grey40",
+                               ylabel = "absolute copy number") +
+    ggplot2::ggtitle(paste0(sample, '  ploidy:', ploidy, '  cellularity:', cellularity)) +
+    ggplot2::theme(plot.title = element_text(size = 20))
+  ggsave(filename = paste0('~/Documents/projects/cn_signatures_shallowWGS/plotting/acn_rascal_plots/batch1-13_autosomes_30kb_rascal_plots/', sample, '.pl', ploidy, '.cel', cellularity, '.copynumberplot.png'),
+         p, device = 'png', width = 16, height = 8)
+}
+
+
 # Create Heatmap of Signature Exposures
 #####
 # Converts signature-per-sample data to a heatmap, saves it as a png, and returns the ggplot.

@@ -79,13 +79,22 @@
 #' ```
 #'
 #' @export
-CalculateACNs <- function (relative_cns, rascal_sols, variants = FALSE, acnmethod, acn_save_path = FALSE) {
+CalculateACNs <- function (relative_segs, rascal_sols, variants = FALSE, acnmethod,
+                           relative_cns = FALSE, addplots = FALSE, acn_save_path = FALSE) {
 
-  relative_cns <- read.table(file = relative_cns, header = TRUE)
-  relative_segments <- relative_cns %>% tidyr::gather(sample, segmented, 5:dim(.)[2], factor_key=TRUE)    # Convert to long
-  segments <- CopyNumberSegments(relative_segments)                            # Collapse to continuous segments
+  relative_segs <- read.table(file = relative_segs, header = TRUE)
+  relative_segs <- relative_segs %>% tidyr::gather(sample, segmented, 5:dim(.)[2], factor_key=TRUE)    # Convert to long
+  segments <- CopyNumberSegments(relative_segs)                            # Collapse to continuous segments
   rascal_batch_solutions <- read.table(file = rascal_sols, sep = ',', header = TRUE)
   rascal_batch_solutions$sample <- stringr::str_replace_all(rascal_batch_solutions$sample, "-", ".")
+  browser()
+  if (addplots = TRUE) {
+    relative_cns <- read.table(file = relative_cns, header = TRUE)
+    relative_cns <- relative_cns %>% tidyr::gather(sample,
+                                                   copy_number,
+                                                   5:dim(.)[2], factor_key=TRUE)    # Convert to long
+    relative_cns <- relative_cns %>% mutate(segmented = relative_segs$segmented)    # Create combined dataframe
+  }
 
   if (variants != FALSE) {
     if(class(variants)[1] == 'character') {
@@ -110,12 +119,12 @@ CalculateACNs <- function (relative_cns, rascal_sols, variants = FALSE, acnmetho
   if ((length(acnmethod) == 1) && (acnmethod == 'maxvaf')) {
     variants <- variants %>% dplyr::group_by(sample_id) %>% dplyr::filter(vaf == max(vaf))
     variants <- variants[!duplicated(variants$sample_id),]
-    output <- GenVafAcns(segments, rascal_batch_solutions, variants)
+    output <- GenVafAcns(segments, rascal_batch_solutions, variants, cns = relative_cns)
   } else if (length(acnmethod) > 1) {
     variants <- variants %>% dplyr::group_by(sample_id) %>%
       dplyr::filter(gene_name %in% acnmethod | vaf == max(vaf, na.rm = TRUE)) %>%
       dplyr::filter(gene_name == c(intersect(acnmethod, gene_name), setdiff(gene_name, acnmethod))[1])
-    output <- GenVafAcns(segments, rascal_batch_solutions, variants)
+    output <- GenVafAcns(segments, rascal_batch_solutions, variants, cns = relative_cns)
   } else if (acnmethod == 'mad') {
 
   } else {
@@ -131,11 +140,11 @@ CalculateACNs <- function (relative_cns, rascal_sols, variants = FALSE, acnmetho
 
 
 # Function that calculates absolute copy numbers using the rascal package and vafs.
-GenVafAcns <- function (segments, rascal_batch_solutions, variants) {
+GenVafAcns <- function (segments, rascal_batch_solutions, variants, cns) {
 
   chosenSegmentTablesList <- list()
   j <- 1
-
+  browser()
   for (i in unique(rascal_batch_solutions$sample)) {
     sample_segments <- dplyr::filter(segments, sample == i)
     solutions <- rascal_batch_solutions %>% dplyr::filter(sample == i)
