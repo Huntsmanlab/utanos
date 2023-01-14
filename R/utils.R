@@ -32,30 +32,33 @@
 #' Calculate Absolute Copy Numbers
 #'
 #' @description
-#' Use the rascal package in R to do this transformation.
-#' Based on instructions in the vignette: \cr
-#' https://github.com/crukci-bioinformatics/rascal/blob/master/vignettes/rascal.Rmd \cr \cr
 #'
-#' CalculateACNs() calculates the absolute copy numbers (ACNs) from the relative copy numbers of one or more samples.
+#' CalculateACNs() calculates the absolute copy numbers (ACNs) from the relative copy number profiles of one or more samples.
 #' There are several included options by which to do this.
-#' Note: If not providing a table of of variant allele frequencies (VAFs) then 'mad' is the only method available.
+#' Note: If not providing a table of variant allele frequencies (VAFs) then 'mad' is the only method available. \cr
 #'
-#' @param relative_cns A tsv of the relative copy-numbers.
+#' This function makes use of the rascal package in R and instructions can be found in the vignette: \cr
+#' https://github.com/crukci-bioinformatics/rascal/blob/master/vignettes/rascal.Rmd  \cr
+#'
+#' @param relative_segs A tsv of the relative segmented copy-numbers.
 #' @param rascal_sols A tsv of the calculated rascal solutions.
-#' @param variants A dataframe of the variants including variant allele frequencies per gene and per sample.
+#' @param acnmethod The method by which to calculate ACNs. Can be one of: \cr
+#' "maxvaf" - Calculate ACNs assuming the maximum discovered VAF for the sample is an appropriate representation for the tumour fraction. \cr
+#' char vector - Same as above but rather than using the max vaf provide a character vector of the genes from which to pull VAFs.
+#' The genes are assumed to be in order of decreasing precedence. ex. c('TP53', 'KRAS', 'PTEN') \cr
+#' "mad" - Calculate ACNs using the mean absolute difference (MAD) column from the solutions table. \cr
 #' If using variant allele frequencies from targeted panel sequencing or some other technology: \cr
 #' - The variants must must be in a datatable/dataframe. \cr
 #' - Required columns: sample_id, chromosome, start, end, gene_name, ref, alt, vaf.
 #' - Each row of said table must correspond to a unique variant. \cr
 #' - Each variant must have an associated variant allele frequency. \cr
 #' - Each row must also be associated with a specific sample. \cr
-#' @param acnmethod The method by which to calculate ACNs. Can be one of: \cr
-#' "maxvaf" - Calculate ACNs assuming the maximum discovered VAF for the sample is an appropriate representation for the tumour fraction. \cr
-#' char vector - Same as above but rather than using the max vaf provide a character vector of the genes from which to pull VAFs.
-#' The genes are assumed to be in order of decreasing precedence. ex. c('TP53', 'KRAS', 'PTEN') \cr
-#' "mad" - Calculate ACNs using the mean absolute difference (MAD) column from the solutions table. \cr
+#' @param variants A dataframe of the variants including variant allele frequencies per gene and per sample.
+#' @param relative_cns A tsv of the relative copy-numbers. Required if 'addplots' param is set to true.
+#' @param addplots Logical. Indicates whether or not plots should be returned alongside the ACNs.
 #' @param acn_save_path (optional) The output path (absolute path recommended) where to save the result.
-#' @returns A list of dataframes. One DF for each sample where an Absolute Copy Number profile was successfully found.
+#' @returns A list of dataframes. One DF for each sample where an Absolute Copy Number profile was successfully found. \cr
+#' Optionally a second list of plot objects (ggplot); one for each sample where a profile was found.
 #' @details
 #' ```
 #' solutions <- "~/Documents/.../rascal_solutions.csv"
@@ -79,52 +82,69 @@
 #' ```
 #'
 #' @export
-CalculateACNs <- function (relative_segs, rascal_sols, variants = FALSE, acnmethod,
-                           relative_cns = FALSE, addplots = FALSE, acn_save_path = FALSE) {
+CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
+                           variants = FALSE, relative_cns = FALSE,
+                           addplots = FALSE, acn_save_path = FALSE) {
 
-  relative_segs <- read.table(file = relative_segs, header = TRUE)
-  relative_segs <- relative_segs %>% tidyr::gather(sample, segmented, 5:dim(.)[2], factor_key=TRUE)    # Convert to long
-  segments <- CopyNumberSegments(relative_segs)                            # Collapse to continuous segments
-  rascal_batch_solutions <- read.table(file = rascal_sols, sep = ',', header = TRUE)
-  rascal_batch_solutions$sample <- stringr::str_replace_all(rascal_batch_solutions$sample, "-", ".")
-  browser()
-  if (addplots = TRUE) {
-    relative_cns <- read.table(file = relative_cns, header = TRUE)
+  relative_segs <- read.table(file = relative_segs, header = TRUE, sep = '\t')
+  relative_segs <- relative_segs %>% tidyr::gather(sample, segmented,
+                                                   5:dim(.)[2], factor_key=TRUE)    # Convert segs to long
+  segments <- CopyNumberSegments(relative_segs)                                     # Collapse segs to continuous segments
+  rascal_sols <- read.table(file = rascal_sols,
+                            sep = ',', header = TRUE)
+  rascal_sols$sample <- stringr::str_replace_all(rascal_sols$sample, "-", ".")
+
+  if (addplots == TRUE) {
+    relative_cns <- read.table(file = relative_cns, header = TRUE, sep = '\t')
     relative_cns <- relative_cns %>% tidyr::gather(sample,
                                                    copy_number,
-                                                   5:dim(.)[2], factor_key=TRUE)    # Convert to long
-    relative_cns <- relative_cns %>% mutate(segmented = relative_segs$segmented)    # Create combined dataframe
+                                                   5:dim(.)[2], factor_key=TRUE)    # Convert cns to long
+    relative_cns <- relative_cns %>%
+                        dplyr::mutate(segmented = relative_segs$segmented)          # Create combined dataframe
   }
 
-  if (variants != FALSE) {
+  if (suppressWarnings({variants != FALSE})) {
     if(class(variants)[1] == 'character') {
-      variants <- data.table::fread(file = variants, header = TRUE, sep = ",", fill = TRUE)
-    } else if ('data.frame' %in% class(variants)) { # do nothing
+      variants <- data.table::fread(file = variants, header = TRUE,
+                                    sep = ",", fill = TRUE)
+    } else if ('data.frame' %in% class(variants)) {                                 # do nothing
     } else {
-      stop("Invalid value passed to the 'variants' parameter. Please supply either a path or dataframe.")
+      stop("Invalid value passed to the 'variants' parameter. \n
+           Please supply either a path or dataframe.")
     }
 
-    variants <- variants %>% dplyr::select(chromosome, start, end, sample_id, gene_name,
-                                           starts_with('ref.'),
-                                           starts_with('alt.'),
-                                           starts_with('vaf')) %>%
-      dplyr::mutate(vaf = dplyr::select(., starts_with('vaf')) %>% rowSums(na.rm = TRUE)) %>%
-      dplyr::group_by(sample_id, gene_name) %>%
-      dplyr::summarise(sample_id = dplyr::first(sample_id),
-                gene_name = dplyr::first(gene_name),
-                vaf = max(vaf))
+    variants <- variants %>%
+                  dplyr::select(chromosome, start, end, sample_id, gene_name,
+                                starts_with('ref.'), starts_with('alt.'),
+                                starts_with('vaf')) %>%
+                  dplyr::mutate(vaf = dplyr::select(., starts_with('vaf')) %>%
+                                  rowSums(na.rm = TRUE)) %>%
+                  dplyr::group_by(sample_id, gene_name) %>%
+                  dplyr::summarise(sample_id = dplyr::first(sample_id),
+                                   gene_name = dplyr::first(gene_name),
+                                   vaf = max(vaf))
     variants$sample_id <- stringr::str_replace_all(variants$sample_id, "-", ".")
   }
 
   if ((length(acnmethod) == 1) && (acnmethod == 'maxvaf')) {
-    variants <- variants %>% dplyr::group_by(sample_id) %>% dplyr::filter(vaf == max(vaf))
+    variants <- variants %>% dplyr::group_by(sample_id) %>%
+                                  dplyr::filter(vaf == max(vaf))
     variants <- variants[!duplicated(variants$sample_id),]
-    output <- GenVafAcns(segments, rascal_batch_solutions, variants, cns = relative_cns)
+    if (addplots == TRUE) {
+      output <- GenVafAcns(segments, rascal_sols, variants, cns = relative_cns)
+    } else {
+      output <- GenVafAcns(segments, rascal_sols, variants)
+    }
   } else if (length(acnmethod) > 1) {
     variants <- variants %>% dplyr::group_by(sample_id) %>%
       dplyr::filter(gene_name %in% acnmethod | vaf == max(vaf, na.rm = TRUE)) %>%
-      dplyr::filter(gene_name == c(intersect(acnmethod, gene_name), setdiff(gene_name, acnmethod))[1])
-    output <- GenVafAcns(segments, rascal_batch_solutions, variants, cns = relative_cns)
+      dplyr::filter(gene_name == c(intersect(acnmethod, gene_name),
+                                   setdiff(gene_name, acnmethod))[1])
+    if (addplots == TRUE) {
+      output <- GenVafAcns(segments, rascal_sols, variants, cns = relative_cns)
+    } else {
+      output <- GenVafAcns(segments, rascal_sols, variants)
+    }
   } else if (acnmethod == 'mad') {
 
   } else {
@@ -133,18 +153,19 @@ CalculateACNs <- function (relative_segs, rascal_sols, variants = FALSE, acnmeth
   }
 
   if (acn_save_path != FALSE) {
-    saveRDS(output, file = acn_save_path)
+    saveRDS(output[[1]], file = acn_save_path)
   }
   return(output)
 }
 
 
 # Function that calculates absolute copy numbers using the rascal package and vafs.
-GenVafAcns <- function (segments, rascal_batch_solutions, variants, cns) {
+GenVafAcns <- function (segments, rascal_batch_solutions, variants, cns = FALSE) {
 
   chosenSegmentTablesList <- list()
   j <- 1
-  browser()
+  plots <- list()
+
   for (i in unique(rascal_batch_solutions$sample)) {
     sample_segments <- dplyr::filter(segments, sample == i)
     solutions <- rascal_batch_solutions %>% dplyr::filter(sample == i)
@@ -168,11 +189,43 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants, cns) {
                                 copy_number = rascal::relative_to_absolute_copy_number(copy_number,
                                                                                solution_set[sol_idx,]$ploidy,
                                                                                solution_set[sol_idx,]$cellularity))
-    absolute_segments <- absolute_segments %>% dplyr::select(chromosome=chromosome, start=start, end=end, segVal=copy_number)
+    if (!is.logical(cns)) {                                                         # If cns and segments passed in, make plots!
+      chr_ord <- c(as.character(1:22), 'X')
+      absolute_cns <- dplyr::filter(cns, sample == i)
+      absolute_cns$copy_number <- rascal::relative_to_absolute_copy_number(absolute_cns$copy_number,
+                                                                           solution_set[sol_idx,]$ploidy,
+                                                                           solution_set[sol_idx,]$cellularity)
+      absolute_cns$segmented <- rascal::relative_to_absolute_copy_number(absolute_cns$segmented,
+                                                                           solution_set[sol_idx,]$ploidy,
+                                                                           solution_set[sol_idx,]$cellularity)
+      absolute_cns$chromosome <- factor(absolute_cns$chromosome, levels = chr_ord)
+      absolute_segments$chromosome <- factor(absolute_segments$chromosome, levels = chr_ord)
+      plots[[i]] <- rascal::genome_copy_number_plot(absolute_cns, absolute_segments,
+                              min_copy_number = 0, max_copy_number = 12,
+                              copy_number_breaks = 0:12,
+                              ylabel = "Absolute Copy Number",
+                              xlabel = "Chromosome") +
+                ggplot2::theme(panel.grid.major.y =
+                                 ggplot2::element_line(colour = "grey60"),
+                               plot.title = ggplot2::element_text(size = 20)) +
+                ggplot2::ggtitle(paste0(i, ' - est. ploidy:',
+                                        solution_set[sol_idx,]$ploidy,
+                                        ' - est. cellularity:',
+                                        solution_set[sol_idx,]$cellularity))
+    }
+    absolute_segments <- absolute_segments %>% dplyr::select(chromosome=chromosome,
+                                                             start=start,
+                                                             end=end,
+                                                             segVal=copy_number)
     chosenSegmentTablesList[[i]] <- as.data.frame(absolute_segments)
     j <- j+1
   }
-  return(chosenSegmentTablesList)
+  if (!is.logical(cns)) {
+    output <- list(chosenSegmentTablesList, plots)
+  } else{
+    output <- list(chosenSegmentTablesList)
+  }
+  return(output)
 }
 
 
