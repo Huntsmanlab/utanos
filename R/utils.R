@@ -55,8 +55,9 @@
 #' - Each row must also be associated with a specific sample. \cr
 #' @param variants A dataframe of the variants including variant allele frequencies per gene and per sample.
 #' @param relative_cns A tsv of the relative copy-numbers. Required if 'addplots' param is set to true.
-#' @param addplots Logical. Indicates whether or not plots should be returned alongside the ACNs.
-#' @param acn_save_path (optional) The output path (absolute path recommended) where to save the result.
+#' @param addplots (optional) Logical. Indicates whether or not plots should be returned alongside the ACNs.
+#' @param acn_save_path (optional) String. The output path (absolute path recommended) where to save the result.
+#' @param return_sols (optional) Logical. Return the selected rascal solution.
 #' @returns A list of dataframes. One DF for each sample where an Absolute Copy Number profile was successfully found. \cr
 #' Optionally a second list of plot objects (ggplot); one for each sample where a profile was found.
 #' @details
@@ -84,7 +85,8 @@
 #' @export
 CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
                            variants = FALSE, relative_cns = FALSE,
-                           addplots = FALSE, acn_save_path = FALSE) {
+                           addplots = FALSE, acn_save_path = FALSE,
+                           return_sols = FALSE) {
 
   relative_segs <- read.table(file = relative_segs, header = TRUE, sep = '\t')
   relative_segs <- relative_segs %>% tidyr::gather(sample, segmented,
@@ -131,9 +133,9 @@ CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
                                   dplyr::filter(vaf == max(vaf))
     variants <- variants[!duplicated(variants$sample_id),]
     if (addplots == TRUE) {
-      output <- GenVafAcns(segments, rascal_sols, variants, cns = relative_cns)
+      output <- GenVafAcns(segments, rascal_sols, variants, return_sols, cns = relative_cns)
     } else {
-      output <- GenVafAcns(segments, rascal_sols, variants)
+      output <- GenVafAcns(segments, rascal_sols, variants, return_sols)
     }
   } else if (length(acnmethod) > 1) {
     variants <- variants %>% dplyr::group_by(sample_id) %>%
@@ -141,9 +143,9 @@ CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
       dplyr::filter(gene_name == c(intersect(acnmethod, gene_name),
                                    setdiff(gene_name, acnmethod))[1])
     if (addplots == TRUE) {
-      output <- GenVafAcns(segments, rascal_sols, variants, cns = relative_cns)
+      output <- GenVafAcns(segments, rascal_sols, variants, return_sols, cns = relative_cns)
     } else {
-      output <- GenVafAcns(segments, rascal_sols, variants)
+      output <- GenVafAcns(segments, rascal_sols, variants, return_sols)
     }
   } else if (acnmethod == 'mad') {
 
@@ -160,11 +162,17 @@ CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
 
 
 # Function that calculates absolute copy numbers using the rascal package and vafs.
-GenVafAcns <- function (segments, rascal_batch_solutions, variants, cns = FALSE) {
+GenVafAcns <- function (segments, rascal_batch_solutions, variants,
+                        return_sols = FALSE, cns = FALSE) {
 
   chosenSegmentTablesList <- list()
   j <- 1
   plots <- list()
+  sols <- data.frame(sample_id = character(),
+                     ploidy = double(),
+                     cellularity = double(),
+                     vaf_optimal = logical(),
+                     stringsAsFactors = FALSE)
 
   for (i in unique(rascal_batch_solutions$sample)) {
     sample_segments <- dplyr::filter(segments, sample == i)
@@ -189,7 +197,11 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants, cns = FALSE)
                                 copy_number = rascal::relative_to_absolute_copy_number(copy_number,
                                                                                solution_set[sol_idx,]$ploidy,
                                                                                solution_set[sol_idx,]$cellularity))
-    if (!is.logical(cns)) {                                                         # If cns and segments passed in, make plots!
+    sols <- rbind(sols, c(i,
+                  solution_set[sol_idx,]$ploidy,
+                  solution_set[sol_idx,]$cellularity,
+                  TRUE))
+    if (!is.logical(cns)) {                                                     # If cns AND segments passed in, make plots!
       chr_ord <- c(as.character(1:22), 'X')
       absolute_cns <- dplyr::filter(cns, sample == i)
       absolute_cns$copy_number <- rascal::relative_to_absolute_copy_number(absolute_cns$copy_number,
@@ -221,9 +233,14 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants, cns = FALSE)
     j <- j+1
   }
   if (!is.logical(cns)) {
-    output <- list(chosenSegmentTablesList, plots)
+    output <- list(segment_tables = chosenSegmentTablesList, plots)
   } else{
-    output <- list(chosenSegmentTablesList)
+    output <- list(segment_tables = chosenSegmentTablesList)
+  }
+  if (return_sols) {
+    # output <- c(output, rascal_solutions = sols)
+    colnames(sols) <- c('sample_id', 'ploidy', 'cellularity', 'vaf_optimal')
+    output[['rascal_solutions']] <- as.data.frame(sols)
   }
   return(output)
 }
