@@ -114,14 +114,14 @@ swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = FALSE,
                               order = FALSE, ret_order = FALSE) {
 
   if(nrow(reads) == 0) { stop("No reads data provided.") }                      # If reads DF is empty, return
-  reads = removeBlacklist(reads)                                                # remove blacklist regions from hg19
+  reads = RemoveBlacklist(reads)                                                # remove blacklist regions from hg19
 
   reads <- reads[, c("chromosome", "start", "sample_id", "state")]
-
+  browser()
   # Generate standard CNV heatmap
   reads$state[reads$state < 0] <- 0
   slice <- sort_heatmap(reads)
-
+  browser()
   slice$state <- round(slice$state)
   slice$state[slice$state >= 15] <- 15
   slice$state <- as.character(slice$state)
@@ -150,6 +150,8 @@ swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = FALSE,
           legend.text = element_text(size = 18)) +
     labs(x = "Chromosomes", y = "Samples", fill = "Copy Number") +
     ggtitle("Absolute copy number calls across the genome")
+
+  output <- g
 
   if (save_path != FALSE) {
     ggsave(paste0(save_path, "cnv_heatmap_", obj_name,".png"), plot = g, width = 24, height = 24)
@@ -198,9 +200,10 @@ add_viral_presence <- function(data, viral_presence) {
 #
 #' @export
 sort_heatmap <- function(slice) {
+  browser()
   slice$chromosome <- factor(slice$chromosome, levels = c("V", 1:22, "X", "Y"))
   slice <- dplyr::mutate(slice, pos = paste0(chromosome, ":", start))
-  wide <- spread(slice[, c("sample_id", "pos", "state")], pos, state)
+  wide <- tidyr::spread(slice[, c("sample_id", "pos", "state")], pos, state)
   rownames(wide) <- wide$sample_id
   wide$sample_id <- NULL
   cluster <- hclust(dist(wide), method = "ward.D")
