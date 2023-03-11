@@ -55,8 +55,9 @@
 #' - Each row must also be associated with a specific sample. \cr
 #' @param variants A dataframe of the variants including variant allele frequencies per gene and per sample.
 #' @param relative_cns A tsv of the relative copy-numbers. Required if 'addplots' param is set to true.
-#' @param addplots Logical. Indicates whether or not plots should be returned alongside the ACNs.
-#' @param acn_save_path (optional) The output path (absolute path recommended) where to save the result.
+#' @param addplots (optional) Logical. Indicates whether or not plots should be returned alongside the ACNs.
+#' @param acn_save_path (optional) String. The output path (absolute path recommended) where to save the result.
+#' @param return_sols (optional) Logical. Return the selected rascal solution.
 #' @returns A list of dataframes. One DF for each sample where an Absolute Copy Number profile was successfully found. \cr
 #' Optionally a second list of plot objects (ggplot); one for each sample where a profile was found.
 #' @details
@@ -84,7 +85,8 @@
 #' @export
 CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
                            variants = FALSE, relative_cns = FALSE,
-                           addplots = FALSE, acn_save_path = FALSE) {
+                           addplots = FALSE, acn_save_path = FALSE,
+                           return_sols = FALSE) {
 
   relative_segs <- read.table(file = relative_segs, header = TRUE, sep = '\t')
   relative_segs <- relative_segs %>% tidyr::gather(sample, segmented,
@@ -131,9 +133,9 @@ CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
                                   dplyr::filter(vaf == max(vaf))
     variants <- variants[!duplicated(variants$sample_id),]
     if (addplots == TRUE) {
-      output <- GenVafAcns(segments, rascal_sols, variants, cns = relative_cns)
+      output <- GenVafAcns(segments, rascal_sols, variants, return_sols, cns = relative_cns)
     } else {
-      output <- GenVafAcns(segments, rascal_sols, variants)
+      output <- GenVafAcns(segments, rascal_sols, variants, return_sols)
     }
   } else if (length(acnmethod) > 1) {
     variants <- variants %>% dplyr::group_by(sample_id) %>%
@@ -141,9 +143,9 @@ CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
       dplyr::filter(gene_name == c(intersect(acnmethod, gene_name),
                                    setdiff(gene_name, acnmethod))[1])
     if (addplots == TRUE) {
-      output <- GenVafAcns(segments, rascal_sols, variants, cns = relative_cns)
+      output <- GenVafAcns(segments, rascal_sols, variants, return_sols, cns = relative_cns)
     } else {
-      output <- GenVafAcns(segments, rascal_sols, variants)
+      output <- GenVafAcns(segments, rascal_sols, variants, return_sols)
     }
   } else if (acnmethod == 'mad') {
 
@@ -159,12 +161,18 @@ CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
 }
 
 
-# Function that calculates absolute copy numbers using the rascal package and supplied vafs.
-GenVafAcns <- function (segments, rascal_batch_solutions, variants, cns = FALSE) {
+# Function that calculates absolute copy numbers using the rascal package and vafs.
+GenVafAcns <- function (segments, rascal_batch_solutions, variants,
+                        return_sols = FALSE, cns = FALSE) {
 
   chosenSegmentTablesList <- list()
   j <- 1
   plots <- list()
+  sols <- data.frame(sample_id = character(),
+                     ploidy = double(),
+                     cellularity = double(),
+                     vaf_optimal = logical(),
+                     stringsAsFactors = FALSE)
 
   for (i in unique(rascal_batch_solutions$sample)) {
     sample_segments <- dplyr::filter(segments, sample == i)
@@ -189,7 +197,11 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants, cns = FALSE)
                                 copy_number = rascal::relative_to_absolute_copy_number(copy_number,
                                                                                solution_set[sol_idx,]$ploidy,
                                                                                solution_set[sol_idx,]$cellularity))
-    if (!is.logical(cns)) {                                                         # If cns and segments passed in, make plots!
+    sols <- rbind(sols, c(i,
+                  solution_set[sol_idx,]$ploidy,
+                  solution_set[sol_idx,]$cellularity,
+                  TRUE))
+    if (!is.logical(cns)) {                                                     # If cns AND segments passed in, make plots!
       chr_ord <- c(as.character(1:22), 'X')
       absolute_cns <- dplyr::filter(cns, sample == i)
       absolute_cns$copy_number <- rascal::relative_to_absolute_copy_number(absolute_cns$copy_number,
@@ -221,9 +233,14 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants, cns = FALSE)
     j <- j+1
   }
   if (!is.logical(cns)) {
-    output <- list(chosenSegmentTablesList, plots)
-  } else {
-    output <- list(chosenSegmentTablesList)
+    output <- list(segment_tables = chosenSegmentTablesList, plots)
+  } else{
+    output <- list(segment_tables = chosenSegmentTablesList)
+  }
+  if (return_sols) {
+    # output <- c(output, rascal_solutions = sols)
+    colnames(sols) <- c('sample_id', 'ploidy', 'cellularity', 'vaf_optimal')
+    output[['rascal_solutions']] <- as.data.frame(sols)
   }
   return(output)
 }
@@ -364,11 +381,11 @@ SegmentsToCopyNumber <- function(segs, bin_size, genome = 'hg19', Xincluded = FA
   genome_chrs <- 22
   if (Xincluded) { genome_chrs <- 23}
   if (genome == 'hg38') {
-    chroms <- getChromInfoFromUCSC("hg38", map.NCBI=TRUE) %>%
+    chroms <- GenomeInfoDb::getChromInfoFromUCSC("hg38", map.NCBI=TRUE) %>%
       head(genome_chrs) %>%
       dplyr::mutate(nbins = ceiling(size/bin_size))
   } else {
-    chroms <- getChromInfoFromUCSC("hg19") %>%
+    chroms <- GenomeInfoDb::getChromInfoFromUCSC("hg19") %>%
       head(genome_chrs) %>%
       dplyr::mutate(nbins = ceiling(size/bin_size))
   }
@@ -384,6 +401,7 @@ SegmentsToCopyNumber <- function(segs, bin_size, genome = 'hg19', Xincluded = FA
     dplyr::ungroup()
   # Build dataframe of per-bin copy numbers
   out <- c()
+  browser()
   for (name in names(segs)) {
     sample <- segs[[name]] %>% dplyr::mutate(size = end - start + 1) %>%
       dplyr::mutate(nbins = size/bin_size)
@@ -395,7 +413,7 @@ SegmentsToCopyNumber <- function(segs, bin_size, genome = 'hg19', Xincluded = FA
                     end = start + bin_size - 1) %>%
       dplyr::select(-c(size,nbins,id)) %>%
       dplyr::ungroup()
-    per_bin_copy_numbers <- left_join(genome_template, sample, by = c('chromosome', 'start', 'end'))
+    per_bin_copy_numbers <- dplyr::left_join(genome_template, sample, by = c('chromosome', 'start', 'end'))
     per_bin_copy_numbers$sample_id <- name
     out <- rbind(out, per_bin_copy_numbers)
   }
@@ -494,7 +512,7 @@ RemoveBlacklist <- function(data) {
   # Convert blacklist and data to GRanges objects and find indices of overlaps
   grBL = GenomicRanges::makeGRangesFromDataFrame(blacklist)
   grData = GenomicRanges::makeGRangesFromDataFrame(data)
-  overlaps = findOverlaps(grData, grBL)
+  overlaps = IRanges::findOverlaps(grData, grBL)
 
   # Replace state of data rows with chr and start overlapping with blacklist
   data$state = replace(data$state, overlaps@from, NA)
@@ -507,34 +525,38 @@ RemoveBlacklist <- function(data) {
 # DESCRIPTION
 # Parameters:
 # data -
+#' @param object S4 copy-number object - QDNAseq or CGHcall object
+#' @param binsize The binsize used in the copy number object. ex. '30kb', '100kb'
+#' @param ref_genome One of the common reference genomes: ex. 'hg19', 'mm10'
+#' @param save_dir (optional) The directory where the tables should be saved. ex. '~/Documents/test_project'
 #' @export
-GenHumanReadableRcnProfile <- function(object, binsize) {
+GenHumanReadableRCNprofile <- function(object, binsize, ref_genome, save_dir = FALSE) {
   # Expects gl cghcall object
 
   # Create collapsed segments table
   # Add Chromosome cytoband, coordinates (in bp), length of region, and gain or loss tag to each entry
-  connection <- dbConnect(MySQL(), user="genome", host="genome-mysql.cse.ucsc.edu", dbname="hg19")
-  cytobands <- dbGetQuery(conn=connection, statement="SELECT chrom, chromStart, chromEnd, name FROM cytoBand")
+  connection <- RMySQL::dbConnect(RMySQL::MySQL(), user="genome", host="genome-mysql.cse.ucsc.edu", dbname=ref_genome)
+  cytobands <- DBI::dbGetQuery(conn=connection, statement="SELECT chrom, chromStart, chromEnd, name FROM cytoBand")
   cyto_ranges <- GenomicRanges::makeGRangesFromDataFrame(cytobands)
 
-  segmented <- gather(as.data.frame(segmented(object)), sample, segmented)
-  segmented$gainP <- gather(as.data.frame(probgain(object)), sample, probgain)$probgain
-  segmented$ampP <- gather(as.data.frame(probamp(object)), sample, probamp)$probamp
-  segmented$lossP <- gather(as.data.frame(probloss(object)), sample, probloss)$probloss
-  segmented$dlossP <- gather(as.data.frame(probdloss(object)), sample, probdloss)$probdloss
+  segmented <- tidyr::gather(as.data.frame(CGHbase::segmented(object)), sample, segmented)
+  segmented$gainP <- tidyr::gather(as.data.frame(CGHbase::probgain(object)), sample, probgain)$probgain
+  segmented$ampP <- tidyr::gather(as.data.frame(CGHbase::probamp(object)), sample, probamp)$probamp
+  segmented$lossP <- tidyr::gather(as.data.frame(CGHbase::probloss(object)), sample, probloss)$probloss
+  segmented$dlossP <- tidyr::gather(as.data.frame(CGHbase::probdloss(object)), sample, probdloss)$probdloss
   segmented$chromosome <- rep(object@featureData@data[["Chromosome"]], dim(object)[2])
   segmented$start <- rep(object@featureData@data[["Start"]], dim(object)[2])
   segmented$end <- rep(object@featureData@data[["End"]], dim(object)[2])
 
   # collapse copy numbers down to segments
-  collapsed_segs <- copy_number_segments_new(segmented)
+  collapsed_segs <- CopyNumberSegments(segmented)
   collapsed_segs$weight <- NULL
 
   collapsed_segs <- collapsed_segs %>% transform(chromosome = as.character(chromosome))
   collapsed_segs$chromosome[collapsed_segs$chromosome == 23] <- 'X'
   ranges <- GenomicRanges::makeGRangesFromDataFrame(collapsed_segs)
-  seqlevelsStyle(ranges) <-'UCSC'
-  hits <- findOverlaps(ranges, cyto_ranges)
+  GenomeInfoDb::seqlevelsStyle(ranges) <-'UCSC'
+  hits <- GenomicRanges::findOverlaps(ranges, cyto_ranges)
   temp <- data.frame(ranges = hits@from, cyto_ranges = hits@to, cytobands = cytobands$name[hits@to])
   temp <- temp[,c('ranges','cytobands')]
 
@@ -544,30 +566,92 @@ GenHumanReadableRcnProfile <- function(object, binsize) {
     dplyr::summarise(cytobands = paste(cytobands, collapse = ",")) %>%
     dplyr::ungroup()
   for (i in c(1:dim(temp)[1])) {
-    entry <- str_split(temp$cytobands[i], pattern = ',')[[1]]
+    entry <- stringr::str_split(temp$cytobands[i], pattern = ',')[[1]]
     if ( length(entry) > 1 ) {
       temp$cytobands[i] <- paste0(entry[1], '-', entry[length(entry)])
     }
   }
   collapsed_segs$cytobands <- temp$cytobands
-  collapsed_segs$coordinates <- paste0(seqnames(ranges), ':', ranges(ranges))
-  collapsed_segs <- collapsed_segs %>% mutate(size = end - start)
+  collapsed_segs$coordinates <- paste0(GenomicRanges::seqnames(ranges), ':', GenomicRanges::ranges(ranges))
+  collapsed_segs <- collapsed_segs %>% dplyr::mutate(size = end - start + 1)
   collapsed_segs$segment <- NULL
   colnames(collapsed_segs) <- c('sample', 'chromosome', 'start', 'end', 'gain_probability',
                                 'loss_probability', 'relative_copy_number', 'bin_count',
                                 'sum_of_bin_lengths', 'cytobands', 'coordinates', 'size')
   # save segment tables
   # collapsed_segs <- collapsed_segs %>% dplyr::group_by(samples)
-  save_dir <- '~/Documents/projects/cn_signatures_shallowWGS/data/relativeCN_segs_and_cytoband_tables/'
-  dir.create(file.path(save_dir, binsize))
-  for (i in unique(collapsed_segs$sample)) {
-    temp <- collapsed_segs[collapsed_segs$sample == i, ]
-    file_name <- paste0(save_dir, '/', binsize, '/', i, '_', binsize, '_RsegsCytobandsTable.tsv')
-    write.table(temp, file = file_name, sep = '\t', col.names = TRUE, row.names = FALSE)
+  if ( save_dir ) {
+    dir.create(file.path(save_dir, binsize))
+    for (i in unique(collapsed_segs$sample)) {
+      temp <- collapsed_segs[collapsed_segs$sample == i, ]
+      file_name <- paste0(save_dir, '/', binsize, '/', i, '_', binsize, '_RsegsCytobandsTable.tsv')
+      write.table(temp, file = file_name, sep = '\t', col.names = TRUE, row.names = FALSE)
+    }
   }
-  dbDisconnect(connection)
+
+  DBI::dbDisconnect(connection)
   return(collapsed_segs)
 }
+# GenHumanReadableRcnProfile <- function(object, binsize) {
+#   # Expects gl cghcall object
+#
+#   # Create collapsed segments table
+#   # Add Chromosome cytoband, coordinates (in bp), length of region, and gain or loss tag to each entry
+#   connection <- dbConnect(MySQL(), user="genome", host="genome-mysql.cse.ucsc.edu", dbname="hg19")
+#   cytobands <- dbGetQuery(conn=connection, statement="SELECT chrom, chromStart, chromEnd, name FROM cytoBand")
+#   cyto_ranges <- GenomicRanges::makeGRangesFromDataFrame(cytobands)
+#
+#   segmented <- gather(as.data.frame(segmented(object)), sample, segmented)
+#   segmented$gainP <- gather(as.data.frame(probgain(object)), sample, probgain)$probgain
+#   segmented$ampP <- gather(as.data.frame(probamp(object)), sample, probamp)$probamp
+#   segmented$lossP <- gather(as.data.frame(probloss(object)), sample, probloss)$probloss
+#   segmented$dlossP <- gather(as.data.frame(probdloss(object)), sample, probdloss)$probdloss
+#   segmented$chromosome <- rep(object@featureData@data[["Chromosome"]], dim(object)[2])
+#   segmented$start <- rep(object@featureData@data[["Start"]], dim(object)[2])
+#   segmented$end <- rep(object@featureData@data[["End"]], dim(object)[2])
+#
+#   # collapse copy numbers down to segments
+#   collapsed_segs <- CopyNumberSegments(segmented)
+#   collapsed_segs$weight <- NULL
+#
+#   collapsed_segs <- collapsed_segs %>% transform(chromosome = as.character(chromosome))
+#   collapsed_segs$chromosome[collapsed_segs$chromosome == 23] <- 'X'
+#   ranges <- GenomicRanges::makeGRangesFromDataFrame(collapsed_segs)
+#   seqlevelsStyle(ranges) <-'UCSC'
+#   hits <- findOverlaps(ranges, cyto_ranges)
+#   temp <- data.frame(ranges = hits@from, cyto_ranges = hits@to, cytobands = cytobands$name[hits@to])
+#   temp <- temp[,c('ranges','cytobands')]
+#
+#   # collapse cytobands to a single cell
+#   temp <- temp %>%
+#     dplyr::group_by(ranges) %>%
+#     dplyr::summarise(cytobands = paste(cytobands, collapse = ",")) %>%
+#     dplyr::ungroup()
+#   for (i in c(1:dim(temp)[1])) {
+#     entry <- str_split(temp$cytobands[i], pattern = ',')[[1]]
+#     if ( length(entry) > 1 ) {
+#       temp$cytobands[i] <- paste0(entry[1], '-', entry[length(entry)])
+#     }
+#   }
+#   collapsed_segs$cytobands <- temp$cytobands
+#   collapsed_segs$coordinates <- paste0(seqnames(ranges), ':', ranges(ranges))
+#   collapsed_segs <- collapsed_segs %>% mutate(size = end - start)
+#   collapsed_segs$segment <- NULL
+#   colnames(collapsed_segs) <- c('sample', 'chromosome', 'start', 'end', 'gain_probability',
+#                                 'loss_probability', 'relative_copy_number', 'bin_count',
+#                                 'sum_of_bin_lengths', 'cytobands', 'coordinates', 'size')
+#   # save segment tables
+#   # collapsed_segs <- collapsed_segs %>% dplyr::group_by(samples)
+#   save_dir <- '~/Documents/projects/cn_signatures_shallowWGS/data/relativeCN_segs_and_cytoband_tables/'
+#   dir.create(file.path(save_dir, binsize))
+#   for (i in unique(collapsed_segs$sample)) {
+#     temp <- collapsed_segs[collapsed_segs$sample == i, ]
+#     file_name <- paste0(save_dir, '/', binsize, '/', i, '_', binsize, '_RsegsCytobandsTable.tsv')
+#     write.table(temp, file = file_name, sep = '\t', col.names = TRUE, row.names = FALSE)
+#   }
+#   dbDisconnect(connection)
+#   return(collapsed_segs)
+# }
 
 ### Create Cytoband .tsv tables from absolute copy-number calls
 # DESCRIPTION
@@ -606,7 +690,7 @@ GenHumanReadableAcnProfile <- function(object, save_path) {
   # Re-format for output
   collapsed_segs$cytobands <- temp$cytobands
   collapsed_segs$coordinates <- paste0(seqnames(ranges), ':', ranges(ranges))
-  collapsed_segs <- collapsed_segs %>% mutate(size = end - start)
+  collapsed_segs <- collapsed_segs %>% mutate(size = end - start + 1)
   collapsed_segs$segment <- NULL
   colnames(collapsed_segs) <- c('sample', 'chromosome', 'start', 'end',
                                 'absolute_copy_number', 'cytobands',
