@@ -159,7 +159,7 @@ CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
 }
 
 
-# Function that calculates absolute copy numbers using the rascal package and vafs.
+# Function that calculates absolute copy numbers using the rascal package and supplied vafs.
 GenVafAcns <- function (segments, rascal_batch_solutions, variants, cns = FALSE) {
 
   chosenSegmentTablesList <- list()
@@ -222,7 +222,7 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants, cns = FALSE)
   }
   if (!is.logical(cns)) {
     output <- list(chosenSegmentTablesList, plots)
-  } else{
+  } else {
     output <- list(chosenSegmentTablesList)
   }
   return(output)
@@ -234,7 +234,27 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants, cns = FALSE)
 # Corollary to calculate_vaf_acns function.
 # input_file: input path
 #' @export
+#' GenMadAcns <- function (segments, rascal_batch_solutions, cns = FALSE) {
 GetOptimalMadSolutions <- function (input_file, rcn_file, segs_file, save_file = TRUE) {
+
+  chosenSegmentTablesList <- list()
+  j <- 1
+  plots <- list()
+
+  for (i in unique(rascal_batch_solutions$sample)) {
+    sample_segments <- dplyr::filter(segments, sample == i)
+    solutions <- rascal_batch_solutions %>% dplyr::filter(sample == i)
+
+    solution_set <- solutions %>%
+      dplyr::select(ploidy, cellularity) %>%
+      dplyr::mutate(absolute_copy_number = rascal::relative_to_absolute_copy_number(ploidy, cellularity)) %>%
+      dplyr::mutate(tumour_fraction = rascal::tumour_fraction(absolute_copy_number, cellularity))
+  }
+
+
+
+
+
 
   rascal_batch_solutions <- read.table(file = input_file, sep = ',', header = TRUE)
   rascal_batch_solutions$sample <- str_replace_all(rascal_batch_solutions$sample, "-", ".")
