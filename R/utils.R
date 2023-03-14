@@ -348,7 +348,8 @@ AnnotationCr <- function(queryset, targetset) {
 # Transforms segment tables into per-bin copy-number tables
 # It is an expansion of the calls into per-bin style, where the bin size is user defined.
 #' @export
-SegmentsToCopyNumber <- function(segs, bin_size, genome = 'hg19', Xincluded = FALSE) {
+SegmentsToCopyNumber <- function(segs, bin_size,
+                                 genome = 'hg19', Xincluded = FALSE) {
 
   # Stop execution if we don't have the required input
   stopifnot(is.list(segs))
@@ -357,48 +358,61 @@ SegmentsToCopyNumber <- function(segs, bin_size, genome = 'hg19', Xincluded = FA
   stopifnot("start" %in% names(segs[[1]]), is.numeric(segs[[1]]$start))
   stopifnot("end" %in% names(segs[[1]]), is.numeric(segs[[1]]$end))
   stopifnot("segVal" %in% names(segs[[1]]), is.numeric(segs[[1]]$segVal))
+
   # Create template binned genome
-  genome_chrs <- 22
-  if (Xincluded) { genome_chrs <- 23}
-  if (genome == 'hg38') {
-    chroms <- GenomeInfoDb::getChromInfoFromUCSC("hg38", map.NCBI=TRUE) %>%
-      head(genome_chrs) %>%
-      dplyr::mutate(nbins = ceiling(size/bin_size))
-  } else {
-    chroms <- GenomeInfoDb::getChromInfoFromUCSC("hg19") %>%
-      head(genome_chrs) %>%
-      dplyr::mutate(nbins = ceiling(size/bin_size))
-  }
-  chroms$chrom <- sub('chr', '', chroms$chrom)
+  chroms <- GetBinnedChromosomes(genome, Xincluded, bin_size)
   genome_template <- data.frame(chromosome = rep(chroms$chrom, chroms$nbins),
                                 start = rep(rep(1,dim(chroms)[1]), chroms$nbins),
                                 end = rep(chroms$size, chroms$nbins)) %>%
     dplyr::group_by(chromosome,start,end) %>%
-    dplyr::mutate(id = dplyr::n()) %>%
+    dplyr::mutate(id = 1:dplyr::n()) %>%
     dplyr::mutate(start = start + ((id-1) * bin_size),
                   end = start + bin_size - 1) %>%
     dplyr::select(-id) %>%
     dplyr::ungroup()
+
   # Build dataframe of per-bin copy numbers
   out <- c()
-  browser()
   for (name in names(segs)) {
     sample <- segs[[name]] %>% dplyr::mutate(size = end - start + 1) %>%
       dplyr::mutate(nbins = size/bin_size)
     sample <- as.data.frame(lapply(sample, rep, sample$nbins)) %>%
       dplyr::group_by(start,end,segVal) %>%
-      dplyr::mutate(id = dplyr::n()) %>%
+      dplyr::mutate(id = 1:dplyr::n()) %>%
       dplyr::mutate(chromosome = as.character(chromosome),
                     start = (floor(start/bin_size) * bin_size + 1) + ((id-1) * bin_size),
                     end = start + bin_size - 1) %>%
       dplyr::select(-c(size,nbins,id)) %>%
       dplyr::ungroup()
-    per_bin_copy_numbers <- dplyr::left_join(genome_template, sample, by = c('chromosome', 'start', 'end'))
+    per_bin_copy_numbers <- dplyr::left_join(genome_template, sample,
+                                             by = c('chromosome', 'start', 'end'))
     per_bin_copy_numbers$sample_id <- name
     out <- rbind(out, per_bin_copy_numbers)
   }
   names(out) <- c("chromosome", "start", "end", "state", "sample_id")
   return(out)
+}
+
+GetBinnedChromosomes <- function(genome, Xincluded = FALSE, bin_size) {
+
+  if (genome == 'hg38') {
+    if (Xincluded) genome_chrs <- 23 else genome_chrs <- 22
+    chroms <- GenomeInfoDb::getChromInfoFromUCSC("hg38", map.NCBI=TRUE) %>%
+      head(genome_chrs) %>%
+      dplyr::mutate(nbins = ceiling(size/bin_size))
+  } else if (genome == 'mm10') {
+    if (Xincluded) genome_chrs <- 20 else genome_chrs <- 19
+    chroms <- GenomeInfoDb::getChromInfoFromUCSC("mm10") %>%
+      head(genome_chrs) %>%
+      dplyr::mutate(nbins = ceiling(size/bin_size))
+  } else {
+    if (Xincluded) genome_chrs <- 23 else genome_chrs <- 22
+    chroms <- GenomeInfoDb::getChromInfoFromUCSC("hg19") %>%
+      head(genome_chrs) %>%
+      dplyr::mutate(nbins = ceiling(size/bin_size))
+  }
+  chroms$chrom <- sub('chr', '', chroms$chrom)
+  return(chroms)
 }
 
 # Convert a string of genome ranges into GRanges object
@@ -510,7 +524,9 @@ RemoveBlacklist <- function(data) {
 #' @param ref_genome One of the common reference genomes: ex. 'hg19', 'mm10'
 #' @param save_dir (optional) The directory where the tables should be saved. ex. '~/Documents/test_project'
 #' @export
-GenHumanReadableRCNprofile <- function(object, binsize, ref_genome, save_dir = FALSE) {
+GenHumanReadableRCNprofile <- function(object, binsize,
+                                       ref_genome, save_dir = FALSE,
+                                       isCGHCallObj = FALSE) {
   # Expects gl cghcall object
 
   # Create collapsed segments table
@@ -520,13 +536,20 @@ GenHumanReadableRCNprofile <- function(object, binsize, ref_genome, save_dir = F
   cyto_ranges <- GenomicRanges::makeGRangesFromDataFrame(cytobands)
 
   segmented <- tidyr::gather(as.data.frame(CGHbase::segmented(object)), sample, segmented)
-  segmented$gainP <- tidyr::gather(as.data.frame(CGHbase::probgain(object)), sample, probgain)$probgain
-  segmented$ampP <- tidyr::gather(as.data.frame(CGHbase::probamp(object)), sample, probamp)$probamp
-  segmented$lossP <- tidyr::gather(as.data.frame(CGHbase::probloss(object)), sample, probloss)$probloss
-  segmented$dlossP <- tidyr::gather(as.data.frame(CGHbase::probdloss(object)), sample, probdloss)$probdloss
-  segmented$chromosome <- rep(object@featureData@data[["Chromosome"]], dim(object)[2])
-  segmented$start <- rep(object@featureData@data[["Start"]], dim(object)[2])
-  segmented$end <- rep(object@featureData@data[["End"]], dim(object)[2])
+  if (class(object)[1] == 'cghCall') {
+    segmented$gainP <- tidyr::gather(as.data.frame(CGHbase::probgain(object)), sample, probgain)$probgain
+    segmented$ampP <- tidyr::gather(as.data.frame(CGHbase::probamp(object)), sample, probamp)$probamp
+    segmented$lossP <- tidyr::gather(as.data.frame(CGHbase::probloss(object)), sample, probloss)$probloss
+    segmented$dlossP <- tidyr::gather(as.data.frame(CGHbase::probdloss(object)), sample, probdloss)$probdloss
+    segmented$chromosome <- rep(object@featureData@data[["Chromosome"]], dim(object)[2])
+    segmented$start <- rep(object@featureData@data[["Start"]], dim(object)[2])
+    segmented$end <- rep(object@featureData@data[["End"]], dim(object)[2])
+  } else {
+    segmented$chromosome <- rep(object@featureData@data[["chromosome"]], dim(object)[2])
+    segmented$start <- rep(object@featureData@data[["start"]], dim(object)[2])
+    segmented$end <- rep(object@featureData@data[["end"]], dim(object)[2])
+  }
+
 
   # collapse copy numbers down to segments
   collapsed_segs <- CopyNumberSegments(segmented)
