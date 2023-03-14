@@ -515,19 +515,24 @@ RemoveBlacklist <- function(data) {
   return(data)
 }
 
-### Create Cytoband .tsv tables from relative copy-number calls
-# DESCRIPTION
-# Parameters:
-# data -
+
+#' Generate Human Readable Relative Copy-Number Profiles
+#'
+#' @description
+#'
+#' This function takes as input a QDNAseq or CGHcall copy-number object and gives back a long-format table with several useful columns.
+#' These columns include; 'sample', 'chromosome', 'start', 'end', 'gain_probability',
+#' 'loss_probability', 'relative_copy_number', 'bin_count', 'sum_of_bin_lengths',
+#' 'cytobands', 'coordinates', and 'size'
+#'
 #' @param object S4 copy-number object - QDNAseq or CGHcall object
 #' @param binsize The binsize used in the copy number object. ex. '30kb', '100kb'
-#' @param ref_genome One of the common reference genomes: ex. 'hg19', 'mm10'
+#' @param ref_genome One of the common reference genomes: ex. 'hg19', 'mm10', or 'hg38'
 #' @param save_dir (optional) The directory where the tables should be saved. ex. '~/Documents/test_project'
+#' @returns Segment tables in long format (by sample id) ready to be written out to a table file (ex. tsv, csv).
 #' @export
 GenHumanReadableRCNprofile <- function(object, binsize,
-                                       ref_genome, save_dir = FALSE,
-                                       isCGHCallObj = FALSE) {
-  # Expects gl cghcall object
+                                       ref_genome, save_dir = FALSE) {
 
   # Create collapsed segments table
   # Add Chromosome cytoband, coordinates (in bp), length of region, and gain or loss tag to each entry
@@ -549,7 +554,6 @@ GenHumanReadableRCNprofile <- function(object, binsize,
     segmented$start <- rep(object@featureData@data[["start"]], dim(object)[2])
     segmented$end <- rep(object@featureData@data[["end"]], dim(object)[2])
   }
-
 
   # collapse copy numbers down to segments
   collapsed_segs <- CopyNumberSegments(segmented)
@@ -582,7 +586,6 @@ GenHumanReadableRCNprofile <- function(object, binsize,
                                 'loss_probability', 'relative_copy_number', 'bin_count',
                                 'sum_of_bin_lengths', 'cytobands', 'coordinates', 'size')
   # save segment tables
-  # collapsed_segs <- collapsed_segs %>% dplyr::group_by(samples)
   if ( save_dir ) {
     dir.create(file.path(save_dir, binsize))
     for (i in unique(collapsed_segs$sample)) {
