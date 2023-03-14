@@ -1,9 +1,5 @@
 # sWGS Utils
 # Functions used in the analysis of shallow WGS data
-# combined functions from:
-# get_acns_from_vafs_rascal.R
-# filter_segmented_CN_calls.R
-#
 
 ###########################
 ### Functions
@@ -27,7 +23,7 @@
 # genHumanReadableRCNprofile
 #
 
-#####
+###
 
 #' Calculate Absolute Copy Numbers
 #'
@@ -598,66 +594,7 @@ GenHumanReadableRCNprofile <- function(object, binsize,
   DBI::dbDisconnect(connection)
   return(collapsed_segs)
 }
-# GenHumanReadableRcnProfile <- function(object, binsize) {
-#   # Expects gl cghcall object
-#
-#   # Create collapsed segments table
-#   # Add Chromosome cytoband, coordinates (in bp), length of region, and gain or loss tag to each entry
-#   connection <- dbConnect(MySQL(), user="genome", host="genome-mysql.cse.ucsc.edu", dbname="hg19")
-#   cytobands <- dbGetQuery(conn=connection, statement="SELECT chrom, chromStart, chromEnd, name FROM cytoBand")
-#   cyto_ranges <- GenomicRanges::makeGRangesFromDataFrame(cytobands)
-#
-#   segmented <- gather(as.data.frame(segmented(object)), sample, segmented)
-#   segmented$gainP <- gather(as.data.frame(probgain(object)), sample, probgain)$probgain
-#   segmented$ampP <- gather(as.data.frame(probamp(object)), sample, probamp)$probamp
-#   segmented$lossP <- gather(as.data.frame(probloss(object)), sample, probloss)$probloss
-#   segmented$dlossP <- gather(as.data.frame(probdloss(object)), sample, probdloss)$probdloss
-#   segmented$chromosome <- rep(object@featureData@data[["Chromosome"]], dim(object)[2])
-#   segmented$start <- rep(object@featureData@data[["Start"]], dim(object)[2])
-#   segmented$end <- rep(object@featureData@data[["End"]], dim(object)[2])
-#
-#   # collapse copy numbers down to segments
-#   collapsed_segs <- CopyNumberSegments(segmented)
-#   collapsed_segs$weight <- NULL
-#
-#   collapsed_segs <- collapsed_segs %>% transform(chromosome = as.character(chromosome))
-#   collapsed_segs$chromosome[collapsed_segs$chromosome == 23] <- 'X'
-#   ranges <- GenomicRanges::makeGRangesFromDataFrame(collapsed_segs)
-#   seqlevelsStyle(ranges) <-'UCSC'
-#   hits <- findOverlaps(ranges, cyto_ranges)
-#   temp <- data.frame(ranges = hits@from, cyto_ranges = hits@to, cytobands = cytobands$name[hits@to])
-#   temp <- temp[,c('ranges','cytobands')]
-#
-#   # collapse cytobands to a single cell
-#   temp <- temp %>%
-#     dplyr::group_by(ranges) %>%
-#     dplyr::summarise(cytobands = paste(cytobands, collapse = ",")) %>%
-#     dplyr::ungroup()
-#   for (i in c(1:dim(temp)[1])) {
-#     entry <- str_split(temp$cytobands[i], pattern = ',')[[1]]
-#     if ( length(entry) > 1 ) {
-#       temp$cytobands[i] <- paste0(entry[1], '-', entry[length(entry)])
-#     }
-#   }
-#   collapsed_segs$cytobands <- temp$cytobands
-#   collapsed_segs$coordinates <- paste0(seqnames(ranges), ':', ranges(ranges))
-#   collapsed_segs <- collapsed_segs %>% mutate(size = end - start)
-#   collapsed_segs$segment <- NULL
-#   colnames(collapsed_segs) <- c('sample', 'chromosome', 'start', 'end', 'gain_probability',
-#                                 'loss_probability', 'relative_copy_number', 'bin_count',
-#                                 'sum_of_bin_lengths', 'cytobands', 'coordinates', 'size')
-#   # save segment tables
-#   # collapsed_segs <- collapsed_segs %>% dplyr::group_by(samples)
-#   save_dir <- '~/Documents/projects/cn_signatures_shallowWGS/data/relativeCN_segs_and_cytoband_tables/'
-#   dir.create(file.path(save_dir, binsize))
-#   for (i in unique(collapsed_segs$sample)) {
-#     temp <- collapsed_segs[collapsed_segs$sample == i, ]
-#     file_name <- paste0(save_dir, '/', binsize, '/', i, '_', binsize, '_RsegsCytobandsTable.tsv')
-#     write.table(temp, file = file_name, sep = '\t', col.names = TRUE, row.names = FALSE)
-#   }
-#   dbDisconnect(connection)
-#   return(collapsed_segs)
-# }
+
 
 ### Create Cytoband .tsv tables from absolute copy-number calls
 # DESCRIPTION
