@@ -1,11 +1,11 @@
 ########################### Sample quality functions ################################
 #'
-#' @description Function to classify the quality of relative copy number profile calls from QDNAseq or WiseCondorX  
+#' @description Function to classify the quality of relative copy number profile calls from QDNAseq or WiseCondorX
 #' @details The sample quality function supports an input of an  QDNAseq object from relative copy number callers for shallow whole genome sequencing data (such as QDNASeq or WiseCondorX) and classifies relative copy number profiles as "High" or "Low" quality
 #' @param x *QDNASeq object* containing the relative copy number calls as well as the segmented relative copy number calls
-#' 
+#'
 
-#' @description Function to format chromosome and position information 
+#' @description Function to format chromosome and position information
 ChromosomeSplitPos <- function(x) {
   x$position <- x$chr
   x$chr <- str_split_fixed(x$chr, ":", n = 2)
@@ -38,7 +38,7 @@ CopySegFlat <- function(x) {
   segmented <- data.table::setDT(segmented)
   comb_table <- merge(copy_number, segmented, by = c("position", "sample"))
   comb_table <- comb_table %>%
-    select(chromosome = chromosome.x, sample, copy_number, segmented, start = start.y, end = end.y) 
+    dplyr::select(chromosome = chromosome.x, sample, copy_number, segmented, start = start.y, end = end.y)
   return(comb_table)
 }
 
@@ -63,7 +63,7 @@ CollapsedSegs <- function(x) {
   return(x)
 }
 
-#' @description Calculate segment sizes 
+#' @description Calculate segment sizes
 #' @param x Dataframe containing the following columns: chromosome, start, stop, segmented, copy_number and new_segment (indicator variable for the segment the copy_number call belongs to)
 
 GetSegSizes <- function(x) {
@@ -84,7 +84,7 @@ GetSegSizes <- function(x) {
 
 #' @description Calculate median segment-level variances per sample (median absolute deviance)
 #' @param x Dataframe containing the following columns: chromosome, start, stop, segmented, and copy_number and new_segment (indicator variable for the segment the copy_number call belongs to)
-#' 
+#'
 MedSegVar <- function(x) {
   x <- x %>%
     dplyr::group_by(sample, segment) %>%
@@ -95,9 +95,9 @@ MedSegVar <- function(x) {
   return(x)
 }
 
-#' @description Extract sample grouping 
+#' @description Extract sample grouping
 #' @param x param_dat containing the following columns: sample and sample quality parameters
-#' 
+#'
 SampleGrouping <- function(x) {
   x <- x %>%
     mutate(sample_group = case_when(
@@ -128,10 +128,11 @@ GetSampleQualityDecision <- function(x, metric = "quantile") {
   param_dat <- merge(seg_sizes, median_vars, by = "sample")
   if(is.character(metric)) {
     if (metric %in% c("quantile")) {
+      browser()
       seg_cut <- quantile(param_dat$seg_sizes, 0.75)
       med_cut <- quantile(param_dat$median_sd, 0.50)
       param_iqr_dat <- param_dat %>%
-        mutate(decision = ifelse(seg_sizes > seg_cut & median_sd > med_cut, "Low", "High"))
+        dplyr::mutate(decision = ifelse(seg_sizes > seg_cut & median_sd > med_cut, "Low", "High"))
       return(param_iqr_dat)
     } else {
       if(metric %in% c("DecisionTree")) {
@@ -141,11 +142,11 @@ GetSampleQualityDecision <- function(x, metric = "quantile") {
           iso$predict() %>%
           arrange(desc(anomaly_score))
         param_dat <- param_dat %>%
-          mutate(row_num = row_number())
+          dplyr::mutate(row_num = row_number())
         param_dat <- full_join(param_dat, scores_train, by = c("row_num" = "id"))
         param_iso_dat <- param_dat %>%
-          select(sample, seg_sizes, median_sd, anomaly_score) %>%
-          mutate(decision = ifelse(anomaly_score > 0.59, "Low", "High"))
+          dplyr::select(sample, seg_sizes, median_sd, anomaly_score) %>%
+          dplyr::mutate(decision = ifelse(anomaly_score > 0.59, "Low", "High"))
         return(param_iso_dat)
       }
     }
