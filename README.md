@@ -1,5 +1,26 @@
 # utanos
 
+### Installation Instructions:
+Install R (version > 4.2)
+[Cran would be the place to find the right R](https://cran.r-project.org/index.html)
+
+Ensure the following basic packages are installed.
+```R
+install.packages("librarian")
+BiocManager::install(version = "3.16")
+BiocManager::install("Biobase")
+```
+
+Install the bulk of this package's dependencies making use of librarian:
+```R
+librarian::shelf(annotate, caret, CGHcall, data.table, DBI, DescTools, doMC, dplyr, EnsDb.Hsapiens.v75, flexmix, GenomicRanges, ggalt, ggplot2, ggpubr, ggrepel, gridExtra, hrbrthemes, ks, magrittr, NMF, pheatmap, plyr, purrr, QDNAseq, readr, RMySQL, stringr, tidyr, TxDb.Hsapiens.UCSC.hg19.knownGene, viridis, YAPSA)
+```
+
+Finally, install utanos:
+```R
+install_github("Huntsmanlab/utanos")
+```
+
 ### File list:
 * __main_functions.R__ - Central logic functions used in the calling of copy-number signatures. Needs to be re-named.
 * __helper_functions.R__ - Functions assisting in the calling of copy-number signatures.  Needs to be re-named.
