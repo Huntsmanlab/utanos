@@ -1,8 +1,8 @@
 # utanos
 
 ### Installation Instructions:
-Install R (version > 4.2)
-[Cran would be the place to find the right R](https://cran.r-project.org/index.html)
+Install R (version > 4.2)  
+[Cran would be the place to find the right R](https://cran.r-project.org/index.html)  
 
 Ensure the following basic packages are installed.
 ```R
