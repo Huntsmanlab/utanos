@@ -1,5 +1,12 @@
 # utanos
 
+### Package Goal: 
+To be a swiss army knife in analyzing shallow/low-pass WGS data
+
+### Package Description/Details: 
+Includes functions for plotting, quality evaluation, data re-structuring, and copy-number signature inference. 
+Additionally there are tools that export analyses/datsets in formats useful for human examination. (i.e. for non-computational purposes).  
+
 ### Installation Instructions:
 Install R (version > 4.2)  
 [Cran would be the place to find the right R](https://cran.r-project.org/index.html)  
