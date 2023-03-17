@@ -66,7 +66,7 @@ CollapsedSegs <- function(x) {
 #' @description Calculate segment sizes
 #' @param x Dataframe containing the following columns: chromosome, start, stop, segmented, copy_number and new_segment (indicator variable for the segment the copy_number call belongs to)
 
-GetSegSizes <- function(x) {
+GetSegCounts <- function(x) {
   x$segment <- as.character(x$segment)
   x <- x %>%
     dplyr::group_by(segment) %>%
@@ -78,7 +78,7 @@ GetSegSizes <- function(x) {
       copy_number = dplyr::first(segmented))
   x <- x %>%
     dplyr::group_by(sample) %>%
-    dplyr::summarise(seg_sizes = n())
+    dplyr::summarise(seg_counts = n())
   return(x)
 }
 
@@ -88,7 +88,7 @@ GetSegSizes <- function(x) {
 MedSegVar <- function(x) {
   x <- x %>%
     dplyr::group_by(sample, segment) %>%
-    dplyr::summarize(med_dev = median(abs(copy_number - segmented))) %>%
+    dplyr::summarize(med_dev = median(abs(copy_number - segmented), na.rm = TRUE)) %>%
     ungroup() %>%
     dplyr::group_by(sample) %>%
     dplyr::summarise(median_sd = median(med_dev, na.rm = TRUE))
@@ -123,16 +123,15 @@ SampleGrouping <- function(x) {
 GetSampleQualityDecision <- function(x, metric = "quantile") {
   comb_dat <- CopySegFlat(x)
   comb_collapsed <- CollapsedSegs(comb_dat)
-  seg_sizes <- GetSegSizes(comb_collapsed)
+  seg_counts <- GetSegCounts(comb_collapsed)
   median_vars <- MedSegVar(comb_collapsed)
-  param_dat <- merge(seg_sizes, median_vars, by = "sample")
+  param_dat <- merge(seg_counts, median_vars, by = "sample")
   if(is.character(metric)) {
     if (metric %in% c("quantile")) {
-      browser()
-      seg_cut <- quantile(param_dat$seg_sizes, 0.75)
+      seg_cut <- quantile(param_dat$seg_counts, 0.75)
       med_cut <- quantile(param_dat$median_sd, 0.50)
       param_iqr_dat <- param_dat %>%
-        dplyr::mutate(decision = ifelse(seg_sizes > seg_cut & median_sd > med_cut, "Low", "High"))
+        dplyr::mutate(decision = ifelse(seg_counts > seg_cut & median_sd > med_cut, "Low", "High"))
       return(param_iqr_dat)
     } else {
       if(metric %in% c("DecisionTree")) {
@@ -145,7 +144,7 @@ GetSampleQualityDecision <- function(x, metric = "quantile") {
           dplyr::mutate(row_num = row_number())
         param_dat <- full_join(param_dat, scores_train, by = c("row_num" = "id"))
         param_iso_dat <- param_dat %>%
-          dplyr::select(sample, seg_sizes, median_sd, anomaly_score) %>%
+          dplyr::select(sample, seg_counts, median_sd, anomaly_score) %>%
           dplyr::mutate(decision = ifelse(anomaly_score > 0.59, "Low", "High"))
         return(param_iso_dat)
       }
