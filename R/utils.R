@@ -360,9 +360,39 @@ AnnotationCr <- function(queryset, targetset) {
   return(queryset[queryset_matches,])
 }
 
-# A true 'utils' function
-# Transforms segment tables into per-bin copy-number tables
-# It is an expansion of the calls into per-bin style, where the bin size is user defined.
+#'
+#' Transforms segment tables into per-bin copy-number tables.
+#' It is an expansion of the calls into per-bin style, where the bin size is user defined.
+#' Inverse of the CopyNumberSegments function.
+#' A true 'utils' function.
+#'
+#' @description
+#'
+#' SegmentsToCopyNumber() transforms segment tables into per-bin copy-number tables.
+#' It is an expansion of the calls into per-bin style, where the bin size is user defined.
+#'
+#' This function makes use of the rascal package in R and instructions can be found in the vignette: \cr
+#' https://github.com/crukci-bioinformatics/rascal/blob/master/vignettes/rascal.Rmd  \cr
+#'
+#' @param segs A list of the segmented copy-numbers.
+#' @param bin_size Size of the bins (fixed, typically 30kb in size).
+#' @param genome The reference genome as a string (e.g. 'hg19').
+#' @param Xincluded Sex chromosomes as a Boolean (e.g. FALSE if not present).
+#' @returns A dataframe of per-bin copy numbers (bounded for each sample)
+#' @details
+#' ```
+#' First, ensures that;
+#'  - segs is a list of size > 0
+#'  - segs contains the:
+#'        - chromosome object
+#'        - start and end objects (both must be numerics)
+#'        - segVal object (also numeric)
+#' Stops execution if these conditions are not met
+#' Next, the function creates a template template binned genome, calling GetBinnedChromosomes first
+#' and then carrying out some data manipulation
+#' Lastly, a dataframe of per-bin copy numbers is created, and it is returned as the output
+#' ```
+#'
 #' @export
 SegmentsToCopyNumber <- function(segs, bin_size,
                                  genome = 'hg19', Xincluded = FALSE) {
