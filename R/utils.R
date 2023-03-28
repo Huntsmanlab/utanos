@@ -360,7 +360,6 @@ AnnotationCr <- function(queryset, targetset) {
   return(queryset[queryset_matches,])
 }
 
-#'
 #' Transforms segment tables into per-bin copy-number tables.
 #' It is an expansion of the calls into per-bin style, where the bin size is user defined.
 #' Inverse of the CopyNumberSegments function.
@@ -370,9 +369,6 @@ AnnotationCr <- function(queryset, targetset) {
 #'
 #' SegmentsToCopyNumber() transforms segment tables into per-bin copy-number tables.
 #' It is an expansion of the calls into per-bin style, where the bin size is user defined.
-#'
-#' This function makes use of the rascal package in R and instructions can be found in the vignette: \cr
-#' https://github.com/crukci-bioinformatics/rascal/blob/master/vignettes/rascal.Rmd  \cr
 #'
 #' @param segs A list of the segmented copy-numbers.
 #' @param bin_size Size of the bins (fixed, typically 30kb in size).
@@ -705,10 +701,34 @@ GenHumanReadableAcnProfile <- function(object, save_path) {
   return(collapsed_segs)
 }
 
-### Collapse relative copy-number calls to segment tables
-# DESCRIPTION
-# Parameters:
-# data -
+#'
+#' Collapses relative copy-number calls to segment tables
+#' Inverse of the SegmentsToCopyNumber function.
+#' A true 'utils' function.
+#'
+#' @description
+#'
+#' CopyNumberSegments() transforms relative copy-number calls to segment tables.
+#'
+#' @param copy_number A dataframe with copy number calls
+#' @returns A table of summaries of various characteristics (derived from copy-number calls)
+#' @details
+#' ```
+#' First, ensures that;
+#'  - copy_number is a data frame
+#'  - copy_number contains the:
+#'        - sample object
+#'        - chromosome object
+#'        - start and end objects (both must be numerics)
+#'        - segmented object (also numeric)
+#' Stops execution if these conditions are not met
+#'
+#' Next, the function carries out some data manipulation
+#' Lastly, uses the dplyr::summarise() in order to compute a table of summaries
+#' (for sample, chromosome, start, end, gain_probability, loss_probability,
+#' copy_number, bin_count, sum_of_bin_lengths, weight)
+#' ```
+#'
 #' @export
 CopyNumberSegments <- function(copy_number) {
 
