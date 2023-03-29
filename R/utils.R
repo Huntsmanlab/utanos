@@ -642,10 +642,79 @@ GenHumanReadableRCNprofile <- function(object, binsize,
 }
 
 
+#' Calculate Absolute Copy Numbers
+#'
+#' @description
+#'
+#' CalculateACNs() calculates the absolute copy numbers (ACNs) from the relative copy number profiles of one or more samples.
+#' There are several included options by which to do this.
+#' Note: If not providing a table of variant allele frequencies (VAFs) then 'mad' is the only method available. \cr
+#'
+#' This function makes use of the rascal package in R and instructions can be found in the vignette: \cr
+#' https://github.com/crukci-bioinformatics/rascal/blob/master/vignettes/rascal.Rmd  \cr
+#'
+#' @param relative_segs A tsv of the relative segmented copy-numbers.
+#' @param rascal_sols A tsv of the calculated rascal solutions.
+#' @param acnmethod The method by which to calculate ACNs. Can be one of: \cr
+#' "maxvaf" - Calculate ACNs assuming the maximum discovered VAF for the sample is an appropriate representation for the tumour fraction. \cr
+#' char vector - Same as above but rather than using the max vaf provide a character vector of the genes from which to pull VAFs.
+#' The genes are assumed to be in order of decreasing precedence. ex. c('TP53', 'KRAS', 'PTEN') \cr
+#' "mad" - Calculate ACNs using the mean absolute difference (MAD) column from the solutions table. \cr
+#' If using variant allele frequencies from targeted panel sequencing or some other technology: \cr
+#' - The variants must must be in a datatable/dataframe. \cr
+#' - Required columns: sample_id, chromosome, start, end, gene_name, ref, alt, vaf.
+#' - Each row of said table must correspond to a unique variant. \cr
+#' - Each variant must have an associated variant allele frequency. \cr
+#' - Each row must also be associated with a specific sample. \cr
+#' @param variants A dataframe of the variants including variant allele frequencies per gene and per sample.
+#' @param relative_cns A tsv of the relative copy-numbers. Required if 'addplots' param is set to true.
+#' @param addplots (optional) Logical. Indicates whether or not plots should be returned alongside the ACNs.
+#' @param acn_save_path (optional) String. The output path (absolute path recommended) where to save the result.
+#' @param return_sols (optional) Logical. Return the selected rascal solution.
+#' @returns A list of dataframes. One DF for each sample where an Absolute Copy Number profile was successfully found. \cr
+#' Optionally a second list of plot objects (ggplot); one for each sample where a profile was found.
+#' @details
+#' ```
+#' solutions <- "~/Documents/.../rascal_solutions.csv"
+#' rcn_segs <- "~/Documents/.../rCN_segs.tsv"
+#' variants <- "~/Documents/.../allvariants.clinvar.cosmic.exons.csv"
+#' save_path <- "~/Documents/.../rascal_ACN_segments.rds"
+#' variants <- data.table::fread(file = variants, sep = ',')
+#' variants <- variants %>% dplyr::rename(chromosome = chr,
+#'                                        gene_name = genecode_gene_name)
+#' variants$sample_id <- stringr::str_replace_all(variants$sample_id, "-", ".")
+#' output <- CalculateACNs(relative_cns = rcn_segs,
+#'                         rascal_sols = solutions,
+#'                         variants = variants,
+#'                         acnmethod = 'maxvaf')
+#' output <- CalculateACNs(relative_cns = rcn_segs,
+#'                         rascal_sols = solutions,
+#'                         variants = variants,
+#'                         acnmethod = c('TP53', 'KRAS', 'BRCA1',
+#'                                       'BRCA2', 'PIK3CA', 'PTEN'),
+#'                         acn_save_path = save_path)
+#' ```
+#'
+#' @export
+
 ### Create Cytoband .tsv tables from absolute copy-number calls
-# DESCRIPTION
-# Parameters:
-# data -
+#' @description
+#'
+#' Generates Cytoband .tsv tables from absolute copy-number (ACN) calls (in
+#' a human readable format).
+#'
+#' @param object A list containing the absolute copy number calls
+#' @param save_path A path to where segment tables are to be saved
+#' @returns Collapsed Segment Tables
+#' @details
+#' ```
+#' First, the Chromosome cytobands, coordinates (in bp), and lengths of regions
+#' are obtained from genome-mysql.cse.ucsc.edu
+#' The cytobands are added, then collapsed and then the collapsed segment tables
+#' are re-formatted.
+#' Lastly, the segment tables are saved and then written (and returned)
+#' ```
+#'
 #' @export
 GenHumanReadableAcnProfile <- function(object, save_path) {
 
