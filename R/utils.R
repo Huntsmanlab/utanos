@@ -569,6 +569,12 @@ GenHumanReadableRCNprofile <- function(object, binsize,
     segmented$chromosome <- rep(object@featureData@data[["chromosome"]], dim(object)[2])
     segmented$start <- rep(object@featureData@data[["start"]], dim(object)[2])
     segmented$end <- rep(object@featureData@data[["end"]], dim(object)[2])
+    if ('probgain' %in% names(object@assayData)) {
+      segmented$gainP <- tidyr::gather(as.data.frame(CGHbase::probgain(object)), sample, probgain)$probgain
+      segmented$ampP <- tidyr::gather(as.data.frame(CGHbase::probamp(object)), sample, probamp)$probamp
+      segmented$lossP <- tidyr::gather(as.data.frame(CGHbase::probloss(object)), sample, probloss)$probloss
+      segmented$dlossP <- tidyr::gather(as.data.frame(CGHbase::probdloss(object)), sample, probdloss)$probdloss
+    }
   }
 
   # collapse copy numbers down to segments
@@ -602,7 +608,7 @@ GenHumanReadableRCNprofile <- function(object, binsize,
                                 'loss_probability', 'relative_copy_number', 'bin_count',
                                 'sum_of_bin_lengths', 'cytobands', 'coordinates', 'size')
   # save segment tables
-  if ( save_dir ) {
+  if ( save_dir != FALSE ) {
     dir.create(file.path(save_dir, binsize))
     for (i in unique(collapsed_segs$sample)) {
       temp <- collapsed_segs[collapsed_segs$sample == i, ]
