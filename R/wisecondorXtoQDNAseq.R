@@ -92,7 +92,7 @@ BuildWxQdnaObject <- function (input_path, genome_used = 'hg19',
   bins <- matrix(NA_integer_, nrow=nrow(cns_wide), ncol=4,
                  dimnames=list(dim_names, c('chromosome', 'start', 'end', 'use')))
   bins[,1:3] <- as.matrix(cns_wide[,1:3])
-  bins[,4] <- complete.cases(segments)
+  bins[,4] <- (complete.cases(segments) & complete.cases(copynumbers))
   bins <- Biobase::AnnotatedDataFrame(as.data.frame(bins))
   bins@data$chromosome <- factor(bins@data$chromosome,
                                  levels = c(as.character(c(1:22)),'X'))
