@@ -713,6 +713,95 @@ CopyNumberSegments <- function(copy_number) {
     )
 }
 
+
+BestRelativeProfile <- function (selection, robjects) {
+
+  if (length(robjects) < 2) {
+    stop("Please pass a minimum of two QDNAseq objects to this function.")
+  }
+  feature_lengths <- sapply(robjects, nrow)
+  idx <- which.max(feature_lengths)
+  n <- dim(selection)[1]
+  dim_names <- rownames(robjects[[idx]]@assayData[["copynumber"]])
+  tbins <- as.data.frame(stringr::str_split(dim_names, pattern = ':|-', simplify = TRUE))
+  colnames(tbins) <- c('chromosome', 'start', 'end')
+  tbins <- tbins %>% dplyr::filter(chromosome != 'Y')
+  dim_names <- paste0(tbins$chromosome, ':', tbins$start, '-', tbins$end)
+  cns <- tbins
+  segs <- tbins
+  objstats <- c()
+
+  for (i in names(robjects)) {
+    # Pull what needed out of each object in turn to fill the new slots for:
+    # copy-number
+    sample_ids_mask <- selection$sample_id[i == selection$selection]
+    tempmat <- robjects[[i]]@assayData[["copynumber"]][,sample_ids_mask]
+    tempmat <- cbind(as.data.frame(tempmat),
+                     as.data.frame(stringr::str_split(rownames(tempmat),
+                                                      pattern = ':|-',
+                                                      simplify = TRUE)))
+    cns <- cns %>% dplyr::left_join(tempmat, by = c('chromosome' = 'V1',
+                                                    'start' = 'V2',
+                                                    'end' = 'V3'))
+    # segments
+    tempmat <- robjects[[i]]@assayData[["segmented"]][,sample_ids_mask]
+    tempmat <- cbind(as.data.frame(tempmat),
+                     as.data.frame(stringr::str_split(rownames(tempmat),
+                                                      pattern = ':|-',
+                                                      simplify = TRUE)))
+    segs <- segs %>% dplyr::left_join(tempmat, by = c('chromosome' = 'V1',
+                                                      'start' = 'V2',
+                                                      'end' = 'V3'))
+    # stats
+    objstats <- rbind(objstats,
+                      robjects[[i]]@phenoData@data[sample_ids_mask,
+                                                   c('name',
+                                                     'total.reads',
+                                                     'expected.variance')])
+  }
+
+  # Create copy-numbers array
+  cns <- cns[,selection$sample_id]
+  copynumbers <- matrix(NA_real_, nrow=nrow(cns), ncol=n,
+                        dimnames=list(dim_names, selection$sample_id))
+  copynumbers[,1:n] <- as.matrix(cns[,1:(dim(cns)[2])])
+  # Create segments array
+  segs <- segs[,selection$sample_id]
+  segments <- matrix(NA_real_, nrow=nrow(segs), ncol=n,
+                     dimnames=list(dim_names, selection$sample_id))
+  segments[,1:n] <- as.matrix(segs[,1:dim(segs)[2]])
+  # Create bins annotated dataframe
+  bins <- matrix(NA_integer_, nrow=nrow(cns), ncol=4,
+                 dimnames=list(dim_names, c('chromosome', 'start', 'end', 'use')))
+  bins[,1:3] <- as.matrix(tbins[,1:3])
+  bins[,4] <- (complete.cases(segments) & complete.cases(copynumbers))
+  bins <- Biobase::AnnotatedDataFrame(as.data.frame(bins))
+  bins@data$chromosome <- factor(bins@data$chromosome, levels = c(as.character(c(1:22)),'X'))
+  bins@data$start <- as.integer(bins@data$start)
+  bins@data$end <- as.integer(bins@data$end)
+  bins@data$use <- as.logical(bins@data$use)
+  # Create stats dataframe
+  stats <- matrix(NA_integer_, nrow=nrow(selection), ncol=3,
+                  dimnames=list(selection$sample_id, c('name', 'total.reads', 'expected.variance')))
+  temp_stats <- selection[,1] %>% dplyr::left_join(objstats,
+                                                   by = c('sample_id' = 'name')) %>%
+    dplyr::rename(name = sample_id)
+  stats[,1:3] <- as.matrix(temp_stats[,1:3])
+  # Assemble QDNAseq object
+  newobj <- new('QDNAseqCopyNumbers',
+                bins = bins,
+                copynumber = copynumbers,
+                phenodata = as.data.frame(stats))
+  Biobase::assayDataElement(newobj, "segmented") <- segments
+  newobj@featureData@data[["chromosome"]] <- as.character(newobj@featureData@data[["chromosome"]])
+  # Add last bit of metadata
+  metadata <-  matrix(NA_integer_, nrow = 3, ncol = 1,
+                      dimnames=list(c('name', 'total.reads', 'expected.variance')))
+  colnames(metadata) <- "labelDescription"
+  newobj@phenoData@varMetadata <- as.data.frame(metadata)
+  return(newobj)
+}
+
 # Input:
 # Change from a list of Component-by-Signature Matrices from NMFfit objects to the NMFfit objects themselves.
 # This change will permit for easier plotting.
