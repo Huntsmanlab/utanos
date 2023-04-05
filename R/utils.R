@@ -19,8 +19,8 @@
 # compare_bin_CNs
 # removeBlacklist
 #
-# genHumanReadableACNprofile
-# genHumanReadableRCNprofile
+# GenHumanReadableAcnProfile
+# GenHumanReadableRcnprofile
 #
 
 ###
@@ -361,33 +361,18 @@ AnnotationCr <- function(queryset, targetset) {
 }
 
 #' Transforms segment tables into per-bin copy-number tables.
-#' It is an expansion of the calls into per-bin style, where the bin size is user defined.
-#' Inverse of the CopyNumberSegments function.
-#' A true 'utils' function.
 #'
 #' @description
 #'
 #' SegmentsToCopyNumber() transforms segment tables into per-bin copy-number tables.
 #' It is an expansion of the calls into per-bin style, where the bin size is user defined.
+#' It is the inverse of the CopyNumberSegments function.
 #'
-#' @param segs A list of the segmented copy-numbers.
-#' @param bin_size Size of the bins (fixed, typically 30kb in size).
-#' @param genome The reference genome as a string (e.g. 'hg19').
-#' @param Xincluded Sex chromosomes as a Boolean (e.g. FALSE if not present).
-#' @returns A dataframe of per-bin copy numbers (bounded for each sample)
-#' @details
-#' ```
-#' First, ensures that;
-#'  - segs is a list of size > 0
-#'  - segs contains the:
-#'        - chromosome object
-#'        - start and end objects (both must be numerics)
-#'        - segVal object (also numeric)
-#' Stops execution if these conditions are not met
-#' Next, the function creates a template template binned genome, calling GetBinnedChromosomes first
-#' and then carrying out some data manipulation
-#' Lastly, a dataframe of per-bin copy numbers is created, and it is returned as the output
-#' ```
+#' @param segs A list of dataframes, where each dataframe is a dataframe of the segmented copy-numbers.
+#' @param bin_size A natural number. The binsize used in the copy number object, ex. 30 -> 30kb, 100 -> 100kb.
+#' @param genome A string. Refers to the reference genome, common reference genomes are: 'hg19', 'mm10', or 'hg38'.
+#' @param Xincluded A boolean. Sex chromosomes as a Boolean (e.g. FALSE if not included).
+#' @returns A dataframe of per-bin copy numbers (bounded for each sample).
 #'
 #' @export
 SegmentsToCopyNumber <- function(segs, bin_size,
@@ -572,8 +557,9 @@ RemoveBlacklist <- function(data) {
 #' @param ref_genome One of the common reference genomes: ex. 'hg19', 'mm10', or 'hg38'
 #' @param save_dir (optional) The directory where the tables should be saved. ex. '~/Documents/test_project'
 #' @returns Segment tables in long format (by sample id) ready to be written out to a table file (ex. tsv, csv).
+#'
 #' @export
-GenHumanReadableRCNprofile <- function(object, binsize,
+GenHumanReadableRcnprofile <- function(object, binsize,
                                        ref_genome, save_dir = FALSE) {
 
   # Create collapsed segments table
@@ -642,78 +628,15 @@ GenHumanReadableRCNprofile <- function(object, binsize,
 }
 
 
-#' Calculate Absolute Copy Numbers
+#' Generate Human Readable Absolute Copy-Number Profiles
 #'
 #' @description
 #'
-#' CalculateACNs() calculates the absolute copy numbers (ACNs) from the relative copy number profiles of one or more samples.
-#' There are several included options by which to do this.
-#' Note: If not providing a table of variant allele frequencies (VAFs) then 'mad' is the only method available. \cr
+#' This function takes as input a QDNAseq or CGHcall copy-number object and gives back Cytoband .tsv tables from absolute copy-number calls (in a human readable format).
 #'
-#' This function makes use of the rascal package in R and instructions can be found in the vignette: \cr
-#' https://github.com/crukci-bioinformatics/rascal/blob/master/vignettes/rascal.Rmd  \cr
-#'
-#' @param relative_segs A tsv of the relative segmented copy-numbers.
-#' @param rascal_sols A tsv of the calculated rascal solutions.
-#' @param acnmethod The method by which to calculate ACNs. Can be one of: \cr
-#' "maxvaf" - Calculate ACNs assuming the maximum discovered VAF for the sample is an appropriate representation for the tumour fraction. \cr
-#' char vector - Same as above but rather than using the max vaf provide a character vector of the genes from which to pull VAFs.
-#' The genes are assumed to be in order of decreasing precedence. ex. c('TP53', 'KRAS', 'PTEN') \cr
-#' "mad" - Calculate ACNs using the mean absolute difference (MAD) column from the solutions table. \cr
-#' If using variant allele frequencies from targeted panel sequencing or some other technology: \cr
-#' - The variants must must be in a datatable/dataframe. \cr
-#' - Required columns: sample_id, chromosome, start, end, gene_name, ref, alt, vaf.
-#' - Each row of said table must correspond to a unique variant. \cr
-#' - Each variant must have an associated variant allele frequency. \cr
-#' - Each row must also be associated with a specific sample. \cr
-#' @param variants A dataframe of the variants including variant allele frequencies per gene and per sample.
-#' @param relative_cns A tsv of the relative copy-numbers. Required if 'addplots' param is set to true.
-#' @param addplots (optional) Logical. Indicates whether or not plots should be returned alongside the ACNs.
-#' @param acn_save_path (optional) String. The output path (absolute path recommended) where to save the result.
-#' @param return_sols (optional) Logical. Return the selected rascal solution.
-#' @returns A list of dataframes. One DF for each sample where an Absolute Copy Number profile was successfully found. \cr
-#' Optionally a second list of plot objects (ggplot); one for each sample where a profile was found.
-#' @details
-#' ```
-#' solutions <- "~/Documents/.../rascal_solutions.csv"
-#' rcn_segs <- "~/Documents/.../rCN_segs.tsv"
-#' variants <- "~/Documents/.../allvariants.clinvar.cosmic.exons.csv"
-#' save_path <- "~/Documents/.../rascal_ACN_segments.rds"
-#' variants <- data.table::fread(file = variants, sep = ',')
-#' variants <- variants %>% dplyr::rename(chromosome = chr,
-#'                                        gene_name = genecode_gene_name)
-#' variants$sample_id <- stringr::str_replace_all(variants$sample_id, "-", ".")
-#' output <- CalculateACNs(relative_cns = rcn_segs,
-#'                         rascal_sols = solutions,
-#'                         variants = variants,
-#'                         acnmethod = 'maxvaf')
-#' output <- CalculateACNs(relative_cns = rcn_segs,
-#'                         rascal_sols = solutions,
-#'                         variants = variants,
-#'                         acnmethod = c('TP53', 'KRAS', 'BRCA1',
-#'                                       'BRCA2', 'PIK3CA', 'PTEN'),
-#'                         acn_save_path = save_path)
-#' ```
-#'
-#' @export
-
-### Create Cytoband .tsv tables from absolute copy-number calls
-#' @description
-#'
-#' Generates Cytoband .tsv tables from absolute copy-number (ACN) calls (in
-#' a human readable format).
-#'
-#' @param object A list containing the absolute copy number calls
-#' @param save_path A path to where segment tables are to be saved
-#' @returns Collapsed Segment Tables
-#' @details
-#' ```
-#' First, the Chromosome cytobands, coordinates (in bp), and lengths of regions
-#' are obtained from genome-mysql.cse.ucsc.edu
-#' The cytobands are added, then collapsed and then the collapsed segment tables
-#' are re-formatted.
-#' Lastly, the segment tables are saved and then written (and returned)
-#' ```
+#' @param object S4 copy-number object - QDNAseq or CGHcall object
+#' @param save_path A string. A path (directory) to where segment tables should be saved. ex. '~/Documents/test_project'
+#' @returns A table. Collapsed Segment tables in long format (by sample id) ready to be written out to a table file (ex. tsv, csv).
 #'
 #' @export
 GenHumanReadableAcnProfile <- function(object, save_path) {
@@ -770,33 +693,15 @@ GenHumanReadableAcnProfile <- function(object, save_path) {
   return(collapsed_segs)
 }
 
-#'
 #' Collapses relative copy-number calls to segment tables
-#' Inverse of the SegmentsToCopyNumber function.
-#' A true 'utils' function.
 #'
 #' @description
 #'
 #' CopyNumberSegments() transforms relative copy-number calls to segment tables.
+#' Inverse of the SegmentsToCopyNumber function.
 #'
-#' @param copy_number A dataframe with copy number calls
-#' @returns A table of summaries of various characteristics (derived from copy-number calls)
-#' @details
-#' ```
-#' First, ensures that;
-#'  - copy_number is a data frame
-#'  - copy_number contains the:
-#'        - sample object
-#'        - chromosome object
-#'        - start and end objects (both must be numerics)
-#'        - segmented object (also numeric)
-#' Stops execution if these conditions are not met
-#'
-#' Next, the function carries out some data manipulation
-#' Lastly, uses the dplyr::summarise() in order to compute a table of summaries
-#' (for sample, chromosome, start, end, gain_probability, loss_probability,
-#' copy_number, bin_count, sum_of_bin_lengths, weight)
-#' ```
+#' @param copy_number A dataframe. A dataframe with copy number calls (with columns 'sample', 'chromosome', 'start', 'end', 'segmented')
+#' @returns A dataframe. A dataframe of summaries of various characteristics (derived from copy-number calls)
 #'
 #' @export
 CopyNumberSegments <- function(copy_number) {
