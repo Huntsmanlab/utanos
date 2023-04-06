@@ -20,7 +20,7 @@
 # removeBlacklist
 #
 # GenHumanReadableAcnProfile
-# GenHumanReadableRcnprofile
+# GenHumanReadableRcnProfile
 #
 
 ###
@@ -559,7 +559,7 @@ RemoveBlacklist <- function(data) {
 #' @returns Segment tables in long format (by sample id) ready to be written out to a table file (ex. tsv, csv).
 #'
 #' @export
-GenHumanReadableRcnprofile <- function(object, binsize,
+GenHumanReadableRcnProfile <- function(object, binsize,
                                        ref_genome, save_dir = FALSE) {
 
   # Create collapsed segments table

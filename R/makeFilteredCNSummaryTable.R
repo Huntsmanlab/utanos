@@ -57,7 +57,7 @@ CollapseTableToSegments <- function(df) {
 #' @param pG A float. A probability threshold (between 0 and 1), to which gain frequency is compared.
 #' @param prop A float. A proportion threshold (between 0 and 1), to which loss and gain occurences are compared (separately).
 #' @param save_path A string. A path (directory) to where segment tables should be saved. ex. '~/Documents/test_project'.
-#' @returns Nothing, but instead writes a TSV table containing all the summaries.
+#' @returns Nothing.
 #'
 #' @export
 MakeSummaryTable <- function(CNobj, snames, lowT, highT, pL, pG, prop, save_path) {
