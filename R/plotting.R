@@ -42,7 +42,7 @@ PlotAbsCopyNumber <- function(x, sample, sample_segments, sample_cns, output) {
 # Return: ggplot
 ###
 #' @export
-plot_signature_exposures <- function (signatures, save_path = FALSE,
+PlotSignatureExposures <- function (signatures, save_path = FALSE,
                                       obj_name = 'sig_exposures_obj',
                                       order = FALSE, transpose = FALSE) {
   long_data <- gather(signatures)
@@ -109,7 +109,7 @@ plot_signature_exposures <- function (signatures, save_path = FALSE,
 # Return: list of ggplot and the ordering of the heatmap in sample names.
 ###
 #' @export
-swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = FALSE,
+SwgsCnvHeatmaps <- function(reads = data.frame(), save_path = FALSE,
                               obj_name = "gyne_cancer_obj",
                               order = FALSE, ret_order = FALSE) {
 
@@ -120,7 +120,7 @@ swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = FALSE,
   browser()
   # Generate standard CNV heatmap
   reads$state[reads$state < 0] <- 0
-  slice <- sort_heatmap(reads)
+  slice <- SortHeatmap(reads)
   browser()
   slice$state <- round(slice$state)
   slice$state[slice$state >= 15] <- 15
@@ -180,7 +180,7 @@ swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = FALSE,
 #   data: Dataframe containing observations describing DLP data
 #   viral_presence:
 # Return: data parameter modified to include a viral presence indicator
-add_viral_presence <- function(data, viral_presence) {
+AddViralPresence <- function(data, viral_presence) {
   viral_range <- seq(1,50000001, 500000)
   viral_presence <- viral_presence[viral_presence$cell_id %in% unique(data$cell_id), ]
   l <- length(viral_range)
@@ -199,7 +199,7 @@ add_viral_presence <- function(data, viral_presence) {
 # Parameters:
 #
 #' @export
-sort_heatmap <- function(slice) {
+SortHeatmap <- function(slice) {
   browser()
   slice$chromosome <- factor(slice$chromosome, levels = c("V", 1:22, "X", "Y"))
   slice <- dplyr::mutate(slice, pos = paste0(chromosome, ":", start))
@@ -217,13 +217,13 @@ sort_heatmap <- function(slice) {
 # slice: As input we want the order of the samples in the heatmap
 #
 #' @export
-plot_cellularity_and_maxvaf <- function(reads = data.frame(), save_path, obj_name) {
+PlotCellularityAndMaxVaf <- function(reads = data.frame(), save_path, obj_name) {
 
   if(nrow(reads) == 0) { stop("No reads data provided.") }                      # If reads DF is empty, return
   reads = removeBlacklist(reads)                                                # remove blacklist regions from hg19
   reads <- reads[, c("chromosome", "start", "sample_id", "state")]
   reads$state[reads$state < 0] <- 0
-  slice <- sort_heatmap(reads)
+  slice <- SortHeatmap(reads)
 
   vafscels <- data.table::fread(file = '~/Documents/projects/cn_signatures_shallowWGS/metadata/vafs_and_cellularities.tsv', sep = '\t', header = TRUE)
   vafscels$sample_id <- str_replace_all(vafscels$sample_id, "-", ".")
@@ -301,13 +301,13 @@ plot_cellularity_and_maxvaf <- function(reads = data.frame(), save_path, obj_nam
 }
 
 #' @export
-plot_BABAM <- function(reads = data.frame(), save_path, obj_name) {
+PlotBABAM <- function(reads = data.frame(), save_path, obj_name) {
 
   if(nrow(reads) == 0) { stop("No reads data provided.") }                      # If reads DF is empty, return
   reads = removeBlacklist(reads)                                                # remove blacklist regions from hg19
   reads <- reads[, c("chromosome", "start", "sample_id", "state")]
   reads$state[reads$state < 0] <- 0
-  slice <- sort_heatmap(reads)
+  slice <- SortHeatmap(reads)
 
   qual <- data.table::fread(file = '~/Downloads/swgs_sample_biologic_metadata.csv', sep = ',', header = TRUE)
   qual <- qual %>% dplyr::filter(status == 'p53_abn')
@@ -348,7 +348,7 @@ plot_BABAM <- function(reads = data.frame(), save_path, obj_name) {
 #   (ggplot)  output: A cowplot combination of several heatmap bars
 ###
 #' @export
-plot_metadata_heatmaps <- function(met_basic, met_bio = FALSE, met_quality = FALSE, met_vafs = FALSE) {
+PlotMetadataHeatmaps <- function(met_basic, met_bio = FALSE, met_quality = FALSE, met_vafs = FALSE) {
 
 
   stopifnot("The first argument must be a dataframe and should contain
@@ -411,7 +411,7 @@ plot_metadata_heatmaps <- function(met_basic, met_bio = FALSE, met_quality = FAL
 
     browser()
     # test
-    xx <- met_vafs %>% mutate(maxvaf = apply(X = met_vafs, MARGIN = 1, function(x) select_max_element(x)))
+    xx <- met_vafs %>% mutate(maxvaf = apply(X = met_vafs, MARGIN = 1, function(x) SelectMaxElement(x)))
 
     celstab <- celstab %>% dplyr::select(sample_id, minmaxed_cel, minmaxed_vaf, max_vaf)
     metadata <- metadata %>% dplyr::left_join(celstab, by = c('sample_id'))
@@ -453,7 +453,7 @@ plot_metadata_heatmaps <- function(met_basic, met_bio = FALSE, met_quality = FAL
   # ggsave2(plot = p, filename = '~/Downloads/quality_heatmaps.pdf', width = 10, height = 25)
 }
 
-select_max_element <- function (element_vector) {
+SelectMaxElement <- function (element_vector) {
   element_vector <- element_vector[grepl('vaf', names(element_vector), fixed = TRUE)]
   max_value <- max(as.numeric(element_vector), na.rm = TRUE)
   return(max_value)
@@ -463,7 +463,7 @@ select_max_element <- function (element_vector) {
 # What role does this function have to play?
 #
 #' @export
-testSummaryPlot <- function (x, main='Summary Plot', gaincol='blue', losscol='red', misscol=NA, build='GRCh37',... )
+TestSummaryPlot <- function (x, main='Summary Plot', gaincol='blue', losscol='red', misscol=NA, build='GRCh37',... )
 {
   chrom <- chromosomes(x)
   pos <- bpstart(x)

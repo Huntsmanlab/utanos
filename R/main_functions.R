@@ -34,7 +34,7 @@ QuantifySignatures<-function(sample_by_component, component_by_signature=NULL)
     }
     signature_by_sample<-YAPSA::LCD(t(sample_by_component),
                                     YAPSA:::normalize_df_per_dim(component_by_signature,2))
-    signature_by_sample<-normaliseMatrix(signature_by_sample)
+    signature_by_sample<-NormaliseMatrix(signature_by_sample)
     signature_by_sample
 }
 
@@ -70,7 +70,7 @@ ChooseNumberSignatures<-function(sample_by_component, outfile="numSigs.pdf", min
 }
 
 #' @export
-ExtractCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
+ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
 {
     # get chromosome and centromere locations
     if (genome == 'hg19') {
@@ -87,41 +87,41 @@ ExtractCopynumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data 
 
         temp_list = foreach::foreach(i=1:6) %dopar% {
             if(i == 1){
-                list(segsize = getSegsize(CN_data) )
+                list(segsize = GetSegSize(CN_data) )
             } else if (i == 2) {
-                list(bp10MB = getBPnum(CN_data,chrlen) )
+                list(bp10MB = GetBPNum(CN_data,chrlen) )
             } else if (i == 3) {
-                list(osCN = getOscilation(CN_data,chrlen) )
+                list(osCN = GetOscilation(CN_data,chrlen) )
             } else if (i == 4) {
-                list(bpchrarm = getCentromereDistCounts(CN_data,centromeres,chrlen) )
+                list(bpchrarm = GetCentromereDistCounts(CN_data,centromeres,chrlen) )
             } else if (i == 5) {
-                list(changepoint = getChangepointCN(CN_data) )
+                list(changepoint = GetChangePointCN(CN_data) )
             } else {
                 if (class(multi_sols_data) != "list") {
-                    list(copynumber = getCN(multi_sols_data))
+                    list(copynumber = GetCN(multi_sols_data))
                 } else {
-                    list(copynumber = getCN(CN_data))
+                    list(copynumber = GetCN(CN_data))
                 }
             }
         }
         unlist( temp_list, recursive = FALSE )
     } else {
-        segsize<-getSegsize(CN_data)
-        bp10MB<-getBPnum(CN_data,chrlen)
-        osCN<-getOscilation(CN_data,chrlen)
-        bpchrarm<-getCentromereDistCounts(CN_data,centromeres,chrlen)
-        changepoint<-getChangepointCN(CN_data)
+        segsize<-GetSegSize(CN_data)
+        bp10MB<-GetBPNum(CN_data,chrlen)
+        osCN<-GetOscilation(CN_data,chrlen)
+        bpchrarm<-GetCentromereDistCounts(CN_data,centromeres,chrlen)
+        changepoint<-GetChangePointCN(CN_data)
         if (class(multi_sols_data) == "list") {
-            copynumber = getCN(multi_sols_data)
+            copynumber = GetCN(multi_sols_data)
         } else {
-            copynumber<-getCN(CN_data)
+            copynumber<-GetCN(CN_data)
         }
         list(segsize=segsize,bp10MB=bp10MB,osCN=osCN,bpchrarm=bpchrarm,changepoint=changepoint,copynumber=copynumber)
     }
 }
 
 #' @export
-ExtractRelativeCopynumberFeatures <- function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
+ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
 {
     # get chromosome and centromere locations
     if (genome == 'hg19') {
@@ -137,34 +137,34 @@ ExtractRelativeCopynumberFeatures <- function(CN_data, genome, cores = 1, multi_
 
         temp_list = foreach::foreach(i=1:6) %dopar% {
             if(i == 1){
-                list(segsize = getSegsize(CN_data) )
+                list(segsize = GetSegSize(CN_data) )
             } else if (i == 2) {
-                list(bp10MB = getBPnum(CN_data,chrlen) )
+                list(bp10MB = GetBPNum(CN_data,chrlen) )
             } else if (i == 3) {
-                list(osCN = getRelativeOscilation(CN_data,chrlen) )
+                list(osCN = GetRelativeOscilation(CN_data,chrlen) )
             } else if (i == 4) {
-                list(bpchrarm = getCentromereDistCounts(CN_data,centromeres,chrlen) )
+                list(bpchrarm = GetCentromereDistCounts(CN_data,centromeres,chrlen) )
             } else if (i == 5) {
-                list(changepoint = getChangepointCN(CN_data) )
+                list(changepoint = GetChangePointCN(CN_data) )
             } else {
                 if (class(multi_sols_data) == "list") {
-                    list(copynumber = getCN(multi_sols_data))
+                    list(copynumber = GetCN(multi_sols_data))
                 } else {
-                    list(copynumber = getCN(CN_data))
+                    list(copynumber = GetCN(CN_data))
                 }
             }
         }
         unlist( temp_list, recursive = FALSE )
     } else {
-        segsize<-getSegsize(CN_data)
-        bp10MB<-getBPnum(CN_data,chrlen)
-        osCN<-getRelativeOscilation(CN_data,chrlen)
-        bpchrarm<-getCentromereDistCounts(CN_data,centromeres,chrlen)
-        changepoint<-getChangepointCN(CN_data)
+        segsize<-GetSegSize(CN_data)
+        bp10MB<-GetBPNum(CN_data,chrlen)
+        osCN<-GetRelativeOscilation(CN_data,chrlen)
+        bpchrarm<-GetCentromereDistCounts(CN_data,centromeres,chrlen)
+        changepoint<-GetChangePointCN(CN_data)
         if (class(multi_sols_data) == "list") {
-            copynumber = getCN(multi_sols_data)
+            copynumber = GetCN(multi_sols_data)
         } else {
-            copynumber<-getCN(CN_data)
+            copynumber<-GetCN(CN_data)
         }
         list(segsize=segsize,bp10MB=bp10MB,osCN=osCN,bpchrarm=bpchrarm,changepoint=changepoint,copynumber=copynumber)
     }
@@ -185,37 +185,37 @@ FitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min
             if(i == 1 & i %in% featsToFit ){
 
                 dat<-as.numeric(CN_features[["segsize"]][,2])
-                list( segsize = fitComponent(dat,seed=seed,model_selection=model_selection,
+                list( segsize = FitComponent(dat,seed=seed,model_selection=model_selection,
                     min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
             } else if (i == 2 & i %in% featsToFit ) {
 
                 dat<-as.numeric(CN_features[["bp10MB"]][,2])
-                list( bp10MB = fitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+                list( bp10MB = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
                     min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
             } else if (i == 3 & i %in% featsToFit ) {
 
                 dat<-as.numeric(CN_features[["osCN"]][,2])
-                list( osCN = fitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+                list( osCN = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
                     min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
             } else if (i == 4 & i %in% featsToFit ) {
 
                 dat<-as.numeric(CN_features[["bpchrarm"]][,2])
-                list( bpchrarm = fitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+                list( bpchrarm = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
                     min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
             } else if (i == 5 & i %in% featsToFit ) {
 
                 dat<-as.numeric(CN_features[["changepoint"]][,2])
-                list( changepoint = fitComponent(dat,seed=seed,model_selection=model_selection,
+                list( changepoint = FitComponent(dat,seed=seed,model_selection=model_selection,
                     min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
             } else if (i == 6 & i %in% featsToFit) {
 
                 dat<-as.numeric(CN_features[["copynumber"]][,2])
-                list( copynumber = fitComponent(dat,seed=seed,model_selection=model_selection,
+                list( copynumber = FitComponent(dat,seed=seed,model_selection=model_selection,
                     nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000) )
 
             }
@@ -224,27 +224,27 @@ FitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min
         unlist( temp_list, recursive = FALSE )
     } else {
         dat<-as.numeric(CN_features[["segsize"]][,2])
-        segsize_mm<-fitComponent(dat,seed=seed,model_selection=model_selection,
+        segsize_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
                          min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
 
         dat<-as.numeric(CN_features[["bp10MB"]][,2])
-        bp10MB_mm<-fitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+        bp10MB_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
                                 min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
 
         dat<-as.numeric(CN_features[["osCN"]][,2])
-        osCN_mm<-fitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+        osCN_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
                               min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
 
         dat<-as.numeric(CN_features[["bpchrarm"]][,2])
-        bpchrarm_mm<-fitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+        bpchrarm_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
                                   min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
 
         dat<-as.numeric(CN_features[["changepoint"]][,2])
-        changepoint_mm<-fitComponent(dat,seed=seed,model_selection=model_selection,
+        changepoint_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
                                      min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
 
         dat<-as.numeric(CN_features[["copynumber"]][,2])
-        copynumber_mm<-fitComponent(dat,seed=seed,model_selection=model_selection,
+        copynumber_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
                                 nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000)
 
         list(segsize=segsize_mm,bp10MB=bp10MB_mm,osCN=osCN_mm,bpchrarm=bpchrarm_mm,changepoint=changepoint_mm,copynumber=copynumber_mm)
@@ -268,17 +268,17 @@ GenerateSampleByComponentMatrix<-function(CN_features, all_components=NULL, core
             doMC::registerDoMC(cores)
 
             full_mat = foreach(feat=feats, .combine=cbind) %dopar% {
-                calculateSumOfPosteriors(CN_features[[feat]],all_components[[feat]],
+                CalculateSumOfPosteriors(CN_features[[feat]],all_components[[feat]],
                     feat, rowIter = rowIter, cores = subcores)
             }
         } else {
             full_mat<-cbind(
-            calculateSumOfPosteriors(CN_features[["segsize"]],all_components[["segsize"]],"segsize"),
-            calculateSumOfPosteriors(CN_features[["bp10MB"]],all_components[["bp10MB"]],"bp10MB"),
-            calculateSumOfPosteriors(CN_features[["osCN"]],all_components[["osCN"]],"osCN"),
-            calculateSumOfPosteriors(CN_features[["changepoint"]],all_components[["changepoint"]],"changepoint"),
-            calculateSumOfPosteriors(CN_features[["copynumber"]],all_components[["copynumber"]],"copynumber"),
-            calculateSumOfPosteriors(CN_features[["bpchrarm"]],all_components[["bpchrarm"]],"bpchrarm"))
+            CalculateSumOfPosteriors(CN_features[["segsize"]],all_components[["segsize"]],"segsize"),
+            CalculateSumOfPosteriors(CN_features[["bp10MB"]],all_components[["bp10MB"]],"bp10MB"),
+            CalculateSumOfPosteriors(CN_features[["osCN"]],all_components[["osCN"]],"osCN"),
+            CalculateSumOfPosteriors(CN_features[["changepoint"]],all_components[["changepoint"]],"changepoint"),
+            CalculateSumOfPosteriors(CN_features[["copynumber"]],all_components[["copynumber"]],"copynumber"),
+            CalculateSumOfPosteriors(CN_features[["bpchrarm"]],all_components[["bpchrarm"]],"bpchrarm"))
         }
 
         rownames(full_mat)<-unique(CN_features[["segsize"]][,1])
