@@ -66,11 +66,11 @@
 #' variants <- variants %>% dplyr::rename(chromosome = chr,
 #'                                        gene_name = genecode_gene_name)
 #' variants$sample_id <- stringr::str_replace_all(variants$sample_id, "-", ".")
-#' output <- CalculateACNs(relative_cns = rcn_segs,
+#' output <- CalculateACNs(relative_segs = rcn_segs,
 #'                         rascal_sols = solutions,
 #'                         variants = variants,
 #'                         acnmethod = 'maxvaf')
-#' output <- CalculateACNs(relative_cns = rcn_segs,
+#' output <- CalculateACNs(relative_segs = rcn_segs,
 #'                         rascal_sols = solutions,
 #'                         variants = variants,
 #'                         acnmethod = c('TP53', 'KRAS', 'BRCA1',
@@ -80,7 +80,7 @@
 #'
 #' @export
 CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
-                           variants = FALSE, relative_cns = FALSE,
+                           variants = NULL, relative_cns = FALSE,
                            addplots = FALSE, acn_save_path = FALSE,
                            return_sols = FALSE) {
 
@@ -101,12 +101,12 @@ CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
                         dplyr::mutate(segmented = relative_segs$segmented)          # Create combined dataframe
   }
 
-  if (suppressWarnings({variants != FALSE})) {
-    if(class(variants)[1] == 'character') {
+  if (suppressWarnings({!is.null(variants)})) {
+    if('data.frame' %in% class(variants)) {                                     # do nothing
+    } else if (class(variants)[1] == 'character') {
       variants <- data.table::fread(file = variants, header = TRUE,
                                     sep = ",", fill = TRUE)
-    } else if ('data.frame' %in% class(variants)) {                                 # do nothing
-    } else {
+      } else {
       stop("Invalid value passed to the 'variants' parameter. \n
            Please supply either a path or dataframe.")
     }
@@ -229,7 +229,7 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants,
     j <- j+1
   }
   if (!is.logical(cns)) {
-    output <- list(segment_tables = chosenSegmentTablesList, plots)
+    output <- list(segment_tables = chosenSegmentTablesList, plots = plots)
   } else{
     output <- list(segment_tables = chosenSegmentTablesList)
   }
