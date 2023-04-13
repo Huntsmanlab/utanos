@@ -49,6 +49,7 @@
 #' - Each row of said table must correspond to a unique variant. \cr
 #' - Each variant must have an associated variant allele frequency. \cr
 #' - Each row must also be associated with a specific sample. \cr
+#' A dataframe of known ploidies per sample - Calculate ACNs at each bin given we already know the ploidy of the samples. \cr
 #' @param variants A dataframe of the variants including variant allele frequencies per gene and per sample.
 #' @param relative_cns A tsv of the relative copy-numbers. Required if 'addplots' param is set to true.
 #' @param addplots (optional) Logical. Indicates whether or not plots should be returned alongside the ACNs.
@@ -79,8 +80,8 @@
 #' ```
 #'
 #' @export
-CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
-                           variants = NULL, relative_cns = FALSE,
+CalculateACNs <- function (relative_segs, acnmethod, rascal_sols = FALSE,
+                           variants = FALSE, relative_cns = FALSE,
                            addplots = FALSE, acn_save_path = FALSE,
                            return_sols = FALSE) {
 
@@ -88,9 +89,12 @@ CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
   relative_segs <- relative_segs %>% tidyr::gather(sample, segmented,
                                                    5:dim(.)[2], factor_key=TRUE)    # Convert segs to long
   segments <- CopyNumberSegments(relative_segs)                                     # Collapse segs to continuous segments
-  rascal_sols <- read.table(file = rascal_sols,
-                            sep = ',', header = TRUE)
-  rascal_sols$sample <- stringr::str_replace_all(rascal_sols$sample, "-", ".")
+
+  if (rascal_sols != FALSE) {
+    rascal_sols <- read.table(file = rascal_sols,
+                              sep = ',', header = TRUE)
+    rascal_sols$sample <- stringr::str_replace_all(rascal_sols$sample, "-", ".")
+  }
 
   if (addplots == TRUE) {
     relative_cns <- read.table(file = relative_cns, header = TRUE, sep = '\t')
@@ -102,7 +106,7 @@ CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
   }
 
   if (suppressWarnings({!is.null(variants)})) {
-    if('data.frame' %in% class(variants)) {                                     # do nothing
+    if ('data.frame' %in% class(variants)) {                                     # do nothing
     } else if (class(variants)[1] == 'character') {
       variants <- data.table::fread(file = variants, header = TRUE,
                                     sep = ",", fill = TRUE)
@@ -124,7 +128,7 @@ CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
     variants$sample_id <- stringr::str_replace_all(variants$sample_id, "-", ".")
   }
 
-  if ((length(acnmethod) == 1) && (acnmethod == 'maxvaf')) {
+  if ((length(acnmethod) == 1) && (acnmethod == 'maxvaf')) {                    # Which abs copy-number calling method?
     variants <- variants %>% dplyr::group_by(sample_id) %>%
                                   dplyr::filter(vaf == max(vaf))
     variants <- variants[!duplicated(variants$sample_id),]
@@ -132,6 +136,19 @@ CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
       output <- GenVafAcns(segments, rascal_sols, variants, return_sols, cns = relative_cns)
     } else {
       output <- GenVafAcns(segments, rascal_sols, variants, return_sols)
+    }
+  } else if ('data.frame' %in% class(acnmethod)) {
+    if (any(!(known_ploidies$sample_id %in% unique(relative_segs$sample))) == TRUE) {
+      if (sum(!(known_ploidies$sample_id %in% unique(relative_segs$sample))) == dim(acmethod)[1]) {
+        stop("Sample IDs do not match between ploidy and segment tables.")
+      } else {
+        warning("There appear to be ploidy sample IDs for which there are no segment tables.")
+      }
+    }
+    if (addplots == TRUE) {
+      output <- GenKploidyAcns(segments, acnmethod, cns = relative_cns)
+    } else {
+      output <- GenKploidyAcns(segments, acnmethod)
     }
   } else if (length(acnmethod) > 1) {
     variants <- variants %>% dplyr::group_by(sample_id) %>%
@@ -238,6 +255,67 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants,
     colnames(sols) <- c('sample_id', 'ploidy', 'cellularity', 'vaf_optimal')
     output[['rascal_solutions']] <- as.data.frame(sols)
   }
+  return(output)
+}
+
+
+# Function that calculates absolute copy numbers using the rascal package and a DF of known ploidies.
+GenKploidyAcns <- function (segments, ploidies,
+                            return_sols = FALSE, cns = FALSE) {
+
+  chosenSegmentTablesList <- list()
+  j <- 1
+  plots <- list()
+  cellularity <- 1.0
+  ploidies$ploidy <- as.numeric(ploidies$ploidy)
+
+  for (i in unique(ploidies$sample_id)) {
+    sample_segments <- dplyr::filter(segments, sample == i)
+    ploidy <-  dplyr::filter(ploidies, sample_id == i)
+    rcn_obj <- sample_segments
+    absolute_segments <- dplyr::mutate(sample_segments,
+                                       copy_number = rascal::relative_to_absolute_copy_number(copy_number,
+                                                                                              ploidy$ploidy,
+                                                                                              cellularity))
+
+    if (!is.logical(cns)) {                                                     # If cns AND segments passed in, make plots!
+      chr_ord <- c(as.character(1:22), 'X')
+      absolute_cns <- dplyr::filter(cns, sample == i)
+      absolute_cns$copy_number <- rascal::relative_to_absolute_copy_number(absolute_cns$copy_number,
+                                                                           ploidy$ploidy,
+                                                                           cellularity)
+      absolute_cns$segmented <- rascal::relative_to_absolute_copy_number(absolute_cns$segmented,
+                                                                         ploidy$ploidy,
+                                                                         cellularity)
+      absolute_cns$chromosome <- factor(absolute_cns$chromosome, levels = chr_ord)
+      absolute_segments$chromosome <- factor(absolute_segments$chromosome, levels = chr_ord)
+      plots[[i]] <- rascal::genome_copy_number_plot(absolute_cns, absolute_segments,
+                                                    min_copy_number = 0, max_copy_number = 12,
+                                                    copy_number_breaks = 0:12,
+                                                    ylabel = "Absolute Copy Number",
+                                                    xlabel = "Chromosome") +
+        ggplot2::theme(panel.grid.major.y =
+                         ggplot2::element_line(colour = "grey60"),
+                       plot.title = ggplot2::element_text(size = 20)) +
+        ggplot2::ggtitle(paste0(i, ' - declared ploidy:',
+                                ploidy$ploidy,
+                                ' - assumed cellularity:',
+                                cellularity))
+    }
+    absolute_segments <- absolute_segments %>% dplyr::select(chromosome=chromosome,
+                                                             start=start,
+                                                             end=end,
+                                                             segVal=copy_number)
+    chosenSegmentTablesList[[i]] <- as.data.frame(absolute_segments)
+    j <- j+1
+  }
+
+  if (!is.logical(cns)) {
+    output <- list(segment_tables = chosenSegmentTablesList, plots = plots)
+  } else{
+    output <- list(segment_tables = chosenSegmentTablesList)
+  }
+
   return(output)
 }
 
