@@ -1,9 +1,17 @@
 # This script is used to combine CN profiles from a QDNAseq or CGHcall object.
 # Then convert this table into a useable/helpful output format for wetlab researchers.
 
-# Collapse down to segments
+#' Collapses down table to segmented copy numbers
+#'
+#' @description
+#'
+#' CollapseTableToSegments transforms relative copy-number calls to segment tables.
+#'
+#' @param df A dataframe. A dataframe with copy number calls (with columns 'chromosome', 'start', 'end', 'mean.cn')
+#' @returns A dataframe. A dataframe of segment summaries of various characteristics (derived from copy-number calls)
+#'
 #' @export
-collapse_table_to_segments <- function(df) {
+CollapseTableToSegments <- function(df) {
 
   stopifnot(is.data.frame(df))
   stopifnot("chromosome" %in% names(df))
@@ -34,9 +42,25 @@ collapse_table_to_segments <- function(df) {
     )
 }
 
-# Function that does the work
+#' Makes summary tables
+#'
+#' @description
+#'
+#' MakeSummaryTable takes in a Copy Number object and writes a TSV table containing all the summaries.
+#' It is the function that does the work.
+#'
+#' @param CNobj An object. A a ballgown object containing Copy Number data.
+#' @param snames A vector. A vector of sample IDs that are of interest.
+#' @param lowT A whole number. A threshold below which there is copy number loss.
+#' @param highT A whole number. A threshold above which there is copy number gain.
+#' @param pL A float. A probability threshold (between 0 and 1), to which loss frequency is compared.
+#' @param pG A float. A probability threshold (between 0 and 1), to which gain frequency is compared.
+#' @param prop A float. A proportion threshold (between 0 and 1), to which loss and gain occurences are compared (separately).
+#' @param save_path A string. A path (directory) to where segment tables should be saved. ex. '~/Documents/test_project'.
+#' @returns Nothing.
+#'
 #' @export
-make_summary_table <- function(CNobj, snames, lowT, highT, pL, pG, prop, save_path) {
+MakeSummaryTable <- function(CNobj, snames, lowT, highT, pL, pG, prop, save_path) {
 
   # Retrieve just the samples of interest
   CNobj <- CNobj[,sampleNames(CNobj) %in% snames]
@@ -83,7 +107,7 @@ make_summary_table <- function(CNobj, snames, lowT, highT, pL, pG, prop, save_pa
                       )
 
   # Collapse the data frame to genomic segments
-  df <- collapse_table_to_segments(df)
+  df <- CollapseTableToSegments(df)
   df <- df %>% transform(chromosome = as.character(chromosome))
   df$chromosome[df$chromosome == 23] <- 'X'
   df$coordinates <- paste0('chr', df$chromosome, ':', as.character(df$start), '-', as.character(df$end))

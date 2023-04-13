@@ -19,8 +19,8 @@
 # compare_bin_CNs
 # removeBlacklist
 #
-# genHumanReadableACNprofile
-# genHumanReadableRCNprofile
+# GenHumanReadableAcnProfile
+# GenHumanReadableRcnProfile
 #
 
 ###
@@ -67,11 +67,11 @@
 #' variants <- variants %>% dplyr::rename(chromosome = chr,
 #'                                        gene_name = genecode_gene_name)
 #' variants$sample_id <- stringr::str_replace_all(variants$sample_id, "-", ".")
-#' output <- CalculateACNs(relative_cns = rcn_segs,
+#' output <- CalculateACNs(relative_segs = rcn_segs,
 #'                         rascal_sols = solutions,
 #'                         variants = variants,
 #'                         acnmethod = 'maxvaf')
-#' output <- CalculateACNs(relative_cns = rcn_segs,
+#' output <- CalculateACNs(relative_segs = rcn_segs,
 #'                         rascal_sols = solutions,
 #'                         variants = variants,
 #'                         acnmethod = c('TP53', 'KRAS', 'BRCA1',
@@ -105,12 +105,12 @@ CalculateACNs <- function (relative_segs, acnmethod, rascal_sols = FALSE,
                         dplyr::mutate(segmented = relative_segs$segmented)          # Create combined dataframe
   }
 
-  if (suppressWarnings({variants != FALSE})) {
-    if(class(variants)[1] == 'character') {
+  if (suppressWarnings({!is.null(variants)})) {
+    if ('data.frame' %in% class(variants)) {                                     # do nothing
+    } else if (class(variants)[1] == 'character') {
       variants <- data.table::fread(file = variants, header = TRUE,
                                     sep = ",", fill = TRUE)
-    } else if ('data.frame' %in% class(variants)) {                                 # do nothing
-    } else {
+      } else {
       stop("Invalid value passed to the 'variants' parameter. \n
            Please supply either a path or dataframe.")
     }
@@ -438,9 +438,20 @@ AnnotationCr <- function(queryset, targetset) {
   return(queryset[queryset_matches,])
 }
 
-# A true 'utils' function
-# Transforms segment tables into per-bin copy-number tables
-# It is an expansion of the calls into per-bin style, where the bin size is user defined.
+#' Transforms segment tables into per-bin copy-number tables.
+#'
+#' @description
+#'
+#' SegmentsToCopyNumber() transforms segment tables into per-bin copy-number tables.
+#' It is an expansion of the calls into per-bin style, where the bin size is user defined.
+#' It is the inverse of the CopyNumberSegments function.
+#'
+#' @param segs A list of dataframes, where each dataframe is a dataframe of the segmented copy-numbers.
+#' @param bin_size A natural number. The binsize used in the copy number object, ex. 30 -> 30kb, 100 -> 100kb.
+#' @param genome A string. Refers to the reference genome, common reference genomes are: 'hg19', 'mm10', or 'hg38'.
+#' @param Xincluded A boolean. Sex chromosomes as a Boolean (e.g. FALSE if not included).
+#' @returns A dataframe of per-bin copy numbers (bounded for each sample).
+#'
 #' @export
 SegmentsToCopyNumber <- function(segs, bin_size,
                                  genome = 'hg19', Xincluded = FALSE) {
@@ -624,8 +635,9 @@ RemoveBlacklist <- function(data) {
 #' @param ref_genome One of the common reference genomes: ex. 'hg19', 'mm10', or 'hg38'
 #' @param save_dir (optional) The directory where the tables should be saved. ex. '~/Documents/test_project'
 #' @returns Segment tables in long format (by sample id) ready to be written out to a table file (ex. tsv, csv).
+#'
 #' @export
-GenHumanReadableRCNprofile <- function(object, binsize,
+GenHumanReadableRcnProfile <- function(object, binsize,
                                        ref_genome, save_dir = FALSE) {
 
   # Create collapsed segments table
@@ -700,10 +712,16 @@ GenHumanReadableRCNprofile <- function(object, binsize,
 }
 
 
-### Create Cytoband .tsv tables from absolute copy-number calls
-# DESCRIPTION
-# Parameters:
-# data -
+#' Generate Human Readable Absolute Copy-Number Profiles
+#'
+#' @description
+#'
+#' This function takes as input a QDNAseq or CGHcall copy-number object and gives back Cytoband .tsv tables from absolute copy-number calls (in a human readable format).
+#'
+#' @param object S4 copy-number object - QDNAseq or CGHcall object
+#' @param save_path A string. A path (directory) to where segment tables should be saved. ex. '~/Documents/test_project'
+#' @returns A table. Collapsed Segment tables in long format (by sample id) ready to be written out to a table file (ex. tsv, csv).
+#'
 #' @export
 GenHumanReadableAcnProfile <- function(object, save_path) {
 
@@ -759,10 +777,16 @@ GenHumanReadableAcnProfile <- function(object, save_path) {
   return(collapsed_segs)
 }
 
-### Collapse relative copy-number calls to segment tables
-# DESCRIPTION
-# Parameters:
-# data -
+#' Collapses relative copy-number calls to segment tables
+#'
+#' @description
+#'
+#' CopyNumberSegments() transforms relative copy-number calls to segment tables.
+#' Inverse of the SegmentsToCopyNumber function.
+#'
+#' @param copy_number A dataframe. A dataframe with copy number calls (with columns 'sample', 'chromosome', 'start', 'end', 'segmented')
+#' @returns A dataframe. A dataframe of summaries of various characteristics (derived from copy-number calls)
+#'
 #' @export
 CopyNumberSegments <- function(copy_number) {
 

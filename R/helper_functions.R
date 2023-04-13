@@ -13,7 +13,7 @@ fitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",min_prio
             fit<-flexmix::stepFlexmix(dat ~ 1,model = flexmix::FLXMCnorm1(),k=min_comp:max_comp,nrep=nrep,control=control)
             fit<-flexmix::getModel(fit,which=model_selection)
         }
-        
+
     }else if(dist=="pois")
     {
         if(min_comp==max_comp)
@@ -29,7 +29,7 @@ fitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",min_prio
 
 calculateSumOfPosteriors<-function(CN_feature,components,name, rowIter = 1000, cores = 1)
 {
-    
+
     if(cores > 1){
         require(foreach)
         require(doMC)
@@ -49,7 +49,7 @@ calculateSumOfPosteriors<-function(CN_feature,components,name, rowIter = 1000, c
     }
     mat<-cbind(CN_feature,curr_posterior)
     posterior_sum<-c()
-    
+
     ## foreach and parallelising doesn't make the following code faster.
     for(i in unique(mat$ID))
     {
@@ -191,7 +191,7 @@ getRelativeOscilation<-function(abs_profiles,chrlen)
       # Rather than being rounded to integers...
       # in the relative case I round to the nearest 0.1 to determine an oscillation
       # Change to currseg$segVal from currseg in order to work with datatables (but that usually screws up more stuff)
-      currseg<-round(as.numeric(currseg),1) 
+      currseg<-round(as.numeric(currseg),1)
       if(length(currseg)>3)
       {
         prevval<-currseg[1]
@@ -254,7 +254,7 @@ getCentromereDistCounts<-function(abs_profiles,centromeres,chrlen)
                 ndist[ends<=centstart,2]<-(centstart-ends[ends<=centstart])/(centstart-segstart)*-1
                 ndist[ends>=centend,2]<-(ends[ends>=centend]-centend)/(segend-centend)
                 ndist<-apply(ndist,1,min)
-                
+
                 all_dists<-rbind(all_dists,sum(ndist>0))
                 all_dists<-rbind(all_dists,sum(ndist<=0))
             }
