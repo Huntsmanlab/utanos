@@ -80,7 +80,7 @@
 #'
 #' @export
 CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
-                           variants = FALSE, relative_cns = FALSE,
+                           variants = NULL, relative_cns = FALSE,
                            addplots = FALSE, acn_save_path = FALSE,
                            return_sols = FALSE) {
 
@@ -98,35 +98,35 @@ CalculateACNs <- function (relative_segs, rascal_sols, acnmethod,
                                                    copy_number,
                                                    5:dim(.)[2], factor_key=TRUE)    # Convert cns to long
     relative_cns <- relative_cns %>%
-                        dplyr::mutate(segmented = relative_segs$segmented)          # Create combined dataframe
+      dplyr::mutate(segmented = relative_segs$segmented)          # Create combined dataframe
   }
 
-  if (suppressWarnings({variants != FALSE})) {
-    if(class(variants)[1] == 'character') {
+  if (suppressWarnings({!is.null(variants)})) {
+    if('data.frame' %in% class(variants)) {                                     # do nothing
+    } else if (class(variants)[1] == 'character') {
       variants <- data.table::fread(file = variants, header = TRUE,
                                     sep = ",", fill = TRUE)
-    } else if ('data.frame' %in% class(variants)) {                                 # do nothing
     } else {
       stop("Invalid value passed to the 'variants' parameter. \n
            Please supply either a path or dataframe.")
     }
 
     variants <- variants %>%
-                  dplyr::select(chromosome, start, end, sample_id, gene_name,
-                                starts_with('ref.'), starts_with('alt.'),
-                                starts_with('vaf')) %>%
-                  dplyr::mutate(vaf = dplyr::select(., starts_with('vaf')) %>%
-                                  rowSums(na.rm = TRUE)) %>%
-                  dplyr::group_by(sample_id, gene_name) %>%
-                  dplyr::summarise(sample_id = dplyr::first(sample_id),
-                                   gene_name = dplyr::first(gene_name),
-                                   vaf = max(vaf))
+      dplyr::select(chromosome, start, end, sample_id, gene_name,
+                    starts_with('ref.'), starts_with('alt.'),
+                    starts_with('vaf')) %>%
+      dplyr::mutate(vaf = dplyr::select(., starts_with('vaf')) %>%
+                      rowSums(na.rm = TRUE)) %>%
+      dplyr::group_by(sample_id, gene_name) %>%
+      dplyr::summarise(sample_id = dplyr::first(sample_id),
+                       gene_name = dplyr::first(gene_name),
+                       vaf = max(vaf))
     variants$sample_id <- stringr::str_replace_all(variants$sample_id, "-", ".")
   }
 
   if ((length(acnmethod) == 1) && (acnmethod == 'maxvaf')) {
     variants <- variants %>% dplyr::group_by(sample_id) %>%
-                                  dplyr::filter(vaf == max(vaf))
+      dplyr::filter(vaf == max(vaf))
     variants <- variants[!duplicated(variants$sample_id),]
     if (addplots == TRUE) {
       output <- GenVafAcns(segments, rascal_sols, variants, return_sols, cns = relative_cns)
