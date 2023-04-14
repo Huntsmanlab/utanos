@@ -6,8 +6,8 @@
 \usage{
 CalculateACNs(
   relative_segs,
-  rascal_sols,
   acnmethod,
+  rascal_sols = FALSE,
   variants = FALSE,
   relative_cns = FALSE,
   addplots = FALSE,
@@ -17,8 +17,6 @@ CalculateACNs(
 }
 \arguments{
 \item{relative_segs}{A tsv of the relative segmented copy-numbers.}
-
-\item{rascal_sols}{A tsv of the calculated rascal solutions.}
 
 \item{acnmethod}{The method by which to calculate ACNs. Can be one of: \cr
 "maxvaf" - Calculate ACNs assuming the maximum discovered VAF for the sample is an appropriate representation for the tumour fraction. \cr
@@ -32,7 +30,10 @@ If using variant allele frequencies from targeted panel sequencing or some other
 \item Each row of said table must correspond to a unique variant. \cr
 \item Each variant must have an associated variant allele frequency. \cr
 \item Each row must also be associated with a specific sample. \cr
+A dataframe of known ploidies per sample - Calculate ACNs at each bin given we already know the ploidy of the samples. \cr
 }}
+
+\item{rascal_sols}{A tsv of the calculated rascal solutions.}
 
 \item{variants}{A dataframe of the variants including variant allele frequencies per gene and per sample.}
 
@@ -65,11 +66,11 @@ variants <- data.table::fread(file = variants, sep = ',')
 variants <- variants \%>\% dplyr::rename(chromosome = chr,
                                        gene_name = genecode_gene_name)
 variants$sample_id <- stringr::str_replace_all(variants$sample_id, "-", ".")
-output <- CalculateACNs(relative_cns = rcn_segs,
+output <- CalculateACNs(relative_segs = rcn_segs,
                         rascal_sols = solutions,
                         variants = variants,
                         acnmethod = 'maxvaf')
-output <- CalculateACNs(relative_cns = rcn_segs,
+output <- CalculateACNs(relative_segs = rcn_segs,
                         rascal_sols = solutions,
                         variants = variants,
                         acnmethod = c('TP53', 'KRAS', 'BRCA1',

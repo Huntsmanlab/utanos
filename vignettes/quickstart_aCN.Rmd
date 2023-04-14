@@ -52,7 +52,7 @@ The output format can be chosen by the user. In this case, running `rascal` outp
 
 The CalculateACNs function is extremely important, as it calculates the absolute copy numbers (ACNs) from the relative copy number profiles of one or more samples. In order to understand what this function does, it is important to begin by clarifying the inputs that the function expects.
 
-The first argument expected by CalculateACNs, relative_segs is a tab-separated values (TSV) file containing the relative segmented copy-numbers.
+The first argument expected by CalculateACNs, relative_segs, is a tab-separated values (TSV) file containing the relative segmented copy-numbers.
 
 ```{r, echo = FALSE}
 rcn_segs <- "~/projects/vignettes/30kb_rCN_segs_comCNVfilt.tsv"
@@ -63,7 +63,12 @@ head(rcn_segs[ ,1:8])
 
 The table above shows the feature (in the following format, chromosome:start-end), chromosome, start and end, followed by individual sample relative segmented copy-numbers (wide format data).
 
-The second argument, rascal_sols, is a TSV file of the calculated rascal solutions.
+The second argument, acnmethod, is a string which represents the method by which ACNs are being calculated. It can be one of: 
+- "maxvaf", 
+- a character vector of the genes from which to pull VAFs, where genes are assumed to be in order of decreasing precedence, ex. c('TP53', 'KRAS', 'PTEN'),
+- "mad"
+
+The third argument, rascal_sols, is a TSV file of the calculated rascal solutions.
 
 ```{r}
 solutions <- "~/projects/vignettes/30kb_comCNVfilt_rascal_solutions.csv"
@@ -73,11 +78,6 @@ head(solutions)
 ```
 
 The table above has the ploidy, cellularity and distance columns. The distance is calculated using a rascal helper function (based on mean absolute difference (MAD) or root mean square different (RMSD)).
-
-The third argument, acnmethod, is a string which represents the method by which ACNs are being calculated. It can be one of: 
-- "maxvaf", 
-- a character vector of the genes from which to pull VAFs, where genes are assumed to be in order of decreasing precedence, ex. c('TP53', 'KRAS', 'PTEN'),
-- "mad"
 
 The fourth argument for the CalculateACNs, variants, is the variants table, which is a comma-separated values (CSV) file containing long-format data. The data appear as follows:
 
@@ -112,7 +112,7 @@ head(rel_cns[ ,1:8])
 
 The table above shows the feature (in the following format, chromosome:start-end), chromosome, start and end, followed by individual sample relative copy-numbers (wide format data).
 
-Please note, the first argument (rcn_segs) and fifth argument (rel_cns) seem very similar in terms of what the tables look like, but are different; rcn_segs is a TSV containing the relative segmented copy-numbers, whereas rel_cns is a TSV containing the relative copy-numbers.
+Please note, the first argument (relative_segs) and fifth argument (relative_cns) seem very similar in terms of what the tables look like, but are quite different; relative_segs is a TSV containing the relative segmented copy-numbers, whereas relative_cns is a TSV containing the relative copy-numbers.
 
 In addition to the five parameters, there are three optional parameters;
 
