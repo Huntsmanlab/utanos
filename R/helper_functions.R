@@ -1,4 +1,4 @@
-fitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",min_prior=0.001,niter=1000,nrep=1,min_comp=2,max_comp=10)
+FitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",min_prior=0.001,niter=1000,nrep=1,min_comp=2,max_comp=10)
 {
     control<-new("FLXcontrol")
     control@minprior<-min_prior
@@ -13,7 +13,7 @@ fitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",min_prio
             fit<-flexmix::stepFlexmix(dat ~ 1,model = flexmix::FLXMCnorm1(),k=min_comp:max_comp,nrep=nrep,control=control)
             fit<-flexmix::getModel(fit,which=model_selection)
         }
-        
+
     }else if(dist=="pois")
     {
         if(min_comp==max_comp)
@@ -27,9 +27,9 @@ fitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",min_prio
     fit
 }
 
-calculateSumOfPosteriors<-function(CN_feature,components,name, rowIter = 1000, cores = 1)
+CalculateSumOfPosteriors<-function(CN_feature,components,name, rowIter = 1000, cores = 1)
 {
-    
+
     if(cores > 1){
         require(foreach)
         require(doMC)
@@ -49,7 +49,7 @@ calculateSumOfPosteriors<-function(CN_feature,components,name, rowIter = 1000, c
     }
     mat<-cbind(CN_feature,curr_posterior)
     posterior_sum<-c()
-    
+
     ## foreach and parallelising doesn't make the following code faster.
     for(i in unique(mat$ID))
     {
@@ -69,15 +69,15 @@ calculateSumOfPosteriors<-function(CN_feature,components,name, rowIter = 1000, c
     posterior_sum
 }
 
-getSegsize<-function(abs_profiles)
+GetSegSize<-function(abs_profiles)
 {
     out<-c()
-    samps<-getSampNames(abs_profiles)
+    samps<-GetSampNames(abs_profiles)
     for(i in samps)
     {
         if(class(abs_profiles)=="QDNAseqCopyNumbers")
         {
-            segTab<-getSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
+            segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
         }
         else
         {
@@ -93,15 +93,15 @@ getSegsize<-function(abs_profiles)
     data.frame(out,stringsAsFactors = F)
 }
 
-getBPnum<-function(abs_profiles,chrlen)
+GetBPNum<-function(abs_profiles,chrlen)
 {
     out<-c()
-    samps<-getSampNames(abs_profiles)
+    samps<-GetSampNames(abs_profiles)
     for(i in samps)
     {
         if(class(abs_profiles)=="QDNAseqCopyNumbers")
         {
-            segTab<-getSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
+            segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
         }else
         {
             segTab<-abs_profiles[[i]]
@@ -122,15 +122,15 @@ getBPnum<-function(abs_profiles,chrlen)
     data.frame(out,stringsAsFactors = F)
 }
 
-getOscilation<-function(abs_profiles,chrlen)
+GetOscilation<-function(abs_profiles,chrlen)
 {
     out<-c()
-    samps<-getSampNames(abs_profiles)
+    samps<-GetSampNames(abs_profiles)
     for(i in samps)
     {
         if(class(abs_profiles)=="QDNAseqCopyNumbers")
         {
-            segTab<-getSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
+            segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
         }else
         {
             segTab<-abs_profiles[[i]]
@@ -169,15 +169,15 @@ getOscilation<-function(abs_profiles,chrlen)
     data.frame(out,stringsAsFactors = F)
 }
 
-getRelativeOscilation<-function(abs_profiles,chrlen)
+GetRelativeOscilation<-function(abs_profiles,chrlen)
 {
   out<-c()
-  samps<-getSampNames(abs_profiles)
+  samps<-GetSampNames(abs_profiles)
   for(i in samps)
   {
     if(class(abs_profiles)=="QDNAseqCopyNumbers")
     {
-      segTab<-getSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
+      segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
     }else
     {
       segTab<-abs_profiles[[i]]
@@ -191,7 +191,7 @@ getRelativeOscilation<-function(abs_profiles,chrlen)
       # Rather than being rounded to integers...
       # in the relative case I round to the nearest 0.1 to determine an oscillation
       # Change to currseg$segVal from currseg in order to work with datatables (but that usually screws up more stuff)
-      currseg<-round(as.numeric(currseg),1) 
+      currseg<-round(as.numeric(currseg),1)
       if(length(currseg)>3)
       {
         prevval<-currseg[1]
@@ -220,15 +220,15 @@ getRelativeOscilation<-function(abs_profiles,chrlen)
   data.frame(out,stringsAsFactors = F)
 }
 
-getCentromereDistCounts<-function(abs_profiles,centromeres,chrlen)
+GetCentromereDistCounts<-function(abs_profiles,centromeres,chrlen)
 {
     out<-c()
-    samps<-getSampNames(abs_profiles)
+    samps<-GetSampNames(abs_profiles)
     for(i in samps)
     {
         if(class(abs_profiles)=="QDNAseqCopyNumbers")
         {
-            segTab<-getSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
+            segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
         }else
         {
             segTab<-abs_profiles[[i]]
@@ -254,7 +254,7 @@ getCentromereDistCounts<-function(abs_profiles,centromeres,chrlen)
                 ndist[ends<=centstart,2]<-(centstart-ends[ends<=centstart])/(centstart-segstart)*-1
                 ndist[ends>=centend,2]<-(ends[ends>=centend]-centend)/(segend-centend)
                 ndist<-apply(ndist,1,min)
-                
+
                 all_dists<-rbind(all_dists,sum(ndist>0))
                 all_dists<-rbind(all_dists,sum(ndist<=0))
             }
@@ -269,15 +269,15 @@ getCentromereDistCounts<-function(abs_profiles,centromeres,chrlen)
 }
 
 
-getChangepointCN<-function(abs_profiles)
+GetChangePointCN<-function(abs_profiles)
 {
     out<-c()
-    samps<-getSampNames(abs_profiles)
+    samps<-GetSampNames(abs_profiles)
     for(i in samps)
     {
         if(class(abs_profiles)=="QDNAseqCopyNumbers")
         {
-            segTab<-getSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
+            segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
         }
         else
         {
@@ -303,15 +303,15 @@ getChangepointCN<-function(abs_profiles)
 }
 
 
-getCN<-function(abs_profiles)
+GetCN<-function(abs_profiles)
 {
     out<-c()
-    samps<-getSampNames(abs_profiles)
+    samps<-GetSampNames(abs_profiles)
     for(i in samps)
     {
         if(class(abs_profiles)=="QDNAseqCopyNumbers")
         {
-            segTab<-getSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
+            segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
         }
         else
         {
@@ -326,7 +326,7 @@ getCN<-function(abs_profiles)
     data.frame(out,stringsAsFactors = F)
 }
 
-getSampNames<-function(abs_profiles)
+GetSampNames<-function(abs_profiles)
 {
     if(class(abs_profiles)=="QDNAseqCopyNumbers")
     {
@@ -339,7 +339,7 @@ getSampNames<-function(abs_profiles)
     samps
 }
 
-getSegTable<-function(x)
+GetSegTable<-function(x)
 {
     dat<-x
     sn<-Biobase::assayDataElement(dat,"segmented")
@@ -369,15 +369,15 @@ getSegTable<-function(x)
 }
 
 
-getPloidy<-function(abs_profiles)
+GetPloidy<-function(abs_profiles)
 {
   out<-c()
-  samps<-getSampNames(abs_profiles)
+  samps<-GetSampNames(abs_profiles)
   for(i in samps)
   {
     if(class(abs_profiles)=="QDNAseqCopyNumbers")
     {
-      segTab<-getSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
+      segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
     }
     else
     {
@@ -392,11 +392,11 @@ getPloidy<-function(abs_profiles)
 }
 
 
-normaliseMatrix<-function(signature_by_sample,sig_thresh=0.01)
+NormaliseMatrix<-function(signature_by_sample,sig_thresh=0.01)
 {
     norm_const<-colSums(signature_by_sample)
     sample_by_signature<-apply(signature_by_sample,1,function(x){x/norm_const})
-    sample_by_signature<-apply(sample_by_signature,1,lower_norm,sig_thresh)
+    sample_by_signature<-apply(sample_by_signature,1,LowerNorm,sig_thresh)
     signature_by_sample<-t(sample_by_signature)
     norm_const<-apply(signature_by_sample,1,sum)
     sample_by_signature<-apply(signature_by_sample,2,function(x){x/norm_const})
@@ -404,7 +404,7 @@ normaliseMatrix<-function(signature_by_sample,sig_thresh=0.01)
     signature_by_sample
 }
 
-lower_norm<-function(x,sig_thresh=0.01)
+LowerNorm<-function(x,sig_thresh=0.01)
 {
     new_x<-x
     for(i in 1:length(x))
@@ -416,5 +416,3 @@ lower_norm<-function(x,sig_thresh=0.01)
     }
     new_x
 }
-
-
