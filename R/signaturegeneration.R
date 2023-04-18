@@ -20,19 +20,20 @@
 #' @param copy_numbers_input A list of dataframes. Each dataframe should be the segmented copy-numbers of a sample.
 #' @param component_models String. The mixture models to use in determining the components present in this dataset. \cr
 #' Options: \cr
-#' 'britroc_absCNs' - Components determined by modelling the Britroc Ovarian sWGS samples. (Macintyre 2018) \cr
+#' '30kb_ovarian/component_models_britroc_aCNs.rds' - Components determined by modelling the Britroc Ovarian sWGS samples. (Macintyre 2018) \cr
 #' 'vancouver_HQendo_VAFrascal' - Components determined by modelling high-quality p53abn sWGS endometrial samples. (2022) \cr
-#' @param signatures String. The method by which to calculate ACNs. Can be one of: \cr
+#' @param signatures String. The signatures themselves. Please name those for which to calculate exposures. \cr
 #' Options: \cr
-#' 'absbritroc' - The signatures created using the Britroc Ovarian sWGS samples. (Macintyre 2018) \cr
+#' '30kb_ovarian/component_by_signature_britroc_aCNs.rds' - The signatures created using the Britroc Ovarian sWGS samples. (Macintyre 2018) \cr
 #' 'VAFrascalHQendoVan6sigs' - The signatures created using the high-quality p53abn sWGS endometrial samples. \cr
+#' @param data_path String. The path where to find signatures objects and component models.
 #' @param plot_savepath (optional) String. The path where to save a sample-by-component heatmap. Please provide a directory.
 #' @param sigs_savepath (optional) String. The path where to save a csv of the calculated signature exposures. Please provide a directory.
 #' @param relativeCN_data (optional) Logical. If using relative Copy-Number data as input, set to true. Otherwise, ignore.
 #' @returns A dataframe of the exposures for each sample to each signature.
 #' @details
 #' ```
-#' todo
+#' todo - make examples
 
 #' ```
 #'
@@ -40,12 +41,14 @@
 CallSignatures <- function (copy_numbers_input,
                             component_models = NULL,
                             signatures = NULL,
+                            data_path = NULL,
                             plot_savepath = NULL,
                             sigs_savepath = NULL,
                             relativeCN_data = NULL) {
 
   stopifnot(!is.null(component_models))                                         # We want the user to explicitly declare the components they intend to use
   stopifnot(!is.null(signatures))                                               # We want the user to explicitly declare the signatures they intend to use
+  stopifnot(!is.null(data_path))                                                # We want the user to explicitly declare the signatures they intend to use
 
   dir.create(path = sigs_savepath,
              recursive = TRUE, showWarnings = FALSE)
@@ -58,7 +61,9 @@ CallSignatures <- function (copy_numbers_input,
     CN_features <- ExtractCopynumberFeatures(copy_numbers_input)
   }
 
+  component_models <- paste0(data_path, '/', component_models)
   sample_by_component <- GenerateSampleByComponentMatrix(CN_features, component_models)
+  signatures <- paste0(data_path, '/', signatures)
   sigex <- QuantifySignatures(sample_by_component, signatures)
   sigex <- as.data.frame(sigex)
 
