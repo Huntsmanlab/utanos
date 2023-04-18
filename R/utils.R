@@ -823,7 +823,6 @@ CopyNumberSegments <- function(copy_number) {
     )
 }
 
-
 BestRelativeProfile <- function (selection, robjects) {
 
   if (length(robjects) < 2) {
