@@ -1,0 +1,49 @@
+---
+title: "Create New Copy-Number Signatures"
+output: rmarkdown::github_document
+vignette: >
+  %\VignetteIndexEntry{create-new-cn-signatures}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+In order to generate new copy-number signatures, a set of samples are needed for which you have segmented copy-number profiles.
+These profiles should be formatted as a list of named dataframes. One for each sample.
+
+
+```{r setup, eval=FALSE}
+library(utanos)
+library(QDNAseq)
+library(data.table)
+library(dplyr)
+
+# Reading in test data
+segmented_aCNs <- readRDS("~/projects/cn-signatures-project/segmented_aCNs.rds")
+# QDNAseq object
+dplyr::glimpse(head(segmented_aCNs, 3))
+
+List of 3
+ $ CC.CHM.1341:'data.frame':	210 obs. of  4 variables:
+  ..$ chromosome: chr [1:210] "1" "1" "1" "1" ...
+  ..$ start     : int [1:210] 2850001 32100001 44670001 116790001 117960001 118740001 119010001 145530001 171090001 171660001 ...
+  ..$ end       : int [1:210] 32100000 44490000 116790000 117960000 118740000 119010000 120270000 171090000 171660000 172530000 ...
+  ..$ segVal    : num [1:210] 1.12 4.68 1.41 5.12 4.15 ...
+ $ CC.CHM.1347:'data.frame':	683 obs. of  4 variables:
+  ..$ chromosome: chr [1:683] "1" "1" "1" "1" ...
+  ..$ start     : int [1:683] 2850001 3450001 4020001 5970001 15630001 15960001 18030001 19200001 22020001 23340001 ...
+  ..$ end       : int [1:683] 3120000 3810000 5970000 15630000 15960000 18030000 19200000 21840000 23340000 23910000 ...
+  ..$ segVal    : num [1:683] 3.01 5.19 3.27 5.48 1.39 ...
+ $ CC.CHM.1355:'data.frame':	193 obs. of  4 variables:
+  ..$ chromosome: chr [1:193] "1" "1" "1" "10" ...
+  ..$ start     : int [1:193] 2850001 145530001 201600001 150001 30090001 31500001 33690001 34230001 42960001 106230001 ...
+  ..$ end       : int [1:193] 120270000 201600000 249210000 30090000 31500000 33690000 34230000 38430000 106230000 111540000 ...
+  ..$ segVal    : num [1:193] 1.94 2.01 3.04 1.98 3.04 ...
+
+```
