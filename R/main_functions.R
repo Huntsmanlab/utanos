@@ -28,7 +28,7 @@ LocationOfThisScript = function() # Function LocationOfThisScript returns the lo
 QuantifySignatures<-function(sample_by_component, component_by_signature=NULL)
 {
     if (file.exists(component_by_signature)) {
-        component_by_signature <- basis(readRDS(file = component_by_signature))
+        component_by_signature <- NMF::basis(readRDS(file = component_by_signature))
     } else {
       stop("Unable to resolve path in component_by_signature variable to a file.")
     }
@@ -76,7 +76,6 @@ ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data 
     if (genome == 'hg19') {
       chrlen <- as.data.frame(hg19.chrom.sizes[1:24,])
       centromeres <- gaps.hg19[gaps.hg19[,8] == "centromere",]
-      centromeres<-gaps[gaps[,8]=="centromere",]
     } else if (genome == 'hg38') {
       chrlen <- as.data.frame(hg38.chrom.sizes[1:24,])
       centromeres <- centromeres.hg38
@@ -254,35 +253,32 @@ FitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min
 #' @export
 GenerateSampleByComponentMatrix<-function(CN_features, all_components=NULL, cores = 1, rowIter = 1000, subcores = 2)
 {
-    if (is.null(all_components)) {
-        stop("Please define the mixture modelling on which components you would like to use. Ex. 'britroc', 'vancouver', or 'vancouver_newCN'.")
+    if ((class(all_components) == 'character') && (file.exists(all_components))) {
+        all_components<-readRDS(file = all_components)
     } else {
-        if ((class(all_components) == 'character') && (file.exists(component_by_signature))) {
-            all_components<-readRDS(file = all_components)
-        }
-
-        if(cores > 1){
-            require(foreach)
-
-            feats = c( "segsize", "bp10MB", "osCN", "changepoint", "copynumber", "bpchrarm" )
-            doMC::registerDoMC(cores)
-
-            full_mat = foreach(feat=feats, .combine=cbind) %dopar% {
-                CalculateSumOfPosteriors(CN_features[[feat]],all_components[[feat]],
-                    feat, rowIter = rowIter, cores = subcores)
-            }
-        } else {
-            full_mat<-cbind(
-            CalculateSumOfPosteriors(CN_features[["segsize"]],all_components[["segsize"]],"segsize"),
-            CalculateSumOfPosteriors(CN_features[["bp10MB"]],all_components[["bp10MB"]],"bp10MB"),
-            CalculateSumOfPosteriors(CN_features[["osCN"]],all_components[["osCN"]],"osCN"),
-            CalculateSumOfPosteriors(CN_features[["changepoint"]],all_components[["changepoint"]],"changepoint"),
-            CalculateSumOfPosteriors(CN_features[["copynumber"]],all_components[["copynumber"]],"copynumber"),
-            CalculateSumOfPosteriors(CN_features[["bpchrarm"]],all_components[["bpchrarm"]],"bpchrarm"))
-        }
-
-        rownames(full_mat)<-unique(CN_features[["segsize"]][,1])
-        full_mat[is.na(full_mat)]<-0
-        full_mat
+      stop(paste0('Component models path not valid. Please fix this path: ', all_components))
     }
+    if(cores > 1){
+        require(foreach)
+
+        feats = c( "segsize", "bp10MB", "osCN", "changepoint", "copynumber", "bpchrarm" )
+        doMC::registerDoMC(cores)
+
+        full_mat = foreach(feat=feats, .combine=cbind) %dopar% {
+            CalculateSumOfPosteriors(CN_features[[feat]],all_components[[feat]],
+                feat, rowIter = rowIter, cores = subcores)
+        }
+    } else {
+        full_mat<-cbind(
+        CalculateSumOfPosteriors(CN_features[["segsize"]],all_components[["segsize"]],"segsize"),
+        CalculateSumOfPosteriors(CN_features[["bp10MB"]],all_components[["bp10MB"]],"bp10MB"),
+        CalculateSumOfPosteriors(CN_features[["osCN"]],all_components[["osCN"]],"osCN"),
+        CalculateSumOfPosteriors(CN_features[["changepoint"]],all_components[["changepoint"]],"changepoint"),
+        CalculateSumOfPosteriors(CN_features[["copynumber"]],all_components[["copynumber"]],"copynumber"),
+        CalculateSumOfPosteriors(CN_features[["bpchrarm"]],all_components[["bpchrarm"]],"bpchrarm"))
+    }
+
+    rownames(full_mat)<-unique(CN_features[["segsize"]][,1])
+    full_mat[is.na(full_mat)]<-0
+    full_mat
 }
