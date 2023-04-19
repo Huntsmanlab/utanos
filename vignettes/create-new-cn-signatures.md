@@ -8,6 +8,8 @@ generate new copy-number signatures, a set of samples are needed for
 which you have segmented copy-number profiles. These profiles should be
 formatted as a list of named dataframes. One for each sample.
 
+### I - The input data…
+
 ``` r
 library(utanos)
 library(QDNAseq)
@@ -36,6 +38,8 @@ List of 3
   ..$ end       : int [1:193] 120270000 201600000 249210000 30090000 31500000 33690000 34230000 38430000 106230000 111540000 ...
   ..$ segVal    : num [1:193] 1.94 2.01 3.04 1.98 3.04 ...
 ```
+
+### II - Do some modelling…
 
 To begin…  
 1. First, extract CN-features using the ExtractCopynumberFeatures()
@@ -77,10 +81,48 @@ randomly permuted matrices
 Here is an example of said figure.  
 <img src="../images/choose_optimal_Nsignatures_metrics.png" width="943" />
 
+### III - Stop and evaluate
+
 At this point it is a good idea to stop and reflect about the quality of
 the data being used to create your new signatures. If the metrics
 provided above for the input matrices do not appear to be outperforming
 the randomized matrices, you may wish to set more restrictive demands on
 what samples can be used as input data. It also could be helpful to
 examine the sample-by-component matrix as a heatmap to see if there are
-major contributions from many different samples to each component.
+major contributions from many different samples to each component.  
+If a clear Factorization rank (number of signatures) emerges, continue
+on…
+
+### IV - Create the signatures
+
+``` r
+signatures <- GenerateSignatures(sample_by_component,<num signatures>)
+saveRDS(signatures, file = paste0("path_to_signatures/signatures_object.rds"))
+```
+
+Create the signatures using the GenerateSignatures() function, and then
+save them. Evaluate you handiwork by visualizing both the:  
+-\> component-by-signature matrix as a heatmap  
+-\> sample-by-signature matrix as a heatmap (contribution of each sample
+to each signature)
+
+``` r
+# Using the aheatmap functions built into NMF package...
+library(NMF)
+
+pdf(file = '~/projects/cn-signatures-project/plots/sample-by-signature_heatmap.pdf', 7, 7, onefile = FALSE)
+coefmap(signatures, Colv="consensus", tracks=c("basis:"), main="Sample x Signature matrix")
+dev.off()
+
+pdf(file = file = '~/projects/cn-signatures-project/plots/component-by-signature_heatmap.pdf', 7, 7, onefile = FALSE)
+basismap(signatures, Rowv = NA, main = "Signature x Component matrix")
+dev.off()
+```
+
+### V - Example figures
+
+Signature by Component matrix  
+<img src="../images/signature-by-component_heatmap.png" width="672" />
+
+Sample by Signature matrix  
+<img src="../images/sample-by-signature_heatmap.png" width="671" />
