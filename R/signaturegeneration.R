@@ -30,6 +30,7 @@
 #' @param plot_savepath (optional) String. The path where to save a sample-by-component heatmap. Please provide a directory.
 #' @param sigs_savepath (optional) String. The path where to save a csv of the calculated signature exposures. Please provide a directory.
 #' @param relativeCN_data (optional) Logical. If using relative Copy-Number data as input, set to true. Otherwise, ignore.
+#' @param refgenome (optional) String. The reference genome used. (ex. 'hg19', or 'hg38')
 #' @returns A dataframe of the exposures for each sample to each signature.
 #' @details
 #' ```
@@ -38,36 +39,36 @@
 #' ```
 #'
 #' @export
-CallSignatures <- function (copy_numbers_input,
+CallSignatureExposures <- function (copy_numbers_input,
                             component_models = NULL,
                             signatures = NULL,
                             data_path = NULL,
                             plot_savepath = NULL,
                             sigs_savepath = NULL,
-                            relativeCN_data = NULL) {
+                            relativeCN_data = NULL,
+                            refgenome = 'hg19') {
 
   stopifnot(!is.null(component_models))                                         # We want the user to explicitly declare the components they intend to use
   stopifnot(!is.null(signatures))                                               # We want the user to explicitly declare the signatures they intend to use
   stopifnot(!is.null(data_path))                                                # We want the user to explicitly declare the signatures they intend to use
 
-  dir.create(path = sigs_savepath,
-             recursive = TRUE, showWarnings = FALSE)
-  dir.create(path = plot_savepath,
-             recursive = TRUE, showWarnings = FALSE)
-
   if (!is.null(relativeCN_data)) {
-    CN_features <- ExtractRelativeCopynumberFeatures(copy_numbers_input)
+    CN_features <- ExtractRelativeCopynumberFeatures(copy_numbers_input,
+                                                     genome = refgenome)
   } else {
-    CN_features <- ExtractCopynumberFeatures(copy_numbers_input)
+    CN_features <- ExtractCopyNumberFeatures(copy_numbers_input,
+                                             genome = refgenome)
   }
 
-  component_models <- paste0(data_path, '/', component_models)
+  component_models <- file.path(data_path, component_models)
   sample_by_component <- GenerateSampleByComponentMatrix(CN_features, component_models)
-  signatures <- paste0(data_path, '/', signatures)
+  signatures <- file.path(data_path, signatures)
   sigex <- QuantifySignatures(sample_by_component, signatures)
   sigex <- as.data.frame(sigex)
 
   if (!is.null(plot_savepath)) {
+    dir.create(path = plot_savepath,
+               recursive = TRUE, showWarnings = FALSE)
     datetoday <- Sys.Date()
     pdf(file = paste0(plot_savepath, "/componentbysample_heatmap_", component_models,
                       "_", signatures, "_", datetoday, ".pdf"),
@@ -77,6 +78,8 @@ CallSignatures <- function (copy_numbers_input,
   }
 
   if (!is.null(sigs_savepath)) {
+    dir.create(path = sigs_savepath,
+               recursive = TRUE, showWarnings = FALSE)
     rownames(sigex) <- c(1:dim(sigex)[1])
     write.csv(sigex, file = paste0(sigs_savepath, "/signature_exposures_",
                                         component_models, "_", signatures, "_",

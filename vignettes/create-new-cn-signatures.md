@@ -98,10 +98,13 @@ on…
 ``` r
 signatures <- GenerateSignatures(sample_by_component,<num signatures>)
 saveRDS(signatures, file = paste0("path_to_signatures/signatures_object.rds"))
+
+# Also save the component models created earlier for re-use
+saveRDS(component_models, file = paste0("path_to_signatures/component_models_object.rds"))
 ```
 
 Create the signatures using the GenerateSignatures() function, and then
-save them. Evaluate you handiwork by visualizing both the:  
+save them. Evaluate your handi-work by visualizing both the:  
 -\> component-by-signature matrix as a heatmap  
 -\> sample-by-signature matrix as a heatmap (contribution of each sample
 to each signature)
