@@ -56,9 +56,9 @@ CallSignatures <- function (copy_numbers_input,
              recursive = TRUE, showWarnings = FALSE)
 
   if (!is.null(relativeCN_data)) {
-    CN_features <- ExtractRelativeCopynumberFeatures(copy_numbers_input)
+    CN_features <- ExtractRelativeCopyNumberFeatures(copy_numbers_input)
   } else {
-    CN_features <- ExtractCopynumberFeatures(copy_numbers_input)
+    CN_features <- ExtractCopyNumberFeatures(copy_numbers_input, 'hg19')
   }
 
   component_models <- paste0(data_path, '/', component_models)
@@ -86,4 +86,16 @@ CallSignatures <- function (copy_numbers_input,
   return(sigex)
 }
 
+result <- CallSignatures(copy_numbers_input = CalculateACNs_output,
+                         component_models = ComponentModelsBritrocACNs,
+                         signatures = ComponentBySignatureBritrocACNs,
+                         data_path = path,
+                         plot_savepath = "~/projects/signature_and_component_models",
+                         sigs_savepath = "~/projects/signature_and_component_models")
+
+
+#CalculateACNs_output <- readRDS(file = "~/projects/replication_files/final_output_aCN.rds")
+#ComponentModelsBritrocACNs <- "component_models_britroc_aCNs.rds"
+#ComponentBySignatureBritrocACNs <- "component_by_signature_britroc_aCNs.rds"
+#path <- "~/projects/signature_and_component_models"
 

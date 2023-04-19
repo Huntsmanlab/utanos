@@ -76,7 +76,7 @@ ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data 
     if (genome == 'hg19') {
       chrlen <- as.data.frame(hg19.chrom.sizes[1:24,])
       centromeres <- gaps.hg19[gaps.hg19[,8] == "centromere",]
-      centromeres<-gaps[gaps[,8]=="centromere",]
+      #centromeres<-gaps[gaps[,8]=="centromere",]
     } else if (genome == 'hg38') {
       chrlen <- as.data.frame(hg38.chrom.sizes[1:24,])
       centromeres <- centromeres.hg38
