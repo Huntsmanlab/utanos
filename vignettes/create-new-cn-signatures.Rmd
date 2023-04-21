@@ -14,7 +14,8 @@ knitr::opts_chunk$set(
 )
 ```
 
-This vignette serves to demonstrate how to use copy-number (CN) abnormalities, which could represent the imprints of distinct mutational processes, and create signatures from these CN-features.
+This vignette serves to demonstrate how to use copy-number (CN) abnormalities, which could represent the imprints of distinct mutational processes, and create signatures from these CN-features.  
+This workflow is based on the one described in the methods section of a paper published by Macintyre et. al. in 2018 - https://www.nature.com/articles/s41588-018-0179-8  
 In order to generate new copy-number signatures, a set of samples are needed for which you have segmented copy-number profiles.
 These profiles should be formatted as a list of named dataframes. One for each sample.
 
@@ -77,7 +78,7 @@ What to look for in the values of each metric:
 cophenetic: after the trend begins increasing (after 2) choose the max value before it decreases again.  
 dispersion: higher == better, measures the reproducibility  
 silhouette: higher == better, measures consistency between clusters  
-sparseness: higher == better, try to choose the maximum sparsity which can be achieved without exceeding that which was observed in the randomly permuted matrices  
+sparseness: higher == better, try to choose the maximum sparsity which can be achieved without that for the corresponding randomly permuted matrix exceeding it 
   
 Here is an example of said figure.  
 ```{r, echo = FALSE}
