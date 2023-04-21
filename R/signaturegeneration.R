@@ -20,11 +20,11 @@
 #' @param copy_numbers_input A list of dataframes. Each dataframe should be the segmented copy-numbers of a sample.
 #' @param component_models String. The mixture models to use in determining the components present in this dataset. \cr
 #' Options: \cr
-#' '30kb_ovarian/component_models_britroc_aCNs.rds' - Components determined by modelling the Britroc Ovarian sWGS samples. (Macintyre 2018) \cr
+#' 'component_models/30kb_ovarian/component_models_britroc_aCNs.rds' - Components determined by modelling the Britroc Ovarian sWGS samples. (Macintyre 2018) \cr
 #' 'vancouver_HQendo_VAFrascal' - Components determined by modelling high-quality p53abn sWGS endometrial samples. (2022) \cr
 #' @param signatures String. The signatures themselves. Please name those for which to calculate exposures. \cr
 #' Options: \cr
-#' '30kb_ovarian/component_by_signature_britroc_aCNs.rds' - The signatures created using the Britroc Ovarian sWGS samples. (Macintyre 2018) \cr
+#' 'signatures/30kb_ovarian/component_by_signature_britroc_aCNs.rds' - The signatures created using the Britroc Ovarian sWGS samples. (Macintyre 2018) \cr
 #' 'VAFrascalHQendoVan6sigs' - The signatures created using the high-quality p53abn sWGS endometrial samples. \cr
 #' @param data_path String. The path where to find signatures objects and component models.
 #' @param plot_savepath (optional) String. The path where to save a sample-by-component heatmap. Please provide a directory.

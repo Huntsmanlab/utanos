@@ -46,7 +46,7 @@ PlotSignatureExposures <- function (signatures, save_path = FALSE,
                                       obj_name = 'sig_exposures_obj',
                                       order = FALSE, transpose = FALSE) {
   long_data <- gather(signatures)
-  long_data$max_sig <- rep(apply(output1, 2, function(x) which.max(x)),
+  long_data$max_sig <- rep(apply(signatures, 2, function(x) which.max(x)),
                            times = 1,
                            each = nsigs)
   long_data$sigs <- rep(1:nsigs,dim(output1)[2])
