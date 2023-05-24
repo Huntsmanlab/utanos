@@ -106,8 +106,7 @@ CalculateACNs <- function (relative_segs, acnmethod, rascal_sols = FALSE,
       dplyr::mutate(segmented = relative_segs$segmented)          # Create combined dataframe
   }
 
-  if (suppressWarnings({!is.null(variants)})) {
-
+  if (variants != FALSE) {
     if ('data.frame' %in% class(variants)) {                                     # do nothing
     } else if (class(variants)[1] == 'character') {
       variants <- data.table::fread(file = variants, header = TRUE,
@@ -163,7 +162,11 @@ CalculateACNs <- function (relative_segs, acnmethod, rascal_sols = FALSE,
       output <- GenVafAcns(segments, rascal_sols, variants, return_sols)
     }
   } else if (acnmethod == 'mad') {
-
+    if (addplots == TRUE) {
+      output <- GenMadAcns(segments, rascal_sols, return_sols, cns = relative_cns)
+    } else {
+      output <- GenMadAcns(segments, rascal_sols, return_sols)
+    }
   } else {
     stop("Invalid value passed to the 'acnmethod' parameter. \n
          Please supply an accepted option.")
@@ -317,7 +320,6 @@ GenKploidyAcns <- function (segments, ploidies,
   } else{
     output <- list(segment_tables = chosenSegmentTablesList)
   }
-
   return(output)
 }
 
@@ -328,7 +330,8 @@ GenKploidyAcns <- function (segments, ploidies,
 # input_file: input path
 #' @export
 #' GenMadAcns <- function (segments, rascal_batch_solutions, cns = FALSE) {
-GetOptimalMadSolutions <- function (input_file, rcn_file, segs_file, save_file = TRUE) {
+GenMadAcns <- function (segments, rascal_batch_solutions,
+                        return_sols = FALSE, cns = FALSE) {
 
   chosenSegmentTablesList <- list()
   j <- 1
@@ -336,55 +339,52 @@ GetOptimalMadSolutions <- function (input_file, rcn_file, segs_file, save_file =
 
   for (i in unique(rascal_batch_solutions$sample)) {
     sample_segments <- dplyr::filter(segments, sample == i)
-    solutions <- rascal_batch_solutions %>% dplyr::filter(sample == i)
-
-    solution_set <- solutions %>%
-      dplyr::select(ploidy, cellularity) %>%
-      dplyr::mutate(absolute_copy_number = rascal::relative_to_absolute_copy_number(ploidy, cellularity)) %>%
-      dplyr::mutate(tumour_fraction = rascal::tumour_fraction(absolute_copy_number, cellularity))
-  }
-
-
-
-
-
-
-  rascal_batch_solutions <- read.table(file = input_file, sep = ',', header = TRUE)
-  rascal_batch_solutions$sample <- str_replace_all(rascal_batch_solutions$sample, "-", ".")
-  temp <- rascal_batch_solutions %>%
-    dplyr::group_by(sample) %>%
-    mutate(mad_optimal = (min(distance) == distance))
-  temp <- temp[temp$mad_optimal,] %>%
-    mutate(mad_optimal = (max(cellularity) == cellularity)) %>%
-    ungroup()
-  rascal_batch_solutions <- left_join(rascal_batch_solutions, temp, by = c('sample', 'ploidy', 'cellularity', 'distance')) %>%
-    replace_na(list(mad_optimal = FALSE))
-
-  if (save_file) {
-    write.csv(rascal_batch_solutions, file = str_replace(input_file, 'solutions.csv', 'rascal_solutions.csv'))
-  }
-
-  qdnaseq_segs <- rcn_file
-  qdnaseq_segs <- read.table(file = qdnaseq_segs, header = TRUE)
-  qdnaseq_segments <- gather(qdnaseq_segs, sample, segmented, `CC.CHM.1341`:`YW.EC052`, factor_key=TRUE)
-  segments <- copy_number_segments(qdnaseq_segments)                            # Collapse to continuous segments
-
-  rascal_batch_solutions <- rascal_batch_solutions %>% dplyr::filter(mad_optimal == TRUE)
-  chosenSegmentTablesList <- list()
-  j <- 1
-  for (i in rascal_batch_solutions$sample) {
-    sample_segments <- dplyr::filter(segments, sample == i)
+    solutions <- rascal_batch_solutions %>% dplyr::filter(sample == i) %>%
+                      dplyr::filter(distance == min(distance)) %>%
+                      dplyr::filter(cellularity == max(cellularity))
     absolute_segments <- dplyr::mutate(sample_segments,
-                                       copy_number = relative_to_absolute_copy_number(copy_number,
-                                                                                      rascal_batch_solutions$ploidy[j],
-                                                                                      rascal_batch_solutions$cellularity[j]))
-    absolute_segments <- absolute_segments %>% dplyr::select(chromosome=chromosome, start=start, end=end, segVal=copy_number)
-    chosenSegmentTablesList[[j]] <- as.data.frame(absolute_segments)
-    j = j+1
-  }
-  names(chosenSegmentTablesList) <- rascal_batch_solutions$sample
-  saveRDS(chosenSegmentTablesList, file = segs_file)
+                                       copy_number = rascal::relative_to_absolute_copy_number(copy_number,
+                                                                                              solutions$ploidy,
+                                                                                              solutions$cellularity))
 
+    if (!is.logical(cns)) {                                                     # If cns AND segments passed in, make plots!
+      chr_ord <- c(as.character(1:22), 'X')
+      absolute_cns <- dplyr::filter(cns, sample == i)
+      absolute_cns$copy_number <- rascal::relative_to_absolute_copy_number(absolute_cns$copy_number,
+                                                                           solutions$ploidy,
+                                                                           solutions$cellularity)
+      absolute_cns$segmented <- rascal::relative_to_absolute_copy_number(absolute_cns$segmented,
+                                                                         solutions$ploidy,
+                                                                         solutions$cellularity)
+      absolute_cns$chromosome <- factor(absolute_cns$chromosome, levels = chr_ord)
+      absolute_segments$chromosome <- factor(absolute_segments$chromosome, levels = chr_ord)
+      plots[[i]] <- rascal::genome_copy_number_plot(absolute_cns, absolute_segments,
+                                                    min_copy_number = 0, max_copy_number = 12,
+                                                    copy_number_breaks = 0:12,
+                                                    ylabel = "Absolute Copy Number",
+                                                    xlabel = "Chromosome") +
+        ggplot2::theme(panel.grid.major.y =
+                         ggplot2::element_line(colour = "grey60"),
+                       plot.title = ggplot2::element_text(size = 20)) +
+        ggplot2::ggtitle(paste0(i, ' - ploidy:',
+                                solutions$ploidy,
+                                ' - cellularity:',
+                                solutions$cellularity))
+    }
+    absolute_segments <- absolute_segments %>% dplyr::select(chromosome=chromosome,
+                                                             start=start,
+                                                             end=end,
+                                                             segVal=copy_number)
+    chosenSegmentTablesList[[i]] <- as.data.frame(absolute_segments)
+    j <- j+1
+  }
+
+  if (!is.logical(cns)) {
+    output <- list(segment_tables = chosenSegmentTablesList, plots = plots)
+  } else{
+    output <- list(segment_tables = chosenSegmentTablesList)
+  }
+  return(output)
 }
 
 
