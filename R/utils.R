@@ -340,8 +340,8 @@ GenMadAcns <- function (segments, rascal_batch_solutions,
   for (i in unique(rascal_batch_solutions$sample)) {
     sample_segments <- dplyr::filter(segments, sample == i)
     solutions <- rascal_batch_solutions %>% dplyr::filter(sample == i) %>%
-      dplyr::filter(distance == min(distance)) %>%
-      dplyr::filter(cellularity == max(cellularity))
+                      dplyr::filter(distance == min(distance)) %>%
+                      dplyr::filter(cellularity == max(cellularity))
     absolute_segments <- dplyr::mutate(sample_segments,
                                        copy_number = rascal::relative_to_absolute_copy_number(copy_number,
                                                                                               solutions$ploidy,

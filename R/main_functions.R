@@ -27,15 +27,15 @@ LocationOfThisScript = function() # Function LocationOfThisScript returns the lo
 #' @export
 QuantifySignatures<-function(sample_by_component, component_by_signature=NULL)
 {
-  if (file.exists(component_by_signature)) {
-    component_by_signature <- NMF::basis(readRDS(file = component_by_signature))
-  } else {
-    stop("Unable to resolve path in component_by_signature variable to a file.")
-  }
-  signature_by_sample<-YAPSA::LCD(t(sample_by_component),
-                                  YAPSA:::normalize_df_per_dim(component_by_signature,2))
-  signature_by_sample<-NormaliseMatrix(signature_by_sample)
-  signature_by_sample
+    if (file.exists(component_by_signature)) {
+        component_by_signature <- NMF::basis(readRDS(file = component_by_signature))
+    } else {
+      stop("Unable to resolve path in component_by_signature variable to a file.")
+    }
+    signature_by_sample<-YAPSA::LCD(t(sample_by_component),
+                                    YAPSA:::normalize_df_per_dim(component_by_signature,2))
+    signature_by_sample<-NormaliseMatrix(signature_by_sample)
+    signature_by_sample
 }
 
 #' @export
@@ -72,51 +72,51 @@ ChooseNumberSignatures<-function(sample_by_component, outfile="numSigs.pdf", min
 #' @export
 ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
 {
-  # get chromosome and centromere locations
-  if (genome == 'hg19') {
-    chrlen <- as.data.frame(hg19.chrom.sizes[1:24,])
-    centromeres <- gaps.hg19[gaps.hg19[,8] == "centromere",]
-  } else if (genome == 'hg38') {
-    chrlen <- as.data.frame(hg38.chrom.sizes[1:24,])
-    centromeres <- centromeres.hg38
-  }
-  if(cores > 1) {
-    require(foreach)
-    doMC::registerDoMC(cores)
+    # get chromosome and centromere locations
+    if (genome == 'hg19') {
+      chrlen <- as.data.frame(hg19.chrom.sizes[1:24,])
+      centromeres <- gaps.hg19[gaps.hg19[,8] == "centromere",]
+    } else if (genome == 'hg38') {
+      chrlen <- as.data.frame(hg38.chrom.sizes[1:24,])
+      centromeres <- centromeres.hg38
+    }
+    if(cores > 1) {
+        require(foreach)
+        doMC::registerDoMC(cores)
 
-    temp_list = foreach::foreach(i=1:6) %dopar% {
-      if(i == 1){
-        list(segsize = GetSegSize(CN_data) )
-      } else if (i == 2) {
-        list(bp10MB = GetBPNum(CN_data,chrlen) )
-      } else if (i == 3) {
-        list(osCN = GetOscilation(CN_data,chrlen) )
-      } else if (i == 4) {
-        list(bpchrarm = GetCentromereDistCounts(CN_data,centromeres,chrlen) )
-      } else if (i == 5) {
-        list(changepoint = GetChangePointCN(CN_data) )
-      } else {
-        if (class(multi_sols_data) != "list") {
-          list(copynumber = GetCN(multi_sols_data))
-        } else {
-          list(copynumber = GetCN(CN_data))
+        temp_list = foreach::foreach(i=1:6) %dopar% {
+            if(i == 1){
+                list(segsize = GetSegSize(CN_data) )
+            } else if (i == 2) {
+                list(bp10MB = GetBPNum(CN_data,chrlen) )
+            } else if (i == 3) {
+                list(osCN = GetOscilation(CN_data,chrlen) )
+            } else if (i == 4) {
+                list(bpchrarm = GetCentromereDistCounts(CN_data,centromeres,chrlen) )
+            } else if (i == 5) {
+                list(changepoint = GetChangePointCN(CN_data) )
+            } else {
+                if (class(multi_sols_data) != "list") {
+                    list(copynumber = GetCN(multi_sols_data))
+                } else {
+                    list(copynumber = GetCN(CN_data))
+                }
+            }
         }
-      }
-    }
-    unlist( temp_list, recursive = FALSE )
-  } else {
-    segsize<-GetSegSize(CN_data)
-    bp10MB<-GetBPNum(CN_data,chrlen)
-    osCN<-GetOscilation(CN_data,chrlen)
-    bpchrarm<-GetCentromereDistCounts(CN_data,centromeres,chrlen)
-    changepoint<-GetChangePointCN(CN_data)
-    if (class(multi_sols_data) == "list") {
-      copynumber = GetCN(multi_sols_data)
+        unlist( temp_list, recursive = FALSE )
     } else {
-      copynumber<-GetCN(CN_data)
+        segsize<-GetSegSize(CN_data)
+        bp10MB<-GetBPNum(CN_data,chrlen)
+        osCN<-GetOscilation(CN_data,chrlen)
+        bpchrarm<-GetCentromereDistCounts(CN_data,centromeres,chrlen)
+        changepoint<-GetChangePointCN(CN_data)
+        if (class(multi_sols_data) == "list") {
+            copynumber = GetCN(multi_sols_data)
+        } else {
+            copynumber<-GetCN(CN_data)
+        }
+        list(segsize=segsize,bp10MB=bp10MB,osCN=osCN,bpchrarm=bpchrarm,changepoint=changepoint,copynumber=copynumber)
     }
-    list(segsize=segsize,bp10MB=bp10MB,osCN=osCN,bpchrarm=bpchrarm,changepoint=changepoint,copynumber=copynumber)
-  }
 }
 
 #' @export
@@ -253,32 +253,32 @@ FitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min
 #' @export
 GenerateSampleByComponentMatrix<-function(CN_features, all_components=NULL, cores = 1, rowIter = 1000, subcores = 2)
 {
-  if ((class(all_components) == 'character') && (file.exists(all_components))) {
-    all_components<-readRDS(file = all_components)
-  } else {
-    stop(paste0('Component models path not valid. Please fix this path: ', all_components))
-  }
-  if(cores > 1){
-    require(foreach)
-
-    feats = c( "segsize", "bp10MB", "osCN", "changepoint", "copynumber", "bpchrarm" )
-    doMC::registerDoMC(cores)
-
-    full_mat = foreach(feat=feats, .combine=cbind) %dopar% {
-      CalculateSumOfPosteriors(CN_features[[feat]],all_components[[feat]],
-                               feat, rowIter = rowIter, cores = subcores)
+    if ((class(all_components) == 'character') && (file.exists(all_components))) {
+        all_components<-readRDS(file = all_components)
+    } else {
+      stop(paste0('Component models path not valid. Please fix this path: ', all_components))
     }
-  } else {
-    full_mat<-cbind(
-      CalculateSumOfPosteriors(CN_features[["segsize"]],all_components[["segsize"]],"segsize"),
-      CalculateSumOfPosteriors(CN_features[["bp10MB"]],all_components[["bp10MB"]],"bp10MB"),
-      CalculateSumOfPosteriors(CN_features[["osCN"]],all_components[["osCN"]],"osCN"),
-      CalculateSumOfPosteriors(CN_features[["changepoint"]],all_components[["changepoint"]],"changepoint"),
-      CalculateSumOfPosteriors(CN_features[["copynumber"]],all_components[["copynumber"]],"copynumber"),
-      CalculateSumOfPosteriors(CN_features[["bpchrarm"]],all_components[["bpchrarm"]],"bpchrarm"))
-  }
+    if(cores > 1){
+        require(foreach)
 
-  rownames(full_mat)<-unique(CN_features[["segsize"]][,1])
-  full_mat[is.na(full_mat)]<-0
-  full_mat
+        feats = c( "segsize", "bp10MB", "osCN", "changepoint", "copynumber", "bpchrarm" )
+        doMC::registerDoMC(cores)
+
+        full_mat = foreach(feat=feats, .combine=cbind) %dopar% {
+            CalculateSumOfPosteriors(CN_features[[feat]],all_components[[feat]],
+                feat, rowIter = rowIter, cores = subcores)
+        }
+    } else {
+        full_mat<-cbind(
+        CalculateSumOfPosteriors(CN_features[["segsize"]],all_components[["segsize"]],"segsize"),
+        CalculateSumOfPosteriors(CN_features[["bp10MB"]],all_components[["bp10MB"]],"bp10MB"),
+        CalculateSumOfPosteriors(CN_features[["osCN"]],all_components[["osCN"]],"osCN"),
+        CalculateSumOfPosteriors(CN_features[["changepoint"]],all_components[["changepoint"]],"changepoint"),
+        CalculateSumOfPosteriors(CN_features[["copynumber"]],all_components[["copynumber"]],"copynumber"),
+        CalculateSumOfPosteriors(CN_features[["bpchrarm"]],all_components[["bpchrarm"]],"bpchrarm"))
+    }
+
+    rownames(full_mat)<-unique(CN_features[["segsize"]][,1])
+    full_mat[is.na(full_mat)]<-0
+    full_mat
 }
