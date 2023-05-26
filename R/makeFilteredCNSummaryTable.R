@@ -83,8 +83,8 @@ MakeSummaryTable <- function(CNobj, snames, lowT, highT, pL, pG, prop, save_path
   if(nclass==4) {df$loss.freq <- rowMeans(probloss(CNobj)); df$gain.freq <- rowMeans(probgain(CNobj))+rowMeans(probamp(CNobj))}
   if(nclass==5) {df$loss.freq <- rowMeans(probloss(CNobj))+rowMeans(probdloss(CNobj)); df$gain.freq <- rowMeans(probgain(CNobj))+rowMeans(probamp(CNobj))}
 
-  bin_cns_loss <- as.data.frame(cns < lowT) %>% dplyr::mutate(total = rowSums(across(where(is.logical))))
-  bin_cns_gain <- as.data.frame(cns > highT) %>% dplyr::mutate(total = rowSums(across(where(is.logical))))
+  bin_cns_loss <- as.data.frame(log(cns, base = 2) < lowT) %>% dplyr::mutate(total = rowSums(across(where(is.logical))))
+  bin_cns_gain <- as.data.frame(log(cns, base = 2) > highT) %>% dplyr::mutate(total = rowSums(across(where(is.logical))))
   df$loss.count <- bin_cns_loss$total
   df$gain.count <- bin_cns_gain$total
 
@@ -134,4 +134,5 @@ MakeSummaryTable <- function(CNobj, snames, lowT, highT, pL, pG, prop, save_path
   # Save the output table
   write.table(df, file = save_path, sep = '\t', col.names = TRUE, row.names = FALSE)
 }
+
 
