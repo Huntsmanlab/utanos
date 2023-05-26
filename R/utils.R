@@ -86,7 +86,7 @@ CalculateACNs <- function (relative_segs, acnmethod, rascal_sols = FALSE,
                            addplots = FALSE, acn_save_path = FALSE,
                            return_sols = FALSE) {
 
-  relative_segs <- read.table(file = relative_segs, header = TRUE, sep = '')
+  relative_segs <- read.table(file = relative_segs, header = TRUE, sep = '\t')
   relative_segs <- relative_segs %>% tidyr::gather(sample, segmented,
                                                    5:dim(.)[2], factor_key=TRUE)    # Convert segs to long
   segments <- CopyNumberSegments(relative_segs)                                     # Collapse segs to continuous segments
@@ -98,7 +98,7 @@ CalculateACNs <- function (relative_segs, acnmethod, rascal_sols = FALSE,
   }
 
   if (addplots == TRUE) {
-    relative_cns <- read.table(file = relative_cns, header = TRUE, sep = '')
+    relative_cns <- read.table(file = relative_cns, header = TRUE, sep = '\t')
     relative_cns <- relative_cns %>% tidyr::gather(sample,
                                                    copy_number,
                                                    5:dim(.)[2], factor_key=TRUE)    # Convert cns to long

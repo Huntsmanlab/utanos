@@ -2,33 +2,27 @@
 # January 18th, 2022
 
 
-PlotAbsCopyNumber <- function(x, plo, cel, sample, sample_segments, sample_cns) {#, output) {
-  ploidy <- plo
-  cellularity <- cel
-  #ploidy <- as.numeric(x["ploidy"])
-  #cellularity <- as.numeric(x["cellularity"])
+PlotAbsCopyNumber <- function(x, sample, sample_segments, sample_cns, output) {
+  ploidy <- as.numeric(x["ploidy"])
+  cellularity <- as.numeric(x["cellularity"])
   chr_order <- c(as.character(1:22), 'X')
-
   absolute_segments <- dplyr::mutate(sample_segments,
                                      copy_number = relative_to_absolute_copy_number(copy_number, ploidy, cellularity))
-  absolute_segments <- absolute_segments %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
-
   absolute_copy_number <- dplyr::mutate(sample_cns, across(c(copy_number, segmented), relative_to_absolute_copy_number, ploidy, cellularity))
-  absolute_copy_number <- absolute_copy_number %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
-  #chromosomes <- chromosome_offsets(absolute_copy_number)
+  chromosomes <- chromosome_offsets(absolute_copy_number)
   # chromosomes <- chromosomes %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
-  #genomic_copy_number <- convert_to_genomic_coordinates(absolute_copy_number, "position", chromosomes)
+  genomic_copy_number <- convert_to_genomic_coordinates(absolute_copy_number, "position", chromosomes)
   # genomic_copy_number <- genomic_copy_number %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
-  #genomic_segments <- convert_to_genomic_coordinates(absolute_segments, c("start", "end"), chromosomes)
+  genomic_segments <- convert_to_genomic_coordinates(absolute_segments, c("start", "end"), chromosomes)
   # genomic_segments <- genomic_segments %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
-  p <- genome_copy_number_plot(absolute_copy_number, absolute_segments, #chromosome_lengths = hg19,
+  p <- genome_copy_number_plot(genomic_copy_number, genomic_segments, chromosomes,
                                min_copy_number = 0, max_copy_number = 15,
                                copy_number_breaks = 0:15,
                                point_colour = "grey40",
                                ylabel = "absolute copy number") +
     ggplot2::ggtitle(paste0(sample, '  ploidy:', ploidy, '  cellularity:', cellularity)) +
     ggplot2::theme(plot.title = element_text(size = 20))
-  ggsave(filename = paste0('~/Local_Documents/CN_Signatures/', sample, '.pl', ploidy, '.cel', cellularity, '.copynumberplot.png'),
+  ggsave(filename = paste0('~/Documents/projects/cn_signatures_shallowWGS/plotting/acn_rascal_plots/batch1-13_autosomes_30kb_rascal_plots/', sample, '.pl', ploidy, '.cel', cellularity, '.copynumberplot.png'),
          p, device = 'png', width = 16, height = 8)
 }
 
@@ -123,18 +117,17 @@ SwgsCnvHeatmaps <- function(reads = data.frame(), save_path = FALSE,
   reads = RemoveBlacklist(reads)                                                # remove blacklist regions from hg19
 
   reads <- reads[, c("chromosome", "start", "sample_id", "state")]
-  #browser()
+  browser()
   # Generate standard CNV heatmap
   reads$state[reads$state < 0] <- 0
   slice <- SortHeatmap(reads)
-  #browser()
+  browser()
   slice$state <- round(slice$state)
   slice$state[slice$state >= 15] <- 15
   slice$state <- as.character(slice$state)
   slice$state[slice$state == '15'] <- '15+'                                     # Assign all copy-numbers greater than 15 to the same value
   slice <- slice %>% mutate(state = factor(state,
-                                           levels = c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15+"))) %>% arrange(chromosome)
-  #slice$state <- as.factor(slice$state)
+                                           levels = c(0:14, "15+"))) %>% arrange(chromosome)
 
   # Set colours for the heatmap
   cols <- c("#3182BD", "#9ECAE1", "#CCCCCC", "#FDD49E", "#FE9F4F", "#EA8251",
@@ -162,7 +155,7 @@ SwgsCnvHeatmaps <- function(reads = data.frame(), save_path = FALSE,
   output <- g
 
   if (save_path != FALSE) {
-    ggsave(paste0(save_path, "cnv_heatmap_", obj_name,"1.png"), plot = g, width = 24, height = 24)
+    ggsave(paste0(save_path, "cnv_heatmap_", obj_name,".png"), plot = g, width = 24, height = 24)
   }
   if (ret_order != FALSE) {
     output <- list(plot = g, ordering = levels(slice$sample_id))
@@ -208,14 +201,12 @@ AddViralPresence <- function(data, viral_presence) {
 #
 #' @export
 SortHeatmap <- function(slice) {
-  #browser()
+  browser()
   slice$chromosome <- factor(slice$chromosome, levels = c("V", 1:22, "X", "Y"))
   slice <- dplyr::mutate(slice, pos = paste0(chromosome, ":", start))
   wide <- tidyr::spread(slice[, c("sample_id", "pos", "state")], pos, state)
-  wide_ <- wide[,-1]
+  wide_ <- wide[,-which(colnames(wide) == "sample_id")]
   rownames(wide_) <- wide$sample_id
-  #rownames(wide) <- c(wide$sample_id)
-  #wide$sample_id <- NULL
   cluster <- hclust(dist(wide_), method = "ward.D")
   slice$sample_id <- factor(slice$sample_id, level = rownames(wide_)[cluster$ord])
   return(slice)

@@ -61,7 +61,6 @@ CallSignatureExposures <- function (copy_numbers_input,
   }
 
   component_models <- file.path(data_path, component_models)
-
   sample_by_component <- GenerateSampleByComponentMatrix(CN_features, component_models)
   signatures <- file.path(data_path, signatures)
   sigex <- QuantifySignatures(sample_by_component, signatures)
