@@ -45,6 +45,7 @@ PlotAbsCopyNumber <- function(x, sample, sample_segments, sample_cns, output) {
 PlotSignatureExposures <- function (signatures, save_path = FALSE,
                                       obj_name = 'sig_exposures_obj',
                                       order = FALSE, transpose = FALSE) {
+  nsigs <- nrow(signatures)
   long_data <- gather(signatures)
   long_data$max_sig <- rep(apply(signatures, 2, function(x) which.max(x)),
                            times = 1,
@@ -117,7 +118,7 @@ SwgsCnvHeatmaps <- function(reads = data.frame(), save_path = FALSE,
   reads = RemoveBlacklist(reads)                                                # remove blacklist regions from hg19
 
   reads <- reads[, c("chromosome", "start", "sample_id", "state")]
-  browser()
+
   # Generate standard CNV heatmap
   reads$state[reads$state < 0] <- 0
   slice <- SortHeatmap(reads)
@@ -126,7 +127,9 @@ SwgsCnvHeatmaps <- function(reads = data.frame(), save_path = FALSE,
   slice$state[slice$state >= 15] <- 15
   slice$state <- as.character(slice$state)
   slice$state[slice$state == '15'] <- '15+'                                     # Assign all copy-numbers greater than 15 to the same value
-  slice$state <- as.factor(slice$state)
+  slice <- slice %>% mutate(state = factor(state,
+                                           levels = c(0:14, "15+"))) %>%
+                     arrange(chromosome)
 
   # Set colours for the heatmap
   cols <- c("#3182BD", "#9ECAE1", "#CCCCCC", "#FDD49E", "#FE9F4F", "#EA8251",
@@ -200,16 +203,16 @@ AddViralPresence <- function(data, viral_presence) {
 #
 #' @export
 SortHeatmap <- function(slice) {
-  browser()
   slice$chromosome <- factor(slice$chromosome, levels = c("V", 1:22, "X", "Y"))
   slice <- dplyr::mutate(slice, pos = paste0(chromosome, ":", start))
   wide <- tidyr::spread(slice[, c("sample_id", "pos", "state")], pos, state)
-  rownames(wide) <- wide$sample_id
-  wide$sample_id <- NULL
-  cluster <- hclust(dist(wide), method = "ward.D")
-  slice$sample_id <- factor(slice$sample_id, level = rownames(wide)[cluster$ord])
+  wide_ <- wide[,-which(colnames(wide) == "sample_id")]
+  rownames(wide_) <- wide$sample_id
+  cluster <- hclust(dist(wide_), method = "ward.D")
+  slice$sample_id <- factor(slice$sample_id, level = rownames(wide_)[cluster$ord])
   return(slice)
 }
+
 
 ### Plot cellularity and VAF values
 # DESCRIPTION
