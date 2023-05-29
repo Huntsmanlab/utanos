@@ -51,6 +51,7 @@ CallSignatureExposures <- function (copy_numbers_input,
   stopifnot(!is.null(component_models))                                         # We want the user to explicitly declare the components they intend to use
   stopifnot(!is.null(signatures))                                               # We want the user to explicitly declare the signatures they intend to use
   stopifnot(!is.null(data_path))                                                # We want the user to explicitly declare the signatures they intend to use
+  datetoday <- Sys.Date()
 
   if (!is.null(relativeCN_data)) {
     CN_features <- ExtractRelativeCopynumberFeatures(copy_numbers_input,
@@ -67,22 +68,25 @@ CallSignatureExposures <- function (copy_numbers_input,
   sigex <- as.data.frame(sigex)
 
   if (!is.null(plot_savepath)) {
+    cname <- tools::file_path_sans_ext(basename(component_models))
+    signame <- tools::file_path_sans_ext(basename(signatures))
     dir.create(path = plot_savepath,
                recursive = TRUE, showWarnings = FALSE)
-    datetoday <- Sys.Date()
-    pdf(file = paste0(plot_savepath, "/componentbysample_heatmap_", component_models,
-                      "_", signatures, "_", datetoday, ".pdf"),
+    pdf(file = paste0(plot_savepath, "/heatmap_", cname,
+                      "_", signame, "_", datetoday, ".pdf"),
         7, 7, onefile = FALSE)
     NMF::aheatmap(sample_by_component,Rowv=NULL, main="Component x Sample matrix")
     dev.off()
   }
 
   if (!is.null(sigs_savepath)) {
+    cname <- tools::file_path_sans_ext(basename(component_models))
+    signame <- tools::file_path_sans_ext(basename(signatures))
     dir.create(path = sigs_savepath,
                recursive = TRUE, showWarnings = FALSE)
     rownames(sigex) <- c(1:dim(sigex)[1])
     write.csv(sigex, file = paste0(sigs_savepath, "/signature_exposures_",
-                                        component_models, "_", signatures, "_",
+                                        cname, "_", signame, "_",
                                         datetoday, ".csv"))
   }
 
