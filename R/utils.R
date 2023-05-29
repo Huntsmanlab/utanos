@@ -139,8 +139,8 @@ CalculateACNs <- function (relative_segs, acnmethod, rascal_sols = FALSE,
       output <- GenVafAcns(segments, rascal_sols, variants, return_sols)
     }
   } else if ('data.frame' %in% class(acnmethod)) {
-    if (any(!(known_ploidies$sample_id %in% unique(relative_segs$sample))) == TRUE) {
-      if (sum(!(known_ploidies$sample_id %in% unique(relative_segs$sample))) == dim(acmethod)[1]) {
+    if (any(!(acnmethod$sample_id %in% unique(relative_segs$sample))) == TRUE) {
+      if (sum(!(acnmethod$sample_id %in% unique(relative_segs$sample))) == dim(acnmethod)[1]) {
         stop("Sample IDs do not match between ploidy and segment tables.")
       } else {
         warning("There appear to be ploidy sample IDs for which there are no segment tables.")
