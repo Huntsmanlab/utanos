@@ -46,41 +46,42 @@ PlotSignatureExposures <- function (signatures, save_path = FALSE,
                                       obj_name = 'sig_exposures_obj',
                                       order = FALSE, transpose = FALSE) {
   nsigs <- nrow(signatures)
-  long_data <- gather(signatures)
+  long_data <- tidyr::gather(signatures)
   long_data$max_sig <- rep(apply(signatures, 2, function(x) which.max(x)),
                            times = 1,
                            each = nsigs)
   long_data$sigs <- rep(1:nsigs,dim(output1)[2])
   colnames(long_data) <- c('X', 'Z', 'max_sig', 'Y')
-  long_data <- long_data %>% arrange(max_sig)
+  long_data <- long_data %>% dplyr::arrange(max_sig)
   long_data$X <- factor(long_data$X, levels = unique(long_data$X))
 
-  if (order != FALSE) {
+  if (!isFALSE(order)) {
     long_data$X <- factor(long_data$X, levels = order)
   }
 
-  g <- ggplot(long_data, aes(X, Y, fill=Z)) +
-    geom_tile() +
-    scale_fill_viridis(discrete=FALSE) +
-    theme(plot.title = element_text(size = 20),
-          axis.ticks.x = element_blank(),
+  g <- ggplot2::ggplot(long_data, ggplot2::aes(X, Y, fill=Z)) +
+    ggplot2::geom_tile() +
+    viridis::scale_fill_viridis(discrete=FALSE) +
+    ggplot2::theme(plot.title = ggplot2::element_text(size = 20),
+          axis.ticks.x = ggplot2::element_blank(),
           # axis.text.x = element_text(size = 15, angle = 75, vjust = 0.5, hjust=0.5),
-          axis.text.x = element_blank(),
-          axis.title.x = element_text(size = 18),
-          axis.text.y = element_text(size = 18),
-          legend.title = element_text(size = 18)) +
-    labs(fill = 'Signature \nExposure', x = "Samples", y = " ") +
-    scale_y_discrete(limits = paste0('S', 1:dim(signatures)[1])) +
-    ggtitle("Signature exposures called per sample")
+          axis.text.x = ggplot2::element_blank(),
+          axis.title.x = ggplot2::element_text(size = 18),
+          axis.text.y = ggplot2::element_text(size = 18),
+          legend.title = ggplot2::element_text(size = 18)) +
+    ggplot2::labs(fill = 'Signature \nExposure', x = "Samples", y = " ") +
+    ggplot2::scale_y_discrete(limits = paste0('S', 1:dim(signatures)[1])) +
+    ggplot2::ggtitle("Signature exposures called per sample")
   g
 
   if (transpose != FALSE) {
-    g <- g + theme(plot.title = element_text(size = 20),
-                   axis.ticks.y = element_blank(),
-                   axis.text.x = element_text(size = 18),
-                   axis.title.x = element_text(size = 18),
-                   axis.text.y = element_blank(),
-                   legend.title = element_text(size = 18)) + coord_flip()
+    g <- g + ggplot2::theme(plot.title = ggplot2::element_text(size = 20),
+                   axis.ticks.y = ggplot2::element_blank(),
+                   axis.text.x = ggplot2::element_text(size = 18),
+                   axis.title.x = ggplot2::element_text(size = 18),
+                   axis.text.y = ggplot2::element_blank(),
+                   legend.title = ggplot2::element_text(size = 18)) +
+      ggplot2::coord_flip()
   }
   if (save_path != FALSE) {
     if (transpose != FALSE) {
@@ -119,17 +120,16 @@ SwgsCnvHeatmaps <- function(reads = data.frame(), save_path = FALSE,
 
   reads <- reads[, c("chromosome", "start", "sample_id", "state")]
 
-  # Generate standard CNV heatmap
+  # Generate standard CNV heatmap data
   reads$state[reads$state < 0] <- 0
   slice <- SortHeatmap(reads)
-  browser()
   slice$state <- round(slice$state)
   slice$state[slice$state >= 15] <- 15
   slice$state <- as.character(slice$state)
   slice$state[slice$state == '15'] <- '15+'                                     # Assign all copy-numbers greater than 15 to the same value
-  slice <- slice %>% mutate(state = factor(state,
+  slice <- slice %>% dplyr::mutate(state = factor(state,
                                            levels = c(0:14, "15+"))) %>%
-                     arrange(chromosome)
+                     dplyr::arrange(chromosome)
 
   # Set colours for the heatmap
   cols <- c("#3182BD", "#9ECAE1", "#CCCCCC", "#FDD49E", "#FE9F4F", "#EA8251",
@@ -137,27 +137,30 @@ SwgsCnvHeatmaps <- function(reads = data.frame(), save_path = FALSE,
             "#A61568", "#CE4191", "#CE8FB4", "#F5B1D9")                            # #FFDBF0
   names(cols) <- c(0:14, "15+")
 
-  if (order != FALSE) {
+  if (!isFALSE(order)) {
     slice$sample_id <- factor(slice$sample_id, level = order)
   }
 
-  g <- ggplot(slice, aes(start, sample_id, fill = state)) + geom_tile() +
-    scale_fill_manual(na.value = "white", values = cols, name = 'Copy-Number \nColour Code') +
-    facet_grid(~chromosome, scales = "free", space = "free", switch = "x") +
-    scale_x_continuous(expand = c(0, 0), breaks = NULL) +
-    theme(panel.spacing = unit(0.1, "lines"),
-          plot.title = element_text(size = 28, hjust = 0.5),
-          axis.text.y=element_blank(),
-          axis.title = element_text(size = 22),
-          legend.title = element_text(size = 22),
-          legend.text = element_text(size = 18)) +
-    labs(x = "Chromosomes", y = "Samples", fill = "Copy Number") +
-    ggtitle("Absolute copy number calls across the genome")
+  g <- ggplot2::ggplot(slice, ggplot2::aes(start, sample_id, fill = state)) + ggplot2::geom_tile() +
+    ggplot2::scale_fill_manual(na.value = "white", values = cols, name = 'Copy-Number \nColour Code') +
+    ggplot2::facet_grid(~chromosome, scales = "free", space = "free", switch = "x") +
+    ggplot2::scale_x_continuous(expand = c(0, 0), breaks = NULL) +
+    ggplot2::theme(panel.spacing = ggplot2::unit(0.1, "lines"),
+          plot.title = ggplot2::element_text(size = 28, hjust = 0.5),
+          axis.text.y = ggplot2::element_blank(),
+          axis.title = ggplot2::element_text(size = 22),
+          legend.title = ggplot2::element_text(size = 22),
+          legend.text = ggplot2::element_text(size = 18)) +
+    ggplot2::labs(x = "Chromosomes", y = "Samples", fill = "Copy Number") +
+    ggplot2::ggtitle("Absolute copy number calls across the genome")
 
   output <- g
 
   if (save_path != FALSE) {
-    ggsave(paste0(save_path, "cnv_heatmap_", obj_name,".png"), plot = g, width = 24, height = 24)
+    # ggplot2::ggsave(paste0(save_path, "/cnv_diversity_heatmap_", obj_name,".png"), plot = g, width = 24, height = 24)
+    png(paste0(save_path, "/cnv_diversity_heatmap_", obj_name,".png"), width=20, height=20, units = 'in', res = 400, type = 'cairo-png')
+    print(g)
+    dev.off()
   }
   if (ret_order != FALSE) {
     output <- list(plot = g, ordering = levels(slice$sample_id))
