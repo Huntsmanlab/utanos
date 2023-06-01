@@ -613,7 +613,7 @@ RemoveBlacklist <- function(data) {
   # Convert blacklist and data to GRanges objects and find indices of overlaps
   grBL = GenomicRanges::makeGRangesFromDataFrame(blacklist)
   grData = GenomicRanges::makeGRangesFromDataFrame(data)
-  overlaps = IRanges::findOverlaps(grData, grBL)
+  overlaps = suppressWarnings(IRanges::findOverlaps(grData, grBL))
 
   # Replace state of data rows with chr and start overlapping with blacklist
   data$state = replace(data$state, overlaps@from, NA)
