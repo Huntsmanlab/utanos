@@ -63,6 +63,7 @@ To begin...
 CN_features <- ExtractCopynumberFeatures(copy_numbers_input)
 component_models <- FitMixtureModels(CN_features)
 sample_by_component <- GenerateSampleByComponentMatrix(CN_features, component_models)
+library(NMF)                                                  # The next function contains a method that MUST have NMF loaded, it is a known issue
 ChooseNumberSignatures(sample_by_component)
 
 ```

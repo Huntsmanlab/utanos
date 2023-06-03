@@ -253,7 +253,13 @@ GetCentromereDistCounts<-function(abs_profiles,centromeres,chrlen)
                 ndist[starts>=centend,1]<-(starts[starts>=centend]-centend)/(segend-centend)
                 ndist[ends<=centstart,2]<-(centstart-ends[ends<=centstart])/(centstart-segstart)*-1
                 ndist[ends>=centend,2]<-(ends[ends>=centend]-centend)/(segend-centend)
-                ndist<-apply(ndist,1,min)
+                ndist <- apply(ndist,1,min)
+
+                # If any segments spill over into a centromere an NA is thrown.
+                # We don't want to count these seg. ends as breakpoints nor...
+                # have later functions error out due to the presence of NA values.
+                # So we toss the NA values.
+                ndist <- ndist[!is.na(ndist)]
 
                 all_dists<-rbind(all_dists,sum(ndist>0))
                 all_dists<-rbind(all_dists,sum(ndist<=0))
