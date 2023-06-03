@@ -57,8 +57,7 @@ ChooseNumberSignatures<-function(sample_by_component, save_path = FALSE, outfile
                                       verbose=FALSE, method=nmfalg, .opt=list(shared.memory=FALSE, paste0("p", cores) ) )
 
     if (save_path != FALSE) {
-      png(paste0(save_path, "/cnv_diversity_heatmap_", obj_name,".png"), width=20, height=20, units = 'in', res = 400, type = 'cairo-png')
-      pdf(file = paste0(save_path, "/", outfile), width=10, height=12 )
+      png(file = paste0(save_path, "/", outfile), width=10, height=12, units = 'in', res = 400, type = 'cairo-png' )
       p <- NMF::plot(estim.r,estim.r.random,
                  what = c("cophenetic", "dispersion","sparseness", "silhouette"),
                  xname="Observed",yname="Randomised",main="")
