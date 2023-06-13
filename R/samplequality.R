@@ -120,7 +120,7 @@ SampleGrouping <- function(x) {
 
 #' @description Output sample quality decision ("Low" or "High" quality sample)
 #' @param x *QDNASeq object* containing the relative copy number calls as well as the segmented relative copy number calls
-GetSampleQualityDecision <- function(x, metric = "quantile") {
+GetSampleQualityDecision <- function(x, metric = "quantile", cutoff = 0.95) {
   comb_dat <- CopySegFlat(x)
   comb_collapsed <- CollapsedSegs(comb_dat)
   seg_counts <- GetSegCounts(comb_collapsed)
@@ -128,10 +128,12 @@ GetSampleQualityDecision <- function(x, metric = "quantile") {
   param_dat <- merge(seg_counts, median_vars, by = "sample")
   if(is.character(metric)) {
     if (metric %in% c("quantile")) {
-      seg_cut <- quantile(param_dat$seg_counts, 0.75)
-      med_cut <- quantile(param_dat$median_sd, 0.50)
+      seg_cut <- quantile(param_dat$seg_counts, cutoff)
+      med_cut <- quantile(param_dat$median_sd, cutoff)
       param_iqr_dat <- param_dat %>%
-        dplyr::mutate(decision = ifelse(seg_counts > seg_cut & median_sd > med_cut, "Low", "High"))
+        dplyr::mutate(decision = ifelse((seg_counts > seg_cut) | (median_sd > med_cut), "Low", "High"))
+      # param_iqr_dat <- param_dat %>%
+      #   dplyr::mutate(decision = ifelse(seg_counts > seg_cut & median_sd > med_cut, "Low", "High"))
       return(param_iqr_dat)
     } else {
       if(metric %in% c("DecisionTree")) {
