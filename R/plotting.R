@@ -50,7 +50,7 @@ PlotSignatureExposures <- function (signatures, save_path = FALSE,
   long_data$max_sig <- rep(apply(signatures, 2, function(x) which.max(x)),
                            times = 1,
                            each = nsigs)
-  long_data$sigs <- rep(1:nsigs,dim(output1)[2])
+  long_data$sigs <- rep(1:nsigs,dim(signatures)[2])
   colnames(long_data) <- c('X', 'Z', 'max_sig', 'Y')
   long_data <- long_data %>% dplyr::arrange(max_sig)
   long_data$X <- factor(long_data$X, levels = unique(long_data$X))
@@ -85,9 +85,9 @@ PlotSignatureExposures <- function (signatures, save_path = FALSE,
   }
   if (save_path != FALSE) {
     if (transpose != FALSE) {
-      ggsave(paste0(save_path, "signatures_heatmap_", obj_name,".png"), plot = g, width = 10, height = 15)
+      ggplot2::ggsave(paste0(save_path, "/signatures_heatmap_", obj_name,".png"), plot = g, width = 10, height = 15)
     } else {
-      ggsave(paste0(save_path, "signatures_heatmap_", obj_name,".png"), plot = g, width = 15, height = 10)
+      ggplot2::ggsave(paste0(save_path, "/signatures_heatmap_", obj_name,".png"), plot = g, width = 15, height = 10)
     }
   }
 

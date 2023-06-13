@@ -27,10 +27,14 @@ LocationOfThisScript = function() # Function LocationOfThisScript returns the lo
 #' @export
 QuantifySignatures<-function(sample_by_component, component_by_signature=NULL)
 {
-    if (file.exists(component_by_signature)) {
+    if (class(component_by_signature) == 'character') {
+      if (file.exists(component_by_signature)) {
         component_by_signature <- NMF::basis(readRDS(file = component_by_signature))
-    } else {
-      stop("Unable to resolve path in component_by_signature variable to a file.")
+      } else {
+        stop("Unable to resolve path in component_by_signature variable to a file.")
+      }
+    } else if (!(class(component_by_signature) == 'NMFfitX1')) {
+      stop("Object type not recognized, please supply an object of class 'NMFfitX1'.")
     }
     signature_by_sample<-YAPSA::LCD(t(sample_by_component),
                                     YAPSA:::normalize_df_per_dim(component_by_signature,2))
