@@ -27,10 +27,14 @@ LocationOfThisScript = function() # Function LocationOfThisScript returns the lo
 #' @export
 QuantifySignatures<-function(sample_by_component, component_by_signature=NULL)
 {
-    if (file.exists(component_by_signature)) {
+    if (class(component_by_signature) == 'character') {
+      if (file.exists(component_by_signature)) {
         component_by_signature <- NMF::basis(readRDS(file = component_by_signature))
-    } else {
-      stop("Unable to resolve path in component_by_signature variable to a file.")
+      } else {
+        stop("Unable to resolve path in component_by_signature variable to a file.")
+      }
+    } else if (!(class(component_by_signature) == 'NMFfitX1')) {
+      stop("Object type not recognized, please supply an object of class 'NMFfitX1'.")
     }
     signature_by_sample<-YAPSA::LCD(t(sample_by_component),
                                     YAPSA:::normalize_df_per_dim(component_by_signature,2))
@@ -45,28 +49,27 @@ GenerateSignatures<-function(sample_by_component,nsig,seed=77777,nmfalg="brunet"
 }
 
 #' @export
-ChooseNumberSignatures<-function(sample_by_component, outfile="numSigs.pdf", min_sig=3, max_sig=12, iter=100, cores=4)
+ChooseNumberSignatures<-function(sample_by_component, save_path = FALSE, outfile="numSigs.pdf", min_sig=3, max_sig=12, iter=100, cores=4)
 {
 
     nmfalg<-"brunet"
     seed<-77777
-
     estim.r <- NMF::nmfEstimateRank(t(sample_by_component), min_sig:max_sig,seed = seed,nrun=iter,
                                verbose=FALSE, method=nmfalg, .opt=list(shared.memory=FALSE, paste0("p", cores) ) )
-
     V.random <- NMF::randomize(t(sample_by_component))
     estim.r.random <- NMF::nmfEstimateRank(V.random, min_sig:max_sig, seed =seed,nrun=iter,
                                       verbose=FALSE, method=nmfalg, .opt=list(shared.memory=FALSE, paste0("p", cores) ) )
 
-    p<-NMF::plot(estim.r,estim.r.random,
-            what = c("cophenetic", "dispersion","sparseness", "silhouette"),
-            xname="Observed",yname="Randomised",main="")
-    pdf(file=outfile, width=10, height=10 )
-    p
-    dev.off()
+    if (save_path != FALSE) {
+      png(file = paste0(save_path, "/", outfile), width=10, height=12, units = 'in', res = 400, type = 'cairo-png' )
+      p <- NMF::plot(estim.r,estim.r.random,
+                 what = c("cophenetic", "dispersion","sparseness", "silhouette"),
+                 xname="Observed",yname="Randomised",main="")
+      print(p)
+      dev.off()
+    }
 
     return(p)
-
 }
 
 #' @export
@@ -255,15 +258,16 @@ GenerateSampleByComponentMatrix<-function(CN_features, all_components=NULL, core
 {
     if ((class(all_components) == 'character') && (file.exists(all_components))) {
         all_components<-readRDS(file = all_components)
-    } else {
-      stop(paste0('Component models path not valid. Please fix this path: ', all_components))
+    } else if (class(all_components) == 'character') {
+        stop(paste0('Component models path not valid. Please fix this path: ', all_components))
+    } else if ((class(all_components) == 'list') && (class(all_components[[1]]) != 'flexmix')) {
+        stop('Component models object not valid. Expecting list of flexmix S4 objects.')
     }
     if(cores > 1){
         require(foreach)
 
         feats = c( "segsize", "bp10MB", "osCN", "changepoint", "copynumber", "bpchrarm" )
         doMC::registerDoMC(cores)
-
         full_mat = foreach(feat=feats, .combine=cbind) %dopar% {
             CalculateSumOfPosteriors(CN_features[[feat]],all_components[[feat]],
                 feat, rowIter = rowIter, cores = subcores)
