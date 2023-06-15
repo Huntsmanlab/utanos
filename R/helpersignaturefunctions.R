@@ -1,3 +1,8 @@
+# mainsignaturefunctions.R
+# The functions in this file were copied from another code repository and in several cases modified.
+# The original code can be found here: https://bitbucket.org/britroc/cnsignatures/src/master/
+# The original code was a part of a publication in Nat. Gen. (August 2018)
+
 FitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",min_prior=0.001,niter=1000,nrep=1,min_comp=2,max_comp=10)
 {
     control<-new("FLXcontrol")
