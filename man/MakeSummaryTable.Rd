@@ -4,7 +4,17 @@
 \alias{MakeSummaryTable}
 \title{Makes summary tables}
 \usage{
-MakeSummaryTable(CNobj, snames, lowT, highT, pL, pG, prop, save_path)
+MakeSummaryTable(
+  CNobj,
+  snames,
+  lowT,
+  highT,
+  pL,
+  pG,
+  prop,
+  find_peaks = FALSE,
+  save_path = FALSE
+)
 }
 \arguments{
 \item{CNobj}{An object. A a ballgown object containing Copy Number data.}

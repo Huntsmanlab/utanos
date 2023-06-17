@@ -1,0 +1,84 @@
+---
+title: "Investigating Aggregate CN Changes"
+output: rmarkdown::github_document
+vignette: >
+  %\VignetteIndexEntry{cn-summary-workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+Of interest to the researcher when investigating multiple samples is where Copy-Number gains and losses co-occur.
+This can be done in plot/diagram format to visualize these differences or it can be done by manually perusing tables.
+It is this line-of-questioning, that of group chromosomal copy-number aberrations, that the following vignette will cover.
+
+This vignette does not cover data filtration. It assumes data has already been filtered of low-interest or low-mapability regions. We assume that the remaining bins are those intended for analysis. Note: The QDNAseq object provides a slot (use) that serves the purpose of a mask over the chromosomal bins. This slot (xxxx@featureData@data[["use"]]) may be an interesting alternative for users who do not wish to drop bins entirely. 
+
+First, load several relative copynumber profiles (QDNAseq S4 formatted) into your environment.
+Some sample data exists within the following github repository: Huntsmanlab/utanosmodellingdata/sample_copynumber_data. 
+That toy dataset will be used throughout this vignette.
+
+```{r setup, eval = TRUE}
+library(QDNAseq)
+library(utanos)
+
+sample_cn_data <- readRDS(file = '~/repos/utanosmodellingdata/sample_copynumber_data/sample_cn_data.rds')
+```
+
+```{r setup, eval = FALSE}
+> sample_cn_data
+QDNAseqCopyNumbers (storageMode: lockedEnvironment)
+assayData: 86398 features, 10 samples 
+  element names: calls, copynumber, probamp, probdloss, probgain, probloss, probnorm, segmented 
+protocolData: none
+phenoData
+  sampleNames: CC-CHM-1341 CC-CHM-1347 ... CC-HAM-0385 (10 total)
+  varLabels: name total.reads expected.variance
+  varMetadata: labelDescription
+featureData
+  featureNames: 1:2850001-2880000 1:2880001-2910000 ... X:155250001-155270560 (86398 total)
+  fvarLabels: chromosome start end use
+  fvarMetadata: labelDescription
+experimentData: use 'experimentData(object)'
+Annotation: 
+> 
+
+```
+
+### I - Call gains and losses on relative copy-number data
+
+The callBins function from the QDNAseq package can be run on segmented copy number data to determine chromosomal aberrations. This function adds gain/loss probability slots to the input S4 object. Under the hood it makes use of the CGHcall R package.
+Please refer to those packages for further algorithmic details.
+
+Here is an example using our sample data.
+
+```{r setup, eval = TRUE}
+sample_cn_data <- readRDS(file = '~/repos/utanosmodellingdata/sample_copynumber_data/sample_cn_data.rds')
+gl_sample_cn_data <- callBins(sample_cn_data)
+```
+
+
+### II - Plotting
+
+The CGHbase package provides an excellent plot showing the gain and loss probability across multiple samples.
+utanos contains a slightly modified version of this plotting function and it can be generated like so...
+
+```{r setup, eval = TRUE}
+library(CGHcall)
+SummaryCNPlot(gl_sample_cn_data, maskprob = 0.2)
+```
+
+Note the 'maskprob' parameter. This is a useful mask as it allows you to remove all the lower probability gains/losses and focus are the more likely ones. This is especially useful when analyzing noisy samples.
+
+### III - Table Output
+
+TODO: Peak Identification.
+TODO: Purpose of tsv tables.
+
+
