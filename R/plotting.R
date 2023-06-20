@@ -474,13 +474,17 @@ SelectMaxElement <- function (element_vector) {
 #'
 #'
 #' @export
-SummaryCNPlot <- function (x, main='Summary Plot', maskprob = 0.2,
+SummaryCNPlot <- function (x, main='Summary Plot',
+                           maskprob = 0.2, maskaberr = 0.1,
                            gaincol='blue', losscol='red', misscol=NA,
                            build='GRCh37',... ) {
   chrom <- chromosomes(x)
   pos <- bpstart(x)
   pos2 <- bpend(x)
   uni.chrom <- unique(chrom)
+  cns <- log2(CGHbase::segmented(x))
+  com_cns <- as.data.frame(cns) %>% dplyr::mutate(mean = rowMeans(dplyr::across(where(is.numeric))))
+
   nclass <-3
   if (!is.null(probamp(x))) nclass <- nclass+1
   if (!is.null(probdloss(x))) nclass <- nclass+1
@@ -509,7 +513,11 @@ SummaryCNPlot <- function (x, main='Summary Plot', maskprob = 0.2,
     gain.freq <- rowMeans(probgain(x))+rowMeans(probamp(x))
   }
 
-  # remove probabilities of bins that fall below 0.2
+  # remove bin probabilities where the corresponding CN value falls between maskaberr and zero
+  loss.freq[abs(com_cns$mean) < maskaberr] <- 0.001
+  gain.freq[abs(com_cns$mean) < maskaberr] <- 0.001
+
+  # remove probabilities of bins that fall below maskprob
   loss.freq[loss.freq < maskprob] <- 0.001
   gain.freq[gain.freq < maskprob] <- 0.001
 
