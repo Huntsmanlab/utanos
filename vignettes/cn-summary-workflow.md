@@ -78,12 +78,14 @@ loss probability across multiple samples. utanos contains a slightly
 modified version of this plotting function and it can be generated like
 so…
 
-Notes:  
-\* The ‘markaberr’ parameter - Default Value: 0.1. Parameter removes all
-gains/loss probabilities bins where the aberation lies between this
-value and zero. \* The ‘maskprob’ parameter - Default Value: 0.2.
-Parameter removes all the gains/loss probabilities below this value.
-This is especially useful when analyzing noisy samples.
+Notes:
+
+-   The ‘markaberr’ parameter - Default Value: 0.1. Parameter removes
+    all gains/loss probabilities bins where the aberation lies between
+    this value and zero.
+-   The ‘maskprob’ parameter - Default Value: 0.2. Parameter removes all
+    the gains/loss probabilities below this value. This is especially
+    useful when analyzing noisy samples.
 
 ``` r
 library(CGHcall)
