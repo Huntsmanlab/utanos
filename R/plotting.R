@@ -485,7 +485,7 @@ SummaryCNPlot <- function (x, main='Summary Plot', maskprob = 0.2,
   if (!is.null(probamp(x))) nclass <- nclass+1
   if (!is.null(probdloss(x))) nclass <- nclass+1
 
-  chrom.lengths <- .getChromosomeLengths(build)[as.character(uni.chrom)]
+  chrom.lengths <- GetChromosomeLengths(build)[as.character(uni.chrom)]
   chrom.ends <- integer()
   cumul <- 0
   for (j in uni.chrom) {
@@ -512,7 +512,7 @@ SummaryCNPlot <- function (x, main='Summary Plot', maskprob = 0.2,
   # remove probabilities of bins that fall below 0.2
   loss.freq[loss.freq < maskprob] <- 0.001
   gain.freq[gain.freq < maskprob] <- 0.001
-  browser()
+
   plot(NA, xlim=c(0, max(pos2)), ylim=c(-1,1), type='n', xlab='chromosomes',
        ylab='mean probability', xaxs='i', xaxt='n', yaxs='i', yaxt='n',
        main=main,...)
