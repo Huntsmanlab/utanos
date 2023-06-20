@@ -78,15 +78,16 @@ The CGHbase R-package provides an excellent plot showing the gain and loss proba
 utanos contains a slightly modified version of this plotting function and it can be generated like so...
 
 Notes:  
-The 'maskprob' parameter - Default Value: 0.2. Parameter removes all the gains/loss probabilities below this value. This is especially useful when analyzing noisy samples.
+  * The 'markaberr' parameter - Default Value: 0.1. Parameter removes all gains/loss probabilities bins where the aberation lies between this value and zero.
+  * The 'maskprob' parameter - Default Value: 0.2. Parameter removes all the gains/loss probabilities below this value. This is especially useful when analyzing noisy samples.
 
 ```{r, eval = FALSE}
 library(CGHcall)
-SummaryCNPlot(gl_sample_cn_data, maskprob = 0.2)
+SummaryCNPlot(gl_sample_cn_data, maskaberr = 0.1, maskprob = 0.2)
 ```
 
 ```{r, echo = FALSE}
-knitr::include_graphics("../images/signature-by-component_heatmap.png", dpi = 300)
+knitr::include_graphics("../images/gainloss_plot.png")
 ```
 
 
