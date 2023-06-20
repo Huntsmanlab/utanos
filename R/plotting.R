@@ -478,16 +478,16 @@ SummaryCNPlot <- function (x, main='Summary Plot',
                            maskprob = 0.2, maskaberr = 0.1,
                            gaincol='blue', losscol='red', misscol=NA,
                            build='GRCh37',... ) {
-  chrom <- chromosomes(x)
-  pos <- bpstart(x)
-  pos2 <- bpend(x)
+  chrom <- QDNAseq::chromosomes(x)
+  pos <- QDNAseq::bpstart(x)
+  pos2 <- QDNAseq::bpend(x)
   uni.chrom <- unique(chrom)
   cns <- log2(CGHbase::segmented(x))
   com_cns <- as.data.frame(cns) %>% dplyr::mutate(mean = rowMeans(dplyr::across(where(is.numeric))))
 
   nclass <-3
-  if (!is.null(probamp(x))) nclass <- nclass+1
-  if (!is.null(probdloss(x))) nclass <- nclass+1
+  if (!is.null(CGHbase::probamp(x))) nclass <- nclass+1
+  if (!is.null(CGHbase::probdloss(x))) nclass <- nclass+1
 
   chrom.lengths <- GetChromosomeLengths(build)[as.character(uni.chrom)]
   chrom.ends <- integer()
@@ -501,16 +501,16 @@ SummaryCNPlot <- function (x, main='Summary Plot',
   names(chrom.ends) <- names(chrom.lengths)
 
   if (nclass==3) {
-    loss.freq <- rowMeans(probloss(x))
-    gain.freq <- rowMeans(probgain(x))
+    loss.freq <- rowMeans(CGHbase::probloss(x))
+    gain.freq <- rowMeans(CGHbase::probgain(x))
   }
   if (nclass==4) {
-    loss.freq <- rowMeans(probloss(x))
-    gain.freq <- rowMeans(probgain(x))+rowMeans(probamp(x))
+    loss.freq <- rowMeans(CGHbase::probloss(x))
+    gain.freq <- rowMeans(CGHbase::probgain(x)) + rowMeans(CGHbase::probamp(x))
   }
   if (nclass==5) {
-    loss.freq <- rowMeans(probloss(x)) + rowMeans(probdloss(x))
-    gain.freq <- rowMeans(probgain(x))+rowMeans(probamp(x))
+    loss.freq <- rowMeans(CGHbase::probloss(x)) + rowMeans(CGHbase::probdloss(x))
+    gain.freq <- rowMeans(CGHbase::probgain(x)) + rowMeans(CGHbase::probamp(x))
   }
 
   # remove bin probabilities where the corresponding CN value falls between maskaberr and zero
