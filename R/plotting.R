@@ -465,21 +465,31 @@ SelectMaxElement <- function (element_vector) {
   return(max_value)
 }
 
-# Adapted from CGHcall or QDNAseq package
-# What role does this function have to play?
-#
+#' Generate Summary Copy-Number Aberrations Plot
+#'
+#' @description
+#' This function was copied and modified from another package (CGHbase).
+#' The original code can be found here on github: https://github.com/tgac-vumc/CGHbase
+#' The bioconductor page: https://bioconductor.org/packages/release/bioc/html/CGHbase.html
+#'
+#'
 #' @export
-TestSummaryPlot <- function (x, main='Summary Plot', gaincol='blue', losscol='red', misscol=NA, build='GRCh37',... )
-{
-  chrom <- chromosomes(x)
-  pos <- bpstart(x)
-  pos2 <- bpend(x)
+SummaryCNPlot <- function (x, main='Summary Plot',
+                           maskprob = 0.2, maskaberr = 0.1,
+                           gaincol='blue', losscol='red', misscol=NA,
+                           build='GRCh37',... ) {
+  chrom <- QDNAseq::chromosomes(x)
+  pos <- QDNAseq::bpstart(x)
+  pos2 <- QDNAseq::bpend(x)
   uni.chrom <- unique(chrom)
-  nclass <-3
-  if (!is.null(probamp(x))) nclass <- nclass+1
-  if (!is.null(probdloss(x))) nclass <- nclass+1
+  cns <- log2(CGHbase::segmented(x))
+  com_cns <- as.data.frame(cns) %>% dplyr::mutate(mean = rowMeans(dplyr::across(where(is.numeric))))
 
-  chrom.lengths <- .getChromosomeLengths(build)[as.character(uni.chrom)]
+  nclass <-3
+  if (!is.null(CGHbase::probamp(x))) nclass <- nclass+1
+  if (!is.null(CGHbase::probdloss(x))) nclass <- nclass+1
+
+  chrom.lengths <- GetChromosomeLengths(build)[as.character(uni.chrom)]
   chrom.ends <- integer()
   cumul <- 0
   for (j in uni.chrom) {
@@ -490,15 +500,30 @@ TestSummaryPlot <- function (x, main='Summary Plot', gaincol='blue', losscol='re
   }
   names(chrom.ends) <- names(chrom.lengths)
 
-  if(nclass==3) {loss.freq <- rowMeans(probloss(x)); gain.freq <- rowMeans(probgain(x))}
-  if(nclass==4) {loss.freq <- rowMeans(probloss(x)); gain.freq <- rowMeans(probgain(x))+rowMeans(probamp(x))}
-  if(nclass==5) {loss.freq <- rowMeans(probloss(x))+rowMeans(probdloss(x)); gain.freq <- rowMeans(probgain(x))+rowMeans(probamp(x))}
+  if (nclass==3) {
+    loss.freq <- rowMeans(CGHbase::probloss(x))
+    gain.freq <- rowMeans(CGHbase::probgain(x))
+  }
+  if (nclass==4) {
+    loss.freq <- rowMeans(CGHbase::probloss(x))
+    gain.freq <- rowMeans(CGHbase::probgain(x)) + rowMeans(CGHbase::probamp(x))
+  }
+  if (nclass==5) {
+    loss.freq <- rowMeans(CGHbase::probloss(x)) + rowMeans(CGHbase::probdloss(x))
+    gain.freq <- rowMeans(CGHbase::probgain(x)) + rowMeans(CGHbase::probamp(x))
+  }
 
-  # remove probabilities of bins that fall below 0.2
-  loss.freq[loss.freq < 0.2] <- 0.001
-  gain.freq[gain.freq < 0.2] <- 0.001
-  browser()
-  plot(NA, xlim=c(0, max(pos2)), ylim=c(-1,1), type='n', xlab='chromosomes', ylab='mean probability', xaxs='i', xaxt='n', yaxs='i', yaxt='n', main=main,...)
+  # remove bin probabilities where the corresponding CN value falls between maskaberr and zero
+  loss.freq[abs(com_cns$mean) < maskaberr] <- 0.001
+  gain.freq[abs(com_cns$mean) < maskaberr] <- 0.001
+
+  # remove probabilities of bins that fall below maskprob
+  loss.freq[loss.freq < maskprob] <- 0.001
+  gain.freq[gain.freq < maskprob] <- 0.001
+
+  plot(NA, xlim=c(0, max(pos2)), ylim=c(-1,1), type='n', xlab='chromosomes',
+       ylab='mean probability', xaxs='i', xaxt='n', yaxs='i', yaxt='n',
+       main=main,...)
   if (!is.na(misscol)) {
     rect(0, -1, max(pos2), 1, col=misscol, border=NA)
     rect(pos, -1, pos2, 1, col='white', border=NA)
@@ -511,8 +536,11 @@ TestSummaryPlot <- function (x, main='Summary Plot', gaincol='blue', losscol='re
     for (j in names(chrom.ends)[-length(chrom.ends)])
       abline(v=chrom.ends[j], lty='dashed')
   ax <- (chrom.ends + c(0, chrom.ends[-length(chrom.ends)])) / 2
-  axis(side=1,at=ax,labels=uni.chrom,cex=.2,lwd=.5,las=1,cex.axis=1,cex.lab=1)
-  axis(side=2, at=c(-1, -0.5, 0, 0.5, 1), labels=c('100 %', ' 50 %', '0 %', '50 %', '100 %'), las=1)
+  axis(side=1,at=ax,labels=replace(uni.chrom, uni.chrom =='23', 'X'),
+       cex=.2,lwd=.5,las=1,cex.axis=1,cex.lab=1)
+  axis(side=2, at=c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1),
+       labels=c('100 %', '75 %', '50 %', '25 %', '0 %', '25 %', '50 %', '75 %', '100 %'),
+       las=1)
   mtext('gains', side=2, line=3, at=0.5)
   mtext('losses', side=2, line=3, at=-0.5)
   ### number of data points
