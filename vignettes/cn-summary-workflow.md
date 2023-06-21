@@ -103,15 +103,20 @@ Notes:
 ### IV - Table Output
 
 The `MakeSummaryTable()` function can be used to generate tables of the
-copy-number gains and losses. If desired, the user can also generate a
-second table containing just the peaks by setting `find_peaks = TRUE`.
-The threshold parameters outlined in the below code section will apply
-to both the generated table and the peaks table. Peaks in the CN
-probability data are identified using the gsignal::findpeaks function.
+copy-number gains and losses.  
+If desired, the user can also generate a second table containing just
+the peaks by setting `find_peaks = TRUE`. The threshold parameters
+outlined in the below code section will apply to both the generated
+summary CN aberrations table and the peaks table. Peaks in the CN
+probability data are identified using the `gsignal::findpeaks` function.
+Peaks are simply defined as local maxima. This function itself is a
+port-over of its namesake function in the Octave package ‘signal’.  
 The `MakeSummaryTable()` function returns a list with either 1 or 2
-tables (type: tible). These tables can be easily saved as csvs, tsvs, or
-in your favourite tabular format for perusal in a differnt user-friendly
-application such as excel.
+tables (type: tibble).
+
+These tables can be easily saved as csvs, tsvs, or in your favourite
+tabular format for perusal in a different user-friendly application such
+as excel.
 
 ``` r
 > library(gsignal)
