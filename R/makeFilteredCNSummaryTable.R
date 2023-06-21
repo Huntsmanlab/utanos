@@ -51,24 +51,31 @@ CollapseTableToSegments <- function(df) {
 #' It is the function that does the work.
 #'
 #' @param CNobj An object. A a ballgown object containing Copy Number data.
-#' @param snames A vector. A vector of sample IDs that are of interest.
 #' @param lowT A whole number. A threshold below which there is copy number loss.
 #' @param highT A whole number. A threshold above which there is copy number gain.
 #' @param pL A float. A probability threshold (between 0 and 1), to which loss frequency is compared.
 #' @param pG A float. A probability threshold (between 0 and 1), to which gain frequency is compared.
 #' @param prop A float. A proportion threshold (between 0 and 1), to which loss and gain occurences are compared (separately).
+#' @param find_peaks Boolean. If TRUE, returns a table
+#' @param snames A vector. A vector of sample IDs that are of interest.
 #' @param save_path A string. A path (directory) to where segment tables should be saved. ex. '~/Documents/test_project'.
 #' @returns Nothing.
 #'
 #' @export
-MakeSummaryTable <- function(CNobj, snames,
-                             lowT, highT, pL, pG, prop,
-                             find_peaks = FALSE, save_path = FALSE) {
+MakeSummaryTable <- function(CNobj,
+                             lowT, highT,
+                             pL = 0.1, pG = 0.1,
+                             prop = 0.5,
+                             find_peaks = FALSE,
+                             snames = FALSE,
+                             save_path = FALSE) {
 
   output <- list()
 
   # Retrieve just the samples of interest
-  CNobj <- CNobj[,sampleNames(CNobj) %in% snames]
+  if (snames != FALSE) {
+    CNobj <- CNobj[,sampleNames(CNobj) %in% snames]
+  }
 
   df <- data.frame(chromosome = QDNAseq::chromosomes(CNobj),
                    start = QDNAseq::bpstart(CNobj),
@@ -136,20 +143,17 @@ MakeSummaryTable <- function(CNobj, snames,
                            as.character(df$start), '-', as.character(df$end))
   df$segment <- NULL
 
-  # Add genes present in the region to the output table
-  mycoords.gr = df %>% dplyr::select(chromosome, start, end) %>%
-                    dplyr::mutate(chromosome = paste0('chr', chromosome))
+  mycoords.gr = df %>% dplyr::select(chromosome, start, end)
   mycoords.gr <- GenomicRanges::makeGRangesFromDataFrame(mycoords.gr)
-  overlaps <- IRanges::findOverlaps(GenomicFeatures::genes(TxDb.Hsapiens.UCSC.hg19.knownGene::TxDb.Hsapiens.UCSC.hg19.knownGene,
-                                 single.strand.genes.only=FALSE), mycoords.gr)
-  entrez_ids <- names(GenomicFeatures::genes(TxDb.Hsapiens.UCSC.hg19.knownGene::TxDb.Hsapiens.UCSC.hg19.knownGene,
-                            single.strand.genes.only=FALSE)[overlaps@from])
-  symbols <- annotate::getSYMBOL(entrez_ids, data='org.Hs.eg')
-  genes_table <- data.frame(symbols = symbols, entrez_id = entrez_ids, entry = overlaps@to) %>%
-                      dplyr::filter(!is.na(symbols))
-  genes_table <- genes_table %>%
+  gr_genes <- GenomicFeatures::genes(EnsDb.Hsapiens.v75::EnsDb.Hsapiens.v75)
+  overlaps <- IRanges::findOverlaps(gr_genes, mycoords.gr)
+  genes_table <- data.frame(ENSEMBL = gr_genes@ranges@NAMES[overlaps@from], entry = overlaps@to)
+  genes_table <- genes_table %>% dplyr::left_join(annotables::grch37,
+                                                  by = c("ENSEMBL" = "ensgene")) %>%
+                    dplyr::select(ENSEMBL, entry, symbol) %>%
+                    dplyr::filter(!is.na(symbol)) %>%
                     dplyr::group_by(entry) %>%
-                    dplyr::summarise(features_in_region = paste0(symbols, collapse = ","))
+                    dplyr::summarise(features_in_region = paste0(symbol, collapse = ","))
   df$entry <- 1:dim(df)[1]
   df <- df %>% dplyr::left_join(genes_table, by = c('entry'))
   df$entry <- NULL
