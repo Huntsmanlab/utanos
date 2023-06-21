@@ -134,7 +134,7 @@ MakeSummaryTable <- function(CNobj,
     peaks <- df[c(gain_peaks$loc, loss_peaks$loc),]
     output[['peaks']] <- peaks
   }
-  browser()
+
   # Collapse the data frame to genomic segments
   df <- CollapseTableToSegments(df)
   df <- df %>% dplyr::mutate(chromosome = as.character(chromosome))
@@ -143,16 +143,8 @@ MakeSummaryTable <- function(CNobj,
                            as.character(df$start), '-', as.character(df$end))
   df$segment <- NULL
 
-  # Add genes present in the region to the output table
-  # mycoords.gr = df %>% dplyr::select(chromosome, start, end) %>%
-  #                   dplyr::mutate(chromosome = paste0('chr', chromosome))
   mycoords.gr = df %>% dplyr::select(chromosome, start, end)
   mycoords.gr <- GenomicRanges::makeGRangesFromDataFrame(mycoords.gr)
-  # overlaps <- IRanges::findOverlaps(GenomicFeatures::genes(TxDb.Hsapiens.UCSC.hg19.knownGene::TxDb.Hsapiens.UCSC.hg19.knownGene,
-  #                                single.strand.genes.only=FALSE), mycoords.gr)
-  # entrez_ids <- names(GenomicFeatures::genes(TxDb.Hsapiens.UCSC.hg19.knownGene::TxDb.Hsapiens.UCSC.hg19.knownGene,
-  #                           single.strand.genes.only=FALSE)[overlaps@from])
-  # symbols <- annotate::getSYMBOL(entrez_ids, data='org.Hs.eg')
   gr_genes <- GenomicFeatures::genes(EnsDb.Hsapiens.v75::EnsDb.Hsapiens.v75)
   overlaps <- IRanges::findOverlaps(gr_genes, mycoords.gr)
   genes_table <- data.frame(ENSEMBL = gr_genes@ranges@NAMES[overlaps@from], entry = overlaps@to)
