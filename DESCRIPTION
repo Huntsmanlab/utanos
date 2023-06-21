@@ -20,7 +20,6 @@ Imports:
     data.table,
     DBI,
     DescTools,
-    doMC,
     dplyr,
     EnsDb.Hsapiens.v75,
     flexmix,
@@ -48,6 +47,7 @@ Depends:
     R (>= 2.10)
 LazyData: true
 Suggests: 
+    doMC,
     knitr,
     rascal,
     rmarkdown,
