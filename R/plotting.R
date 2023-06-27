@@ -474,7 +474,7 @@ SelectMaxElement <- function (element_vector) {
 #'
 #'
 #' @export
-SummaryCNPlot <- function (x, main='Summary Plot',
+SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
                            maskprob = 0.2, maskaberr = 0.1,
                            gaincol='blue', losscol='red', misscol=NA,
                            build='GRCh37',... ) {
