@@ -474,7 +474,7 @@ SelectMaxElement <- function (element_vector) {
 #'
 #'
 #' @export
-SummaryCNPlot <- function (x, main='Summary Plot',
+SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
                            maskprob = 0.2, maskaberr = 0.1,
                            gaincol='blue', losscol='red', misscol=NA,
                            build='GRCh37',... ) {
@@ -513,7 +513,7 @@ SummaryCNPlot <- function (x, main='Summary Plot',
     gain.freq <- rowMeans(CGHbase::probgain(x)) + rowMeans(CGHbase::probamp(x))
   }
 
-  # remove bin probabilities where the corresponding CN value falls between maskaberr and zero
+  # Mask gain/loss probability bins corresponding to CN aberrations that fall between maskaberr and zero
   loss.freq[abs(com_cns$mean) < maskaberr] <- 0.001
   gain.freq[abs(com_cns$mean) < maskaberr] <- 0.001
 
@@ -552,5 +552,10 @@ SummaryCNPlot <- function (x, main='Summary Plot',
     str <- paste(str, round(probe / 1000), ' kbp', sep='')
   }
   mtext(str, side=3, line=0, adj=0)
+  ### number of samples
+  nsamps <- paste0('n=', as.character(dim(x)[2]))
+  masks <- paste0('masks: prob=', as.character(maskprob), ', aberr=',
+                  as.character(maskaberr))
+  mtext(paste0(masks, '  |  ', nsamps), side=3, line=0, adj=1)
 }
 
