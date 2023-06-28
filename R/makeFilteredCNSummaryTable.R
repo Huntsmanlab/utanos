@@ -105,7 +105,7 @@ MakeSummaryTable <- function(CNobj,
   bin_cns_gain <- as.data.frame(cns > highT) %>% dplyr::mutate(total = rowSums(dplyr::across(where(is.logical))))
   df$loss.count <- bin_cns_loss$total
   df$gain.count <- bin_cns_gain$total
-
+  browser()
   # Add per-gain or loss sample names to output table
   mat <- as.data.frame(t(colnames(bin_cns_loss)[1:dim(cns)[2]])) %>% dplyr::slice(rep(1:dplyr::n(), each = dim(bin_cns_loss)[1]))
   mat <- as.matrix(mat)
