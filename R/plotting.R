@@ -545,7 +545,7 @@ SummaryCNPlot <- function (x, main='Summary Plot',
   mtext('losses', side=2, line=3, at=-0.5)
   ### number of data points
   str <- paste(round(nrow(x) / 1000), 'k x ', sep='')
-  probe <- median(bpend(x)-bpstart(x)+1)
+  probe <- median(QDNAseq::bpend(x)-QDNAseq::bpstart(x)+1)
   if (probe < 1000) {
     str <- paste(str, probe, ' bp', sep='')
   } else {
