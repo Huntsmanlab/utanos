@@ -474,7 +474,7 @@ SelectMaxElement <- function (element_vector) {
 #'
 #'
 #' @export
-SummaryCNPlot <- function (x, main='Summary Plot',
+SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
                            maskprob = 0.2, maskaberr = 0.1,
                            gaincol='blue', losscol='red', misscol=NA,
                            build='GRCh37',... ) {
@@ -492,12 +492,23 @@ SummaryCNPlot <- function (x, main='Summary Plot',
   chrom.lengths <- GetChromosomeLengths(build)[as.character(uni.chrom)]
   chrom.ends <- integer()
   cumul <- 0
+
+  # Build position indices
+  uni.chrom <- replace(uni.chrom, uni.chrom =='X', '23')
+  uni.chrom <- as.integer(replace(uni.chrom, uni.chrom =='Y', '24'))
+  chrom <- replace(chrom, chrom =='X', '23')
+  chrom <- as.integer(replace(chrom, chrom =='Y', '24'))
+
   for (j in uni.chrom) {
     pos[chrom > j] <- pos[chrom > j] + chrom.lengths[as.character(j)]
     pos2[chrom > j] <- pos2[chrom > j] + chrom.lengths[as.character(j)]
     cumul <- cumul + chrom.lengths[as.character(j)]
     chrom.ends <- c(chrom.ends, cumul)
   }
+
+  # Return uni.chrom to character vector
+  uni.chrom <- replace(as.character(uni.chrom), uni.chrom == 23, 'X')
+  uni.chrom <- replace(as.character(uni.chrom), uni.chrom == 24, 'Y')
   names(chrom.ends) <- names(chrom.lengths)
 
   if (nclass==3) {
@@ -513,14 +524,14 @@ SummaryCNPlot <- function (x, main='Summary Plot',
     gain.freq <- rowMeans(CGHbase::probgain(x)) + rowMeans(CGHbase::probamp(x))
   }
 
-  # remove bin probabilities where the corresponding CN value falls between maskaberr and zero
+  # Mask gain/loss probability bins corresponding to CN aberrations that fall between maskaberr and zero
   loss.freq[abs(com_cns$mean) < maskaberr] <- 0.001
   gain.freq[abs(com_cns$mean) < maskaberr] <- 0.001
 
   # remove probabilities of bins that fall below maskprob
   loss.freq[loss.freq < maskprob] <- 0.001
   gain.freq[gain.freq < maskprob] <- 0.001
-
+  browser()
   plot(NA, xlim=c(0, max(pos2)), ylim=c(-1,1), type='n', xlab='chromosomes',
        ylab='mean probability', xaxs='i', xaxt='n', yaxs='i', yaxt='n',
        main=main,...)
@@ -536,7 +547,7 @@ SummaryCNPlot <- function (x, main='Summary Plot',
     for (j in names(chrom.ends)[-length(chrom.ends)])
       abline(v=chrom.ends[j], lty='dashed')
   ax <- (chrom.ends + c(0, chrom.ends[-length(chrom.ends)])) / 2
-  axis(side=1,at=ax,labels=replace(uni.chrom, uni.chrom =='23', 'X'),
+  axis(side=1,at=ax,labels=uni.chrom,
        cex=.2,lwd=.5,las=1,cex.axis=1,cex.lab=1)
   axis(side=2, at=c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1),
        labels=c('100 %', '75 %', '50 %', '25 %', '0 %', '25 %', '50 %', '75 %', '100 %'),
@@ -545,12 +556,17 @@ SummaryCNPlot <- function (x, main='Summary Plot',
   mtext('losses', side=2, line=3, at=-0.5)
   ### number of data points
   str <- paste(round(nrow(x) / 1000), 'k x ', sep='')
-  probe <- median(bpend(x)-bpstart(x)+1)
+  probe <- median(QDNAseq::bpend(x)-QDNAseq::bpstart(x)+1)
   if (probe < 1000) {
     str <- paste(str, probe, ' bp', sep='')
   } else {
     str <- paste(str, round(probe / 1000), ' kbp', sep='')
   }
   mtext(str, side=3, line=0, adj=0)
+  ### number of samples
+  nsamps <- paste0('n=', as.character(dim(x)[2]))
+  masks <- paste0('masks: prob=', as.character(maskprob), ', aberr=',
+                  as.character(maskaberr))
+  mtext(paste0(masks, '  |  ', nsamps), side=3, line=0, adj=1)
 }
 

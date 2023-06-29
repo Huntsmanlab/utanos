@@ -20,7 +20,7 @@ BiocManager::install("Biobase")
 
 Install the bulk of this package's dependencies making use of librarian:
 ```R
-librarian::shelf(annotate, caret, CGHcall, data.table, DBI, DescTools, devtools, doMC, dplyr, EnsDb.Hsapiens.v75, flexmix, GenomicRanges, ggalt, ggplot2, ggpubr, ggrepel, gridExtra, hrbrthemes, ks, magrittr, NMF, pheatmap, plyr, purrr, QDNAseq, readr, RMySQL, stringr, tidyr, TxDb.Hsapiens.UCSC.hg19.knownGene, viridis, YAPSA)
+librarian::shelf(caret, CGHcall, data.table, DBI, DescTools, devtools, doMC, dplyr, EnsDb.Hsapiens.v75, flexmix, GenomicRanges, ggalt, ggplot2, ggpubr, ggrepel, gridExtra, hrbrthemes, ks, magrittr, NMF, pheatmap, plyr, purrr, QDNAseq, readr, RMySQL, stringr, tidyr, viridis, YAPSA)
 ```
 
 Install annotables from github:
