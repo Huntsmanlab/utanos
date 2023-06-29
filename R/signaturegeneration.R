@@ -50,7 +50,7 @@ CallSignatureExposures <- function (copy_numbers_input,
 
   stopifnot(!is.null(component_models))                                         # We want the user to explicitly declare the components they intend to use
   stopifnot(!is.null(signatures))                                               # We want the user to explicitly declare the signatures they intend to use
-  stopifnot(!is.null(data_path))                                                # We want the user to explicitly declare the signatures they intend to use
+  # stopifnot(!is.null(data_path))                                                # We want the user to explicitly declare the signatures they intend to use
   datetoday <- Sys.Date()
 
   if (!is.null(relativeCN_data)) {
@@ -61,10 +61,15 @@ CallSignatureExposures <- function (copy_numbers_input,
                                              genome = refgenome)
   }
 
-  component_models <- file.path(data_path, component_models)
-  sample_by_component <- GenerateSampleByComponentMatrix(CN_features, component_models)
-  signatures <- file.path(data_path, signatures)
-  sigex <- QuantifySignatures(sample_by_component, signatures)
+  if (file.exists(component_models)) {
+    sample_by_component <- GenerateSampleByComponentMatrix(CN_features,
+                                                           component_models)
+  } else { stop("Component models path isn't valid, file does not exist.") }
+
+  if (file.exists(signatures)) {
+    sigex <- QuantifySignatures(sample_by_component, signatures)
+  } else { stop("Signatures path isn't valid, file does not exist.") }
+
   sigex <- as.data.frame(sigex)
 
   if (!is.null(plot_savepath)) {
