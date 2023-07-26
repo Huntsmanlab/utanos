@@ -500,9 +500,9 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
   chrom <- as.integer(replace(chrom, chrom =='Y', '24'))
 
   for (j in uni.chrom) {
-    pos[chrom > j] <- pos[chrom > j] + chrom.lengths[as.character(j)]
-    pos2[chrom > j] <- pos2[chrom > j] + chrom.lengths[as.character(j)]
-    cumul <- cumul + chrom.lengths[as.character(j)]
+    pos[chrom > j] <- pos[chrom > j] + chrom.lengths[j]
+    pos2[chrom > j] <- pos2[chrom > j] + chrom.lengths[j]
+    cumul <- cumul + chrom.lengths[j]
     chrom.ends <- c(chrom.ends, cumul)
   }
 
@@ -547,8 +547,10 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
     for (j in names(chrom.ends)[-length(chrom.ends)])
       abline(v=chrom.ends[j], lty='dashed')
   ax <- (chrom.ends + c(0, chrom.ends[-length(chrom.ends)])) / 2
-  axis(side=1,at=ax,labels=uni.chrom,
-       cex=.2,lwd=.5,las=1,cex.axis=1,cex.lab=1)
+  uni.chrom.labels <-uni.chrom
+  uni.chrom.labels[seq(2, length(uni.chrom.labels), 2)] <- "" # Make every second x-axis label empty, in order to fit labels neatly on the plot
+  axis(side=1,at=ax,labels=uni.chrom.labels,
+      lwd=.5,las=1,cex.axis=0.7,cex.lab=1)
   axis(side=2, at=c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1),
        labels=c('100 %', '75 %', '50 %', '25 %', '0 %', '25 %', '50 %', '75 %', '100 %'),
        las=1)
