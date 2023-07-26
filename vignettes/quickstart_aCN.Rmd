@@ -68,7 +68,7 @@ The second argument, acnmethod, is a string which represents the method by which
 - a character vector of the genes from which to pull VAFs, where genes are assumed to be in order of decreasing precedence, ex. c('TP53', 'KRAS', 'PTEN'),
 - "mad"
 
-The third argument, rascal_sols, is a TSV file of the calculated rascal solutions.
+The third argument, rascal_sols, is a CSV file of the calculated rascal solutions.
 
 ```{r}
 solutions <- "~/projects/vignettes/30kb_comCNVfilt_rascal_solutions.csv"
