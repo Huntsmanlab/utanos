@@ -24,7 +24,7 @@ segments_gt3mb <- GetLargeSegments(segments=segments_wo_short_arms)
 segments_gt3mb <- AssignLevels(segments=segments_gt3mb,
                               segments_copy=segments_gt3mb,
                               thr=first_threshold)
-segments_gt3mb <- GatherByLevels(segments=segments_gt3mb,
+segments_gt3mb <- GatherSegmentsByLevels(segments=segments_gt3mb,
                                  bam_ratios_frame=clean_ratios_file) # Graph 3
 
 #### Re-inserting small segments into segments_gt3mb####
