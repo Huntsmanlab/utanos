@@ -139,7 +139,7 @@ AssignLevels <- function(segments, segments_copy, thr) {
 #'
 #' @export
 
-GatherByLevels <- function(segments, bam_ratios_frame) {
+GatherSegmentsByLevels <- function(segments, bam_ratios_frame) {
   #### Creating GRanges object from bam ratios file ####
   bam_ratios_frame = bam_ratios_frame[,-1]
   colnames(bam_ratios_frame) <- c("chr", "start", "end", "ratio", "ratio_median")
