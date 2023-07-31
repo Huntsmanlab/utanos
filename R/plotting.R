@@ -490,25 +490,12 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
   if (!is.null(CGHbase::probdloss(x))) nclass <- nclass+1
 
   chrom.lengths <- GetChromosomeLengths(build)[as.character(uni.chrom)]
-  chrom.ends <- integer()
-  cumul <- 0
 
-  # Build position indices
-  uni.chrom <- replace(uni.chrom, uni.chrom =='X', '23')
-  uni.chrom <- as.integer(replace(uni.chrom, uni.chrom =='Y', '24'))
-  chrom <- replace(chrom, chrom =='X', '23')
-  chrom <- as.integer(replace(chrom, chrom =='Y', '24'))
-
-  for (j in uni.chrom) {
-    pos[chrom > j] <- pos[chrom > j] + chrom.lengths[as.character(j)]
-    pos2[chrom > j] <- pos2[chrom > j] + chrom.lengths[as.character(j)]
-    cumul <- cumul + chrom.lengths[as.character(j)]
-    chrom.ends <- c(chrom.ends, cumul)
-  }
-
-  # Return uni.chrom to character vector
-  uni.chrom <- replace(as.character(uni.chrom), uni.chrom == 23, 'X')
-  uni.chrom <- replace(as.character(uni.chrom), uni.chrom == 24, 'Y')
+  # Convert the segment positions from a relative, per-chromosome basis to absolute positions in the genome
+  abs_seg_pos <- RelToAbsSegPos(chromosomes = chrom, rel_start_pos = pos, rel_end_pos = pos2, build = build)
+  pos <- abs_seg_pos$abs_start_pos
+  pos2 <- abs_seg_pos$abs_end_pos
+  chrom.ends <- abs_seg_pos$chrom_ends
   names(chrom.ends) <- names(chrom.lengths)
 
   if (nclass==3) {
@@ -547,8 +534,10 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
     for (j in names(chrom.ends)[-length(chrom.ends)])
       abline(v=chrom.ends[j], lty='dashed')
   ax <- (chrom.ends + c(0, chrom.ends[-length(chrom.ends)])) / 2
-  axis(side=1,at=ax,labels=uni.chrom,
-       cex=.2,lwd=.5,las=1,cex.axis=1,cex.lab=1)
+  uni.chrom.labels <-uni.chrom
+  uni.chrom.labels[seq(2, length(uni.chrom.labels), 2)] <- "" # Make every second x-axis label empty, in order to fit labels neatly on the plot
+  axis(side=1,at=ax,labels=uni.chrom.labels,
+      lwd=.5,las=1,cex.axis=0.7,cex.lab=1)
   axis(side=2, at=c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1),
        labels=c('100 %', '75 %', '50 %', '25 %', '0 %', '25 %', '50 %', '75 %', '100 %'),
        las=1)
@@ -570,3 +559,46 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
   mtext(paste0(masks, '  |  ', nsamps), side=3, line=0, adj=1)
 }
 
+### Given chromosomal segment positions, convert the relative (to a given chromosome) start and end positions of each segment to absolute positions in the genome.
+# DESCRIPTION
+# Parameters:
+#   (character vector)  chromosomes: A vector of length(segments) indicating the chromosome each segment is on, as returned by QDNAseq::chromosomes
+#   (numeric vector)    rel_start_pos: A vector of length(segments) indicating the relative start position of each segment, as returned by QDNAseq::bpstart
+#   (numeric vector)    rel_end_pos: A vector of length(segments) indicating the relative end position of each segment, as returned by QDNAseq::bpend
+#   (string)            build: The reference genome build to use when retrieving chromosome lengths.
+#
+# Returns:
+#   (list)              abs: A list containing the absolute start/end positions and the total chromosome length.
+#   (numeric vector)    abs_start_pos: A vector of length(segments) indicating the absolute start position of each segment
+#   (numeric vector)    abs_end_pos: A vector of length(segments) indicating the absolute end position of each segment
+#   (integer)           tot_length: The total length of all the chromosomes
+#   (numeric vector)    chrom_ends: The absolute end position of each chromosome
+###
+#' @export
+RelToAbsSegPos <- function(chromosomes, rel_start_pos, rel_end_pos, build = "GRCh37") {
+  chrom_lengths <- GetChromosomeLengths(build)[as.character(unique(chromosomes))]
+
+  chromosomes <- replace(chromosomes, chromosomes == "X", "23")
+  chromosomes <- as.integer(replace(chromosomes, chromosomes == "Y", "24")) # Map all chromosomes to integers so we can iterate in numeric order
+  uni_chrom <- unique(chromosomes)
+
+  abs_start_pos <- rel_start_pos
+  abs_end_pos <- rel_end_pos
+  tot_length <- 0
+  chrom_ends <- integer()
+
+  for (chrom in uni_chrom) {
+    # Since a one-to-one correspondence exists between the vector indicating the chromosome each segment is on, and the vectors of segment start/end positions, we can index the
+    # start/end positions based on the chromosomes which are numbered higher than the current chromosome. We then iteratively add the length of lower numbered chromosomes
+    # to the relative start/end positions, obtaining absolute positions.0000000..0
+    abs_start_pos[chromosomes > chrom] <- abs_start_pos[chromosomes > chrom] + chrom_lengths[chrom]
+    abs_end_pos[chromosomes > chrom] <- abs_end_pos[chromosomes > chrom] + chrom_lengths[chrom]
+
+    tot_length <- tot_length + chrom_lengths[chrom]
+    chrom_ends <- c(chrom_ends, tot_length)
+  }
+
+  names(chrom_ends) <- as.character(chrom_lengths)
+  abs <- list(abs_start_pos = abs_start_pos, abs_end_pos = abs_end_pos, tot_length = tot_length, chrom_ends = chrom_ends)
+  return(abs)
+}
