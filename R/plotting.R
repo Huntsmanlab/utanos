@@ -472,9 +472,19 @@ SelectMaxElement <- function (element_vector) {
 #' The original code can be found here on github: https://github.com/tgac-vumc/CGHbase
 #' The bioconductor page: https://bioconductor.org/packages/release/bioc/html/CGHbase.html
 #'
+#' This function creates a summary plot of the copy-number changes of the samples in the provided QDNAseq object.
+#'
+#' @param x An S4 object of type QDNAseqCopyNumbers containing multiple samples.
+#' @param main (optional) String. Plot Title.
+#' @param summarytype (optional) String. One of either 'probability' or 'frequency'. \cr
+#' 'probability' - The vertical bars represent the average probability that the positions along the chromosome they cover are gained (blue bars) or lost (red bars) across all samples. \cr
+#' 'frequency' - The vertical bars represent the frequency that the positions along the chromosome they cover are gained (blue bars) or lost (red bars) across all samples. \cr
+#' @param maskprob (optional) Numeric. Gain or loss probabilities that fall below this number are masked. Used to exclude noise.
+#' @param maskaberr (optional) Numeric. Copy-Number gains or losses that fall below this number are masked. Used to exclude noise.
 #'
 #' @export
 SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
+                           summarytype = 'probability',
                            maskprob = 0.2, maskaberr = 0.1,
                            gaincol='blue', losscol='red', misscol=NA,
                            build='GRCh37',... ) {
@@ -484,6 +494,7 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
   uni.chrom <- unique(chrom)
   cns <- log2(CGHbase::segmented(x))
   com_cns <- as.data.frame(cns) %>% dplyr::mutate(mean = rowMeans(dplyr::across(where(is.numeric))))
+  yaxis_label <- 'mean probability'
 
   nclass <-3
   if (!is.null(CGHbase::probamp(x))) nclass <- nclass+1
@@ -511,6 +522,14 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
     gain.freq <- rowMeans(CGHbase::probgain(x)) + rowMeans(CGHbase::probamp(x))
   }
 
+  # Make Frequency plot option instead (rather than probability)
+  if (summarytype == 'frequency') {
+    calls <- CGHbase::calls(x)
+    loss.freq <- rowMeans(calls < 0)
+    gain.freq <- rowMeans(calls > 0)
+    yaxis_label <- summarytype
+  }
+
   # Mask gain/loss probability bins corresponding to CN aberrations that fall between maskaberr and zero
   loss.freq[abs(com_cns$mean) < maskaberr] <- 0.001
   gain.freq[abs(com_cns$mean) < maskaberr] <- 0.001
@@ -518,9 +537,9 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
   # remove probabilities of bins that fall below maskprob
   loss.freq[loss.freq < maskprob] <- 0.001
   gain.freq[gain.freq < maskprob] <- 0.001
-  browser()
+
   plot(NA, xlim=c(0, max(pos2)), ylim=c(-1,1), type='n', xlab='chromosomes',
-       ylab='mean probability', xaxs='i', xaxt='n', yaxs='i', yaxt='n',
+       ylab=yaxis_label, xaxs='i', xaxt='n', yaxs='i', yaxt='n',
        main=main,...)
   if (!is.na(misscol)) {
     rect(0, -1, max(pos2), 1, col=misscol, border=NA)
