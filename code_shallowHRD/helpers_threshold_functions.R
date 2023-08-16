@@ -1,3 +1,48 @@
+#' Preps the segment data frame for use in the first round of threshold estimation.
+#' 
+#' @description
+#' Only keeps segments whose size is >= 3Mb. First iterates through segments and assigns genomic
+#' data from GRanges to this segment (specifically their ratio_median)
+#' 
+#' @param granges_obj A GRanges object: used to fine genomic data from the specified regions.
+#' @param segmenta A data frame: segment data.
+#' 
+#' @export
+PrepFirstRound <- function(granges_obj, segments) {
+  segments = segments[which(segments$chr != 23),]
+  for (i in 1:nrow(segments)) {
+    gr = GRanges(seqnames=c(segments[i,1]),
+                 ranges=IRanges(start=c(segments[i,3]), 
+                                end=c(segments[i,4])),
+                 strand=c("*"))
+    subsetGRobject = subsetByOverlaps(granges_obj, gr)
+    segments[i,5] = median(subsetGRobject$ratio)
+  }
+  
+  #### Getting segments with size > 3Mb ####
+  segments_3mb = segments[which(segments[,6] > 2999999),]
+  segments_3mb = data.matrix(segments_3mb)
+  
+  segments_3mb
+}
+
+#' Preps the segment data drame for use in the second round of threshold estimation.
+#'
+#' @description 
+#' Removes columns 1, 7, and 8 from `segments`, also readjusts segment sizes.
+#'
+#' @param segments A data frame: segment data
+PrepSecondRound <- function(segments) {
+  segments_3mb = segments[,-8]
+  segments_3mb = segments[,-7]
+  segments_3mb = segments[,-1]
+  
+  segments_3mb$size <- segments_3mb$end - segments_3mb$start + 1
+  segments_3mb = segments_3mb[which(segments_3mb$chr != 23),]
+  
+  segments_3mb
+}
+
 #' Runs simulations to obtain a list of possible thresholds from the segment ratio differences
 #'
 #'
@@ -23,8 +68,8 @@
 RunThresholdSimulations <- function(num_simulations=100000, all_ratio_differences, second_round=FALSE) {
   list_of_possible_thresholds = c()
   tolerance = 0.10
+  
   if (second_round == TRUE) {
-    list_max2 = c()
     tolerance = 0.05
   }
   
@@ -37,7 +82,7 @@ RunThresholdSimulations <- function(num_simulations=100000, all_ratio_difference
     sampled_batch = sample(all_ratio_differences, size_of_batch)
     
     # Getting first maxima
-    maxima =GetCriticalPoints(sampled_batch, 'max')[1]    # grabbing the first maxima (y-pos: density)
+    maxima = GetCriticalPoints(sampled_batch, 'max')[1]    # grabbing the first maxima (y-pos: density)
     first_local_maxima = density(sampled_batch)$x[maxima] # getting x-pos: a ratio_median difference, of this maxima
     
     # Getting first minima: specifically the first minima with x-pos that is after the first_local_maxima
@@ -53,13 +98,8 @@ RunThresholdSimulations <- function(num_simulations=100000, all_ratio_difference
     if (is.na(second_local_maxima) == FALSE) {
       if (abs((first_local_minima - first_local_maxima) - (second_local_maxima - first_local_minima)) < tolerance) {
         list_of_possible_thresholds = c(list_of_possible_thresholds, first_local_minima)
-        
-        if (second_round == TRUE) {
-          list_max2 = c(list_max2, second_local_maxima)
-        }
       }
     }
-    
   }
   
   # Checking if list is null
@@ -72,14 +112,7 @@ RunThresholdSimulations <- function(num_simulations=100000, all_ratio_difference
     threshold = mean(list_of_possible_thresholds)
   }
 
-  # Returning output
-  if (second_round == TRUE) {
-    output = c(threshold, mean(list_max2))
-  } else {
-    output = threshold
-  }
-  
-  output
+  threshold
 }
 
 #' Finds critical points (minima or maxima) of the differences between
