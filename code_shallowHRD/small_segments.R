@@ -17,6 +17,27 @@ GetSmallSegments <- function(segments) {
   result
 }
 
+#' Returns a GRanges object used to obtain data from specified genomic regions.
+#' 
+#' @description
+#' As above. Usually used to get data from a resulting merge, or from missing segments
+#' in between segments we already have data for.
+#'
+#' @param bam_ratios_frame A data frame: the cleaned-up version of the raw bam ratios file.
+#' 
+#' @export
+
+GetGRangesObject <- function(bam_ratios_frame) {
+  bam_ratios_frame = bam_ratios_frame[,-1]
+  colnames(bam_ratios_frame) <- c("chr", "start", "end", "ratio", "ratio_median")
+  
+  granges_obj = makeGRangesFromDataFrame(bam_ratios_frame, keep.extra.columns = TRUE, ignore.strand = TRUE, 
+                                        seqinfo = NULL, seqnames.field = "chr", start.field = "start",
+                                        end.field = "end")
+  granges_obj
+}
+  
+
 #' Deals with missing chromosome arm values in the given data frame of large segments
 #' 
 #' @description
@@ -58,7 +79,7 @@ LargeMissingChrArms <- function(large_segments, small_segments) {
 }
 
 
-#' Deals with missing chromosome arm values in the given data frame of small segments
+#' Deals with missing chromosome arm values in the given data frame of small segments.
 #' 
 #' @description
 #' TODO
@@ -86,34 +107,24 @@ SmallMissingChrArms <- function(large_segments, small_segments) {
 #'
 #' @param small_segments A data frame. Segments with 3Mb >= size >= 0.1Mb.
 #' @param large_segments A data frame. Segments with size >= Mb.
-#' @param bam_ratios_frame A data frame: the cleaned-up version of the raw bam ratios file.
 #' @param threshold A float: the estimated threshold for ratio_median difference via KDE.
+#' @param granges_obj A GRanges object: is used as reference to check whenever we have
+#' an overlap of segments and get the ratio_median of this overlap.
 #' 
 #' @export
 
-InsertSmallSegments <- function(large_segments, small_segments, bam_ratios_frame, threshold) {
-  bam_ratios_frame = bam_ratios_frame[,-1]
-  colnames(bam_ratios_frame) <- c("chr", "start", "end", "ratio", "ratio_median")
-  
-  GRanges_object_ratio_file = makeGRangesFromDataFrame(bam_ratios_frame,
-                                                       keep.extra.columns = TRUE,
-                                                       ignore.strand = TRUE, 
-                                                       seqinfo = NULL,
-                                                       seqnames.field = "chr",
-                                                       start.field = "start",
-                                                       end.field = "end")
-  
+InsertSmallSegments <- function(large_segments, small_segments, threshold, granges_obj) {
   output <- InitalizeSmallSegments(large_segments = large_segments,
                                    small_segments = small_segments,
                                    threshold = threshold,
-                                   granges_obj = GRanges_object_ratio_file)
+                                   granges_obj = granges_obj)
   large_segments <- output[1]
   small_segments <- output[2]
   
   large_segments <- FinalizeSmallSegments(large_segments = large_segments,
                                           small_segments = small_segments,
                                           threshold = threshold,
-                                          granges_obj = GRanges_object_ratio_file)
+                                          granges_obj = granges_obj)
   
   large_segments
 }
@@ -130,9 +141,9 @@ InsertSmallSegments <- function(large_segments, small_segments, bam_ratios_frame
 #' @param small_segments A data frame. Segments with 3Mb >= size >= 0.1Mb.
 #' @param large_segments A data frame. Segments with size >= Mb.
 #' @param threshold A float: the estimated threshold for ratio_median difference via KDE. Used to determine
-#' whether we insert the small segment or not
+#' whether we insert the small segment or not.
 #' @param granges_obj A GRanges object: is used as reference to check whenever we have
-#' an overlap of segments and get the ratio_median of this overlap 
+#' an overlap of segments and get the ratio_median of this overlap. 
 #'
 #' @export
 
@@ -265,11 +276,11 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
 #'                          |------ small ------|    |#|        
 #'                                                 
 #' @param small_segments A data frame. Segments with 3Mb >= size >= 0.1Mb.
-#' @param large_segments A data frame. Segments with size >= Mb.
+#' @param large_segments A data frame. Segments with size >= 3Mb.
 #' @param threshold A float: the estimated threshold for ratio_median difference via KDE. Used to determine
-#' whether we insert the small segment or not
+#' whether we insert the small segment or not.
 #' @param granges_obj A GRanges object: is used as reference to check whenever we have
-#' an overlap of segments and get the ratio_median of this overlap 
+#' an overlap of segments and get the ratio_median of this overlap. 
 #'
 #' @export
 
@@ -457,7 +468,7 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
                 gr=GRanges(seqnames=c(small_segments[i,2]),
                            ranges=IRanges(start=c(small_segments[i,4]),end=c(small_segments[i,5])),
                            strand=c("*"))
-                subsetGRobject = subsetByOverlaps(GRanges_object_ratio_file, gr)
+                subsetGRobject = subsetByOverlaps(granges_obj, gr)
                 
                 large_segments=rbind(large_segments[1:c,], 
                               c(small_segments[i,1], small_segments[i,2], small_segments[i,3], 
@@ -470,7 +481,7 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
                 gr=GRanges(seqnames=c(small_segments[i,2]),
                            ranges=IRanges(start=c(small_segments[i,4]),end=c(large_segments[c+1,5])),
                            strand=c("*"))
-                subsetGRobject = subsetByOverlaps(GRanges_object_ratio_file, gr)
+                subsetGRobject = subsetByOverlaps(granges_obj, gr)
                 
                 large_segments=rbind(large_segments[1:c,], 
                                      c(large_segments[c+1,1], large_segments[c+1,2], large_segments[c+1,3], 
@@ -534,7 +545,65 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
       }
     }
   }
+  rownames(large_segments) <- NULL
   large_segments
+}
+
+#' Adds 'leftsovers' to the segment frame after re-inserting small segments.
+#'
+#' @description
+#' Iterates over the `segments` frame and if the space between adjacent segments is
+#' greater than one, then we use GRanges to obtain genomic data from this missing region in the
+#' data frame. We update the adjacent segment's start or end positions depending on 
+#' which segment is closer to the missing segment.
+#' 
+#' Do this as long as adjacent segments are in the same chromosome arm. 
+#'
+#' @param segments A data frame. Segments with size >= 3Mb.
+#' @param second_round A boolean. If true, some indices where we check in the frame
+#' are different.
+#' @param granges_obj A GRanges object: is used as reference to check whenever we have
+#' empty space between segments and get the ratio_median of this missing portion. 
+#' 
+#' @export
+CorrectLeftovers <- function(segments, second_round, granges_obj) {
+  c = 1 
+  
+  while (c < dim(segments)[1]) {
+    # If in the same chromosome arm
+    if (segments[c,3] == segments[c+1,3]) {
+      # If space between them is > 1 (i.e. missing data)
+      if (segments[c+1,4] - segments[c,5] > 1) {
+        gr = GRanges(seqnames=c(segments[c,2]),
+                     ranges=IRanges(start=c(segments[c,5]), end=c(segments[c+1,4])),
+                     strand=c("*"))
+        subsetGRobject = subsetByOverlaps(granges_obj, gr)
+        
+        # Figure out which adjacent segment's ratio_median is closest
+        # to the subsetGRobject's ratio_medain
+        segment_c_grobj = abs(segments[c,6] - median(subsetGRobject$ratio))
+        segment_c1_grobj = abs(segments[c+1,6] - median(subsetGRobject$ratio))
+        
+        # If segment c is closer than segment c+1
+        # Then segment c's end position is c+1's start position - 1
+        # Otherwise:
+        #     segment c+1's start position is c's end position + 1
+        if (segment_c_grobj < segment_c1_grobj) {
+          segments[c,5] = segments[c+1,4] - 1
+        } else {
+          segments[c+1,4] = segments[c,5] + 1
+        }
+      }
+    }
+    c = c + 1
+  }
+  
+  rownames(segments) <- NULL
+  colnames(segments) <= c("index", "chr", "chr_arm", "start", "end", "ratio_median", "size", "level")
+  
+  # Updating sizes
+  segments[,7] = segments[,5] - segments[,4] + 1
+  segments
 }
 
 

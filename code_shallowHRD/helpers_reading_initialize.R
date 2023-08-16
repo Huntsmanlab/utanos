@@ -45,18 +45,6 @@ FindBigSegmentsIndices <- function(segments_copy, thr) {
   segments_indices
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
 ## Function readSegmFile ##
 #' TODO: write docs
 ReadSegmFile<-function(seg_file_name){
@@ -80,25 +68,6 @@ ReadSegmFile<-function(seg_file_name){
   }else{homoConst<-1;sdH<-NA;p_BAF<-NA;q_LRR<-NA;Delta<-c(2,NA)}
   
   out<-list(tmp=tmp,homoConst=homoConst,sdH=sdH,p_BAF=p_BAF,q_LRR=q_LRR,Delta=Delta)
-}
-
-## getSegmentID : gather in the same name segment of the length  ##
-#' TODO: write docs
-GetSegmentID<-function(THR,tmp,c_chr,c_cn,c_conf){
-  
-  tmp[,c_conf]<-0;tmp[1,c_conf]<-1
-  
-  for(k in 2:dim(tmp)[[1]]){
-    
-    if(tmp[k,c_chr]==tmp[k-1,c_chr] & abs(tmp[k,c_cn]-tmp[k-1,c_cn])<THR){
-      
-      tmp[k,c_conf]<-tmp[k-1,c_conf]
-      
-    }else{tmp[k,c_conf]<-tmp[k-1,c_conf]+1}
-  } 
-  
-  out<-tmp
-  
 }
 
 #' TODO: write docs

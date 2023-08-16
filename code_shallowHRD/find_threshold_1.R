@@ -1,38 +1,30 @@
 library(GenomicRanges)
 source("helpers_threshold_functions.R")
 
-#' TODO: WRITE DOCS
-FindThreshold <- function(bam_ratios_frame, segments, num_simulations=100000, second_round) {
-  segments = segments[which(segments$chr != 23),]
-  #### Dropping the Feature column ####
-  bam_ratios_frame = bam_ratios_frame[,-1]
-  colnames(bam_ratios_frame) <- c("chr", "start", "end", "ratio", "ratio_median")
-  
-  #### Creating GRanges objects ####
-  granges_object_bam_ratios_frame = makeGRangesFromDataFrame(bam_ratios_frame, 
-                                                             keep.extra.columns=TRUE,
-                                                             ignore.strand=TRUE,
-                                                             seqinfo=NULL,
-                                                             seqnames.field="chr",
-                                                             start.field="start",
-                                                             end.field="end")
-  for (i in 1:nrow(segments)) {
-    gr = GRanges(seqnames=c(segments[i,1]),
-                 ranges=IRanges(start=c(segments[i,3]), 
-                                end=c(segments[i,4])),
-                 strand=c("*"))
-    subsetGRobject = subsetByOverlaps(granges_object_bam_ratios_frame, gr)
-    segments[i,5] = median(subsetGRobject$ratio)
+#' Determines threshold for ratio_median difference via KDE.
+#' 
+#' @description 
+#' The procedure is mostly similar for both rounds, except for a few changes. Cleaning/transformation leading
+#' up to the first round is vastly different than second round. In second round we pretty much just use the data frame
+#' we've worked up to Graph 5, whereas first round has to take different steps.
+#' 
+#' @param granges_obj A GRanges object.
+#' @param segments A data frame: segment data. For the first round, these segments have been gathered by ratio_median.
+#' For the second round, the segments have already been re-insered with small ones, and LGAs have already been called.
+#' @param num_simulations An integer: the number of simulations to run to estimate the critical points.
+#' @param second_round A boolean: which route to take for the algorithm.
+
+FindThreshold <- function(granges_obj, segments, num_simulations=100000, second_round) {
+  #### Prepping data depending on first or second round ####
+  if (second_round == FALSE) {
+    segments_3mb = PrepFirstRound(granges_obj=granges_obj,
+                                  segments=segments)
+  } else {
+    segments_3mb = PrepSecondRound(segments=segments) # Not actually segments with size > 3mb, it's all of them (large and small)
   }
   
-  #### Getting segments with size > 3Mb ####
-  print("Getting > 3mb data...")
-  segments_3mb = segments[which(segments[,6] > 2999999),]
-  print(dim(segments_3mb))
-  N_3mb = dim(segments_3mb)[1]
-  segments_3mb = data.matrix(segments_3mb)
-  
   #### Getting the differences between all pairs of ratio_median's ####
+  N_3mb = dim(segments_3mb)[1]
   all_ratio_differences = c()
   for (i in 1:N_3mb) {
     v = i + 1
@@ -42,11 +34,48 @@ FindThreshold <- function(bam_ratios_frame, segments, num_simulations=100000, se
   }
   
   #### Simulations ####
-  print("Entering simulations...")
   thr <- RunThresholdSimulations(num_simulations=num_simulations,
                                  all_ratio_differences=all_ratio_differences,
                                  second_round=second_round)
-  #### final thr is min(max(0.025, thr), 0.045)
+  
+  #### If second round, few extra steps: now actually works with large segments size > 3Mb ####
+  # Large here is also defined as size > (Q3 - Q1)/2
+  if (second_round == TRUE) {
+    segments_3mb = segments_3mb[which(segments_3mb[,6] > 2999999),]
+    segments_3mb = segments_3mb[which(segments_3mb[,6] > ((quantile(segments_3mb[,6])[4] - quantile(segments_3mb[,6])[2])/2)),]
+    segments_3mb = segments_3mb[which(segments_3mb$chr != 23),]
+    
+    N_3mb = dim(segments_3mb)[1]
+    all_ratio_differences = c()
+    for (i in 1:N_3mb) {
+      v = i + 1
+      for (j in v:N_3mb-1) {
+        all_ratio_differences = c(all_ratio_differences, abs(segments_3mb[i,5] - segments_3mb[j, 5]))
+      }
+    }
+    
+    # First maxima
+    maxima = GetCriticalPoints(all_ratio_differences, 'max')[1]    # grabbing the first maxima (y-pos: density)
+    first_local_maxima = density(all_ratio_differences)$x[maxima] # getting x-pos: a ratio_median difference, of this maxima
+    
+    # Getting first minima: specifically the first minima with x-pos that is after the first_local_maxima
+    minima = GetCriticalPoints(all_ratio_differences, 'min')
+    first_local_minima = density(all_ratio_differences)$x[minima][which(density(all_ratio_differences)$x[minima] > first_local_maxima)][1]
+    
+    # Getting second maxima
+    maxima = GetCriticalPoints(all_ratio_differences, 'max')[2]
+    second_local_maxima = density(all_ratio_differences)$x[maxima]
+    
+    if (is.na(second_local_maxima) == FALSE) {
+      if (abs((first_local_minima - first_local_maxima) - (second_local_maxima - first_local_minima)) < tolerance) {
+        if (first_local_minima < thr) {
+          thr = first_local_minima
+        }
+      }
+    }
+  }
+  
+  #### Final thr is min(max(0.025, thr), 0.045) ####
   if (thr > 0.45) {
     thr = 0.45
   }
