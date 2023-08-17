@@ -118,14 +118,16 @@ InsertSmallSegments <- function(large_segments, small_segments, threshold, grang
                                    small_segments = small_segments,
                                    threshold = threshold,
                                    granges_obj = granges_obj)
-  large_segments <- output[1]
-  small_segments <- output[2]
+  
+  print("Exited InitializeSmallSegments")
+  large_segments = as.data.frame(output[1])
+  small_segments = as.data.frame(output[2])
   
   large_segments <- FinalizeSmallSegments(large_segments = large_segments,
                                           small_segments = small_segments,
                                           threshold = threshold,
                                           granges_obj = granges_obj)
-  
+  print("Exited FinalizeSmall")
   large_segments
 }
 
@@ -148,7 +150,7 @@ InsertSmallSegments <- function(large_segments, small_segments, threshold, grang
 #' @export
 
 InitalizeSmallSegments <- function(large_segments, small_segments, threshold, granges_obj) {
-  N_lage = dim(large_segments)[1]
+  N_large = dim(large_segments)[1]
   N_small = dim(small_segments)[1]
   
   halt = 0
@@ -244,7 +246,7 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
   # Remove the rows from `small_segments` that we added into `large_segments`
   small_segments = small_segments[i:N_small,]
   
-  output = c(large_segments, small_segments)
+  output = list(large_segments, small_segments)
   output
 }
 
@@ -287,7 +289,7 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
 FinalizeSmallSegments <- function(large_segments, small_segments, threshold, granges_obj) {
   N_small = dim(small_segments)[1]
   i = 1
-  
+
   while (i < N_small + 1) {
     c = 1
     N_large = dim(large_segments)[1]
@@ -503,7 +505,7 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
             c = N_large + 1
           }
         #### Case Six ####
-        } else if (CaseSix(large_segment = large_segments[c,], small_segment = small_segments[i,], next_large_segment = large_segment[c+1,]) == TRUE) {
+        } else if (CaseSix(large_segment = large_segments[c,], small_segment = small_segments[i,], next_large_segment = large_segments[c+1,]) == TRUE) {
           # If large and small ratio diff <= THR
           if (below_threshold == TRUE) {
             if (c + 1 > N_large) {

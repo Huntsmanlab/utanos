@@ -186,7 +186,7 @@ CaseTwo <- function(prev_large_segment, small_segment, large_segment) {
 }
 
 CaseThree <- function(large_segment, small_segment) {
-  output = (small_segment[4] >= large_sement[4]) && (small_segment[5] <= large_segment[5])
+  output = (small_segment[4] >= large_segment[4]) && (small_segment[5] <= large_segment[5])
   
   output
 }

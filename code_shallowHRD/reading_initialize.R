@@ -29,6 +29,7 @@ InitializeReadingInitialization <- function(segments) {
                     rep(0, dim(segments)[1]))
   colnames(segments)[8] <- c("level")
   
+  segments <- as.data.frame(segments)
   segments
 }
 
@@ -64,6 +65,7 @@ ExcludeShortArms <- function(segments) {
   
   #### Updating sizes ####
   segments[,7] = segments[,5] - segments[,4] + 1
+  segments
 }
 
 #' Returns segments with a size >= 3Mb.
@@ -107,19 +109,17 @@ AssignLevels <- function(segments, segments_copy, thr) {
     # We determine if a segment is closest to it if its ratio_median difference is less than the threshold.
     closest_indices = FindBigSegmentsIndices(segments_copy = segments_copy,
                                              thr = thr)
-    
     # Now we assign `level` to all segments in `segments`.
     # We iterate through the segments in `closest_indices`, find the respective
     # row they belong to in `segments`, and set their level. Also remove them from segments_copy
     # so that we don't keep finding them at every iteration of the while loop.
-    for (i in 1:length(closest_indices)) {
+    n = length(closest_indices)
+    for (i in 1:n) {
       # Finding  segment i from `closest_indices` in `segments`
-      i_in_segments = which(segments[,1] == closest_indices[i])
-      segments[i_in_segments, 8] = level
+      segments[which(segments[,1] == closest_indices[i]), 8] = level
       
       # Getting the rest of the segments and keeping them in `segments_copy`. 
-      rest_of_segments = which(!(segments[,1] == closest_indices[i]))
-      segments_copy <- segments_copy[rest_of_segments, ]
+      segments_copy <- segments_copy[which(!(segments_copy[,1] == closest_indices[i])), ]
     }
     level = level + 1
   }
@@ -211,7 +211,7 @@ GatherSegmentsByLevels <- function(segments, bam_ratios_frame) {
                          segments[i,4],
                          segments[i+n-1,5], # i+n-1 is where we stopped being in same level/arm
                          median(subsetGRobject$ratio),
-                         segments[i+n-1,5] - segments[i,4],
+                         segments[i+n-1,5] - segments[i,4] + 1,
                          segments[i,8])
           i = i + n
           c = c + 1
@@ -248,6 +248,7 @@ GatherSegmentsByLevels <- function(segments, bam_ratios_frame) {
   result = subset(result, result[,1] != 0)
   rownames(result) <- NULL
   colnames(result) <- c("index", "chr", "chr_arm", "start", "end", "ratio_median", "size", "level")
+  result
 }
 
 
