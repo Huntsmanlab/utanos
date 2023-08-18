@@ -100,10 +100,13 @@ SmallMissingChrArms <- function(large_segments, small_segments) {
 }
 
 #' Adds small segments in `small_segments` that meet certain criteria (position wise w.r.t large segments)
-#' into the `large_segments` data frame. Merges if necessary (i.e. if ratio differecne < THR).
+#' into the `large_segments` data frame. Merges if necessary (i.e. if ratio difference < THR).
 #'
 #' @description
-#' TODO
+#' Does a lot of things. In InitializeSmallSegments, we insert all the small segments that come before the first
+#' large segment in `large_segments` (hence initializing). In FinalizeSmallSegments, we insert all the remaining small segments,
+#' according to 6 different cases, which are listed in the FinalizeSmallSegments documentation. In the end, returns the updated
+#' `large_segments` with small segments appropriately re-inserted.
 #'
 #' @param small_segments A data frame. Segments with 3Mb >= size >= 0.1Mb.
 #' @param large_segments A data frame. Segments with size >= Mb.
@@ -120,11 +123,8 @@ InsertSmallSegments <- function(large_segments, small_segments, threshold, grang
                                    granges_obj = granges_obj)
   
   print("Exited InitializeSmallSegments")
-  large_segments = as.data.frame(output[1])
-  small_segments = as.data.frame(output[2])
-  
-  large_segments <- FinalizeSmallSegments(large_segments = large_segments,
-                                          small_segments = small_segments,
+  large_segments <- FinalizeSmallSegments(large_segments = as.data.frame(output[1]),
+                                          small_segments = as.data.frame(output[2]),
                                           threshold = threshold,
                                           granges_obj = granges_obj)
   print("Exited FinalizeSmall")
@@ -206,9 +206,7 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
         # |----small----|
         #       |----large----|
         # *******
-      } else if (small_segments[i,4] < large_segments[c,4] &&
-                 small_segments[i,5] >= large_segments[c,4] &&
-                 small_segments[i,5] <= large_segments[c,5]) {
+      } else if (small_segments[i,4] < large_segments[c,4] && small_segments[i,5] >= large_segments[c,4] && small_segments[i,5] <= large_segments[c,5]) {
         # If above, threshold, we add the segment in ***'s to `large_segments`
         if (abs(small_segments[i,6] - large_segments[c,6]) > threshold) {
           gr = GRanges(seqnames = c(small_segments[i,2]),
@@ -230,7 +228,7 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
           subsetGRobject = subsetByOverlaps(granges_obj, gr)
           
           # Adding
-          large_segments = rbind(c(large_segments[i,1], large_segments[i,2], large_segments[i,3],
+          large_segments = rbind(c(large_segments[c,1], large_segments[c,2], large_segments[c,3],
                                    small_segments[i,4], large_segments[c,5], median(subsetGRobject$ratio),
                                    large_segments[c,5] - small_segments[i,4] + 1, large_segments[c,8]),
                                  large_segments[(c+1):N_large,])
@@ -238,7 +236,7 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
         }
       } else {
         # None of the 2 cases
-        i = i +1
+        i = i + 1
       }
     }
   }
@@ -289,19 +287,26 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
 FinalizeSmallSegments <- function(large_segments, small_segments, threshold, granges_obj) {
   N_small = dim(small_segments)[1]
   i = 1
-
   while (i < N_small + 1) {
     c = 1
     N_large = dim(large_segments)[1]
     
-    while  (c < N_large + 1) {
+    while  (c < N_large + 1) {   
+      print("checking...")
+      print(c)
+      print(N_large)
       # If in the same chromosome arm
       if (small_segments[i,3] == large_segments[c,3]) {
-        below_threshold = RatioDiffBelowThreshold(large_segment = large_segments[c,],
-                                                  small_segment = small_segments[i,],
-                                                  threshold = threshold)
+        
+        # Getting the segments we'll work with
+        large_segment = as.numeric(large_segments[c,])
+        small_segment = as.numeric(small_segments[i,])
+      
+        # Ratio difference below threshold?
+        below_threshold = RatioDiffBelowThreshold(large_segment = large_segment, small_segment = small_segment, threshold = threshold)
+        
         #### First case ####
-        if (CaseOne(large_segment = large_segments[c,], small_segment = small_segments[i,]) == TRUE) {
+        if (small_segment[5] < large_segment[4]) {
           # If below threshold: merge, and small+large become new segment c
           # So, new segment's data is:
           #   Start: small segment start pos
@@ -311,15 +316,15 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
           
           # Finally, we squeeze it in between segments :c-1 and c+1:
           if (below_threshold == TRUE) {
-            gr = GRanges(seqnames = c(small_segments[i,2]),
-                         ranges = IRanges(start=c(small_segments[i,4]), end=c(large_segments[c,5])),
+            gr = GRanges(seqnames = c(small_segment[2]),
+                         ranges = IRanges(start=c(small_segment[4]), end=c(large_segment[5])),
                          strand = c("*"))
             subsetGRobject = subsetByOverlaps(granges_obj, gr)
             
             large_segments = rbind(large_segments[1:(c-1),],
-                                   c(small_segments[i,1], small_segments[i,2], small_segments[i,3],
-                                     small_segments[i,4], large_segments[c,5], median(subsetGRobject$ratio), 
-                                     large_segments[c,5] - small_segments[i,4] + 1, large_segments[c,8]),
+                                   c(small_segment[1], small_segment[2], small_segment[3],
+                                     small_segment[4], large_segment[5], median(subsetGRobject$ratio), 
+                                     large_segment[5] - small_segment[4] + 1, large_segment[8]),
                                    large_segments[(c+1):N_large,])
             i = i + 1
             c = N_large + 1
@@ -327,30 +332,30 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
             # Else: not below threshold: small_segment is its own separate thing
             # Add small_segment data, in between :c-1 and c:
             large_segments = rbind(large_segments[1:(c-1),],
-                                   c(small_segments[i,1], small_segments[i,2], small_segments[i,3],
-                                     small_segments[i,4], small_segments[i,5], small_segments[i,6], 
-                                     small_segments[i,5] - small_segments[i,4] + 1, small_segments[i,8]),
+                                   c(small_segment[1], small_segment[2], small_segment[3],
+                                     small_segment[4], small_segment[5], small_segment[6], 
+                                     small_segment[5] - small_segment[4] + 1, small_segment[8]),
                                    large_segments[c:N_large,])
             i = i + 1
             c = N_large + 1
           }
           
           #### Second Case ####
-        } else if (CaseTwo(prev_large_segment = large_segments[c-1,], small_segment = small_segments[i,], large_segment = large_segments[c,]) == TRUE) {
+        } else if (small_segment[4] < large_segment[4] && small_segment[5] >= large_segment[4] && small_segment[5] <= large_segment[5] && small_segment[4] >= large_segments[c-1,5]) {
           # Ratio diff <= THR: merge
           if (below_threshold == TRUE) {
             # End of file
             if (c + 1 > N_large) {
-              large_segments <- MergeSegmentsTwo(granges_obj = granges_obj, small_segment = small_segments[i,],
-                                                 large_segments = large_segments, c = c, N_large = N_large,
-                                                 below_thr = TRUE, end_of_file = TRUE)
+              large_segments <- MergeSegmentsTwo(granges_obj = granges_obj, 
+                                                 small_segment = small_segment,
+                                                 large_segments = large_segments, j = c, below_thr = TRUE, end_of_file = TRUE)
               i = i + 1
               c = N_large + 1
               # Not end of file
             } else {
-              large_segments <- MergeSegmentsTwo(granges_obj = granges_obj, small_segment = small_segments[i,],
-                                                 large_segments = large_segments, c = c, N_large = N_large,
-                                                 below_thr = TRUE, end_of_file = FALSE)
+              large_segments <- MergeSegmentsTwo(granges_obj = granges_obj, 
+                                                 small_segment = small_segment,
+                                                 large_segments = large_segments, j = c, below_thr = TRUE, end_of_file = FALSE)
               i = i + 1
               c = N_large + 1
             }
@@ -358,39 +363,36 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
           } else {
             # End of file
             if (c + 1 > N_large) {
-              large_segments <- MergeSegmentsTwo(granges_obj = granges_obj, small_segment = small_segments[i,],
-                                                 large_segments = large_segments, c = c, N_large = N_large,
-                                                 below_thr = FALSE, end_of_file = TRUE)
+              large_segments <- MergeSegmentsTwo(granges_obj = granges_obj, 
+                                                 small_segment = small_segment,
+                                                 large_segments = large_segments, j = c, below_thr = FALSE, end_of_file = TRUE)
               i = i + 1
               c = N_large + 1
               # Not end of file
             } else {
-              large_segments <- MergeSegmentsTwo(granges_obj = granges_obj, small_segment = small_segments[i,],
-                                                 large_segments = large_segments,c = c, N_large = N_large,
-                                                 below_thr = FALSE, end_of_file = FALSE)
+              large_segments <- MergeSegmentsTwo(granges_obj = granges_obj, small_segment = small_segment,
+                                                 large_segments = large_segments, j = c, below_thr = FALSE, end_of_file = FALSE)
               i = i + 1
               c = N_large + 1
             }
           }
           #### Third Case #### 
-        } else if (CaseThree(large_segment = large_segments[c,], small_segment = small_segments[i,]) == TRUE) {
+        } else if (small_segment[4] >= large_segment[4] && small_segment[5] <= large_segment[5]) {
           i = i + 1
           #### Fourth Case ####
-        } else if (CaseFour(large_segment = large_segments[c,], small_segment = small_segments[i,], next_large_segment = large_segments[c+1,]) == TRUE) {
+        } else if (small_segment[4] >= large_segment[4] && small_segment[4] <= large_segment[5] && small_segment[5] > large_segment[5] && small_segment[5] <= large_segments[c+1,5]) {
           # Ratio diff <= THR: merge
           if (below_threshold == TRUE) {
             # End of file
             if (c + 1 > N_large) {
-              large_segments <- MergeSegmentsFour(granges_obj = granges_obj, small_segment = small_segments[i,],
-                                                  large_segments = large_segments, c = c, N_large = N_large,
-                                                  below_thr = TRUE, end_of_file = TRUE)
+              large_segments <- MergeSegmentsFour(granges_obj = granges_obj, small_segment = small_segment,
+                                                  large_segments = large_segments, j = c, below_thr = TRUE, end_of_file = TRUE)
               i = i + 1
               c = N_large + 1
               # Not end of file
             } else {
-              large_segments <- MergeSegmentsFour(granges_obj = granges_obj, small_segment = small_segments[i,],
-                                                  large_segments = large_segments, c = c, N_large = N_large,
-                                                  below_thr = TRUE, end_of_file = FALSE)
+              large_segments <- MergeSegmentsFour(granges_obj = granges_obj, small_segment = small_segment,
+                                                  large_segments = large_segments, j = c, below_thr = TRUE, end_of_file = FALSE)
               i = i + 1
               c = N_large + 1
             }
@@ -398,24 +400,40 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
           } else {
             # End of file
             if (c + 1 > N_large) {
-              large_segments <- MergeSegmentsFour(granges_obj = granges_obj, small_segment = small_segments[i,],
-                                                  large_segments = large_segments,c = c, N_large = N_large,
-                                                  below_thr = FALSE, end_of_file = TRUE)
+              large_segments <- MergeSegmentsFour(granges_obj = granges_obj, small_segment = small_segment,
+                                                  large_segments = large_segments, j = c, below_thr = FALSE, end_of_file = TRUE)
               i = i + 1
               c = N_large + 1
               # Not end of file
             } else {
-              large_segments <- MergeSegmentsFour(granges_obj = granges_obj, small_segment = small_segments[i,],
-                                                  large_segments = large_segments, c = c, N_large = N_large,
-                                                  below_thr = FALSE, end_of_file = FALSE)
+              large_segments <- MergeSegmentsFour(granges_obj = granges_obj, small_segment = small_segment,
+                                                  large_segments = large_segments, j = c, below_thr = FALSE, end_of_file = FALSE)
               i = i + 1
               c = N_large + 1
             }
           }
-          #### Case Five ####
-        } else if (CaseFive(large_segment = large_segments[c,], small_segment = small_segments[i,], next_large_segment = large_segments[c+1,]) == TRUE) {
+        #### Case Five ####
+        } else if (c+1 > N_large && small_segment[4] >= large_segment[5]) {
+          if (below_threshold == TRUE) {
+            large_segments <- MergeSegmentsFiveLargeSmall(granges_obj = granges_obj, 
+                                                          small_segment = small_segment,
+                                                          large_segments = large_segments, 
+                                                          j = c, 
+                                                          N_large = N_large)
+            i = i + 1
+            c = N_large + 1
+          } else {
+            large_segments = rbind(large_segments[1:c,],
+                                   c(small_segment[1], small_segment[2], small_segment[3],
+                                     small_segment[4], small_segment[5], small_segment[6],
+                                     small_segment[7], small_segment[8]),
+                                   large_segments[(c+1):N_large,])
+            i = i + 1
+            c = N_large + 1
+          }
+        } else if (c+1 <= N_large && small_segment[4] >= large_segment[5] && small_segment[5] <= large_segments[c+1,4] && large_segment[3] == large_segments[c+1,3]) {
           small_nextlarge_below_threshold = RatioDiffBelowThreshold(large_segment = large_segments[c+1,],
-                                                                    small_segment = small_segments[i,],
+                                                                    small_segment = small_segment,
                                                                     threshold = threshold)
           # Ratio diff <= THR for large & small AND next_large & small:
           if (below_threshold == TRUE && small_nextlarge_below_threshold == TRUE) {
@@ -423,101 +441,118 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
             # This essentially means that large segment is closer to small than next_large.
             
             # So, we merge large and small.
-            if (abs(small_segments[i,6] - large_segments[c,6]) <= abs(small_segments[i,6] - large_segments[c+1,6])) {
-              large_segments <- MergeSegmentsFiveLargeSmall(granges_obj = granges_obj, small_segments[i,],
-                                                            large_segments = large_segments, j = c, N_large = N_large)
+            if (abs(small_segment[6] - large_segment[6]) <= abs(small_segment[6] - large_segments[c+1,6])) {
+              large_segments <- MergeSegmentsFiveLargeSmall(granges_obj = granges_obj, 
+                                                            small_segment = small_segment,
+                                                            large_segments = large_segments, 
+                                                            j = c, 
+                                                            N_large = N_large)
               i = i + 1
               c = N_large + 1
             } else {
-            # Else: next_large and small are closer than large and small.
-            # So, we merge small and next_large. Gotta check if c+2 even exists.
-            # If c+2 is end of file:
+              # Else: next_large and small are closer than large and small.
+              # So, we merge small and next_large. Gotta check if c+2 even exists.
+              # If c+2 is end of file:
               if (c + 2 > N_large) {
-                large_segments <- MergeSegmentsFiveSmallNextLarge(granges_obj = granges_obj, small_segment = small_segments[i,],
-                                                                  large_segments = large_segments, j = c+1, N_large = N_large, 
+                large_segments <- MergeSegmentsFiveSmallNextLarge(granges_obj = granges_obj, 
+                                                                  small_segment = small_segment,
+                                                                  large_segments = large_segments, 
+                                                                  j = c+1, 
                                                                   end_of_file = TRUE)
                 i = i + 1
                 c = N_large + 1
               } else {
-              # Else: Not end of file  
-                large_segments <- MergeSegmentsFiveSmallNextLarge(granges_obj = granges_obj, small_segments = small_segment,
-                                                                  large_segments = large_segments, j = c+1, N_large = N_large, 
+                # Else: Not end of file  
+                large_segments <- MergeSegmentsFiveSmallNextLarge(granges_obj = granges_obj, 
+                                                                  small_segment = small_segment,
+                                                                  large_segments = large_segments, 
+                                                                  j = c+1, 
                                                                   end_of_file = FALSE)
                 i = i + 1
                 c = N_large + 1
               }
             }
-          # Only large & small ratio diff <= THR
+            # Only large & small ratio diff <= THR
           } else if (below_threshold == TRUE) {
-            large_segments <- MergeSegmentsFiveLargeSmall(granges_obj = granges_obj, small_segments[i,],
-                                                          large_segments = large_segments, j = c, N_large = N_large)
+            large_segments <- MergeSegmentsFiveLargeSmall(granges_obj = granges_obj, 
+                                                          small_segment = small_segment,
+                                                          large_segments = large_segments, 
+                                                          j = c)
             i = i + 1
             c = N_large + 1
-          # Only small & next_large ratio diff <= THR
+            # Only small & next_large ratio diff <= THR
           } else if (small_nextlarge_below_threshold == TRUE) {
             # If end of file:
             if (c + 2 > N_large) {
-              large_segments <- MergeSegmentsFiveSmallNextLarge(granges_obj = granges_obj, small_segment = small_segments[i,],
-                                                                large_segments = large_segments, j = c+1, N_large = N_large, 
+              large_segments <- MergeSegmentsFiveSmallNextLarge(granges_obj = granges_obj, 
+                                                                small_segment = small_segment,
+                                                                large_segments = large_segments, 
+                                                                j = c+1, 
                                                                 end_of_file = TRUE)
               i = i + 1
               c = N_large + 1
             } else {
-            # Else: not end of file
+              # Else: not end of file
               # Checking if next small segment ends before next large segment (and same chr arm)
               # i.e. if there's a next_small segment in between small segment and next_large.
               if (small_segments[i+1,5] < large_segments[c+1,4] && small_segments[i+1,3] == large_segments[c+1,3]) {
-                gr=GRanges(seqnames=c(small_segments[i,2]),
-                           ranges=IRanges(start=c(small_segments[i,4]),end=c(small_segments[i,5])),
+                gr=GRanges(seqnames=c(small_segment[2]),
+                           ranges=IRanges(start=c(small_segment[4]), end=c(small_segment[5])),
                            strand=c("*"))
                 subsetGRobject = subsetByOverlaps(granges_obj, gr)
                 
                 large_segments=rbind(large_segments[1:c,], 
-                              c(small_segments[i,1], small_segments[i,2], small_segments[i,3], 
-                                small_segments[i,4], small_segments[i,5], median(subsetGRobject$ratio), 
-                                small_segments[i,5] - small_segments[i,4] + 1, small_segments[i,8]) , 
-                              large_segments[(c+1):N_large,])  
+                                     c(small_segment[1], small_segment[2], small_segment[3], 
+                                       small_segment[4], small_segment[5], median(subsetGRobject$ratio), 
+                                       small_segment[5] - small_segment[4] + 1, small_segment[8]) , 
+                                     large_segments[(c+1):N_large,])  
                 i= i + 1
                 c= N_large + 1
               } else {
-                gr=GRanges(seqnames=c(small_segments[i,2]),
-                           ranges=IRanges(start=c(small_segments[i,4]),end=c(large_segments[c+1,5])),
+                gr=GRanges(seqnames=c(small_segment[2]),
+                           ranges=IRanges(start=c(small_segment[4]),end=c(large_segments[c+1,5])),
                            strand=c("*"))
                 subsetGRobject = subsetByOverlaps(granges_obj, gr)
                 
                 large_segments=rbind(large_segments[1:c,], 
                                      c(large_segments[c+1,1], large_segments[c+1,2], large_segments[c+1,3], 
-                                       small_segments[i,4], large_segments[c+1,5], median(subsetGRobject$ratio), 
-                                       large_segments[c+1,5] - small_segments[i,4] + 1, large_segments[c+1,8]) , 
+                                       small_segment[4], large_segments[c+1,5], median(subsetGRobject$ratio), 
+                                       large_segments[c+1,5] - small_segment[4] + 1, large_segments[c+1,8]) , 
                                      large_segments[(c+2):N_large,])  
                 i= i + 1
                 c= N_large + 1
               }
             }
-          # No segment ratio differences are <= THR: add small segment as its own thing
+            # No segment ratio differences are <= THR: add small segment as its own thing
           } else {
             large_segments = rbind(large_segments[1:c,],
-                                   c(small_segments[i,1], small_segments[i,2], small_segments[i,3],
-                                     small_segments[i,4], small_segments[i,5], small_segments[i,6],
-                                     small_segments[i,7], small_segments[i,8]),
+                                   c(small_segment[1], small_segment[2], small_segment[3],
+                                     small_segment[4], small_segment[5], small_segment[6],
+                                     small_segment[7], small_segment[8]),
                                    large_segments[(c+1):N_large,])
             i = i + 1
             c = N_large + 1
           }
         #### Case Six ####
-        } else if (CaseSix(large_segment = large_segments[c,], small_segment = small_segments[i,], next_large_segment = large_segments[c+1,]) == TRUE) {
+        } else if (small_segment[4] >= large_segment[5] && large_segment[3] != large_segments[c+1,3] | is.null(large_segments[c+1,3])) {
           # If large and small ratio diff <= THR
           if (below_threshold == TRUE) {
             if (c + 1 > N_large) {
-              large_segments <- MergeSegmentsFour(granges_obj = granges_obj, small_segment = small_segments[i,],
-                                                  large_segments = large_segments, c = c, N_large = N_large,
-                                                  below_thr = TRUE, end_of_file = TRUE)
+              large_segments <- MergeSegmentsFour(granges_obj = granges_obj, 
+                                                  small_segment = small_segment,
+                                                  large_segments = large_segments, 
+                                                  j = c, 
+                                                  below_thr = TRUE, 
+                                                  end_of_file = TRUE)
               i = i + 1
               c = N_large + 1
             } else {
-              large_segments <- MergeSegmentsFour(granges_obj = granges_obj, small_segment = small_segments[i,],
-                                                  large_segments = large_segments, c = c, N_large = N_large,
-                                                  below_thr = TRUE, end_of_file = FALSE)
+              large_segments <- MergeSegmentsFour(granges_obj = granges_obj, 
+                                                  small_segment = small_segment,
+                                                  large_segments = large_segments, 
+                                                  j = c, 
+                                                  below_thr = TRUE, 
+                                                  end_of_file = FALSE)
               i = i + 1
               c = N_large + 1
             }
@@ -525,21 +560,24 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
           } else {
             if (c + 1 > N_large) {
               large_segments = rbind(large_segments[1:c,],
-                                     c(small_segments[i,1], small_segments[i,2], small_segments[i,3],
-                                       small_segments[i,4], small_segments[i,5], small_segments[i,6],
-                                       small_segments[i,7], small_segments[i,8]))
+                                     c(small_segment[1], small_segment[2], small_segment[3],
+                                       small_segment[4], small_segment[5], small_segment[6],
+                                       small_segment[7], small_segment[8]))
               i = i + 1
               c = N_large + 1
             } else {
               large_segments = rbind(large_segments[1:c,],
-                                     c(small_segments[i,1], small_segments[i,2], small_segments[i,3],
-                                       small_segments[i,4], small_segments[i,5], small_segments[i,6],
-                                       small_segments[i,7], small_segments[i,8]),
+                                     c(small_segment[1], small_segment[2], small_segment[3],
+                                       small_segment[4], small_segment[5], small_segment[6],
+                                       small_segment[7], small_segment[8]),
                                      large_segments[(c+1):N_large,])
               i = i + 1
               c = N_large + 1
             }
           }
+        # None of the 6 cases
+        } else {
+          c = c + 1
         }
       # Different chromosome arms
       } else {
