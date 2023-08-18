@@ -40,22 +40,22 @@ segments_gt3mb_small_reinserted <- InsertSmallSegments(large_segments=segments_g
                                                        small_segments=segments_btw_0.1_3mb,
                                                        threshold=first_threshold,
                                                        granges_obj=granges_obj)
-write.table(segments_gt3mb_small_reinserted, file = "./test_outputs/small_segments/imported_segments_inserted.txt", sep = "\t", row.names = FALSE)
-
 segments <- CorrectLeftovers(segments=segments_gt3mb_small_reinserted,
-                             threshold=first_threshold,
+                             second_round=FALSE,
                              granges_obj=granges_obj) # Graph 4
+write.table(segments_gt3mb_small_reinserted, file = "./test_outputs/small_segments/imported_segments_leftovers.txt", sep = "\t", row.names = FALSE)
+
 
 #### Determining LGAs ####
 segments <- BreakSmoothToLGA(threshold=first_threshold,
                              segments=segments,
                              granges_obj=granges_obj)
 segments <- CorrectLeftovers(segments=segments,
-                             threshold=first_threshold,
+                             second_round=FALSE,
                              granges_obj=granges_obj)
 segments <- GetSegmentationBeforeLGACall(segments=segments,
                                          bam_ratios_frame=clean_ratios_file) # Graph 5
-intial_lga_res <- CallLGA(threshold=first_threshold,
+initial_lga_res <- CallLGA(threshold=first_threshold,
                           segments=segments,
                           second_round=FALSE) # Could save this as a .txt
 lga_segments <- GetLGAOfSize(threshold=first_threshold,
@@ -67,6 +67,7 @@ second_threshold <- FindThreshold(granges_obj=granges_obj,
                                   segments=segments, 
                                   second_round=TRUE, 
                                   num_simulations = 100000)
+
 
 
 

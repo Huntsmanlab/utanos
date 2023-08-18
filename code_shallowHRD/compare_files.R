@@ -19,3 +19,9 @@ shallow_segments_gt3mb = read.table(file="./test_outputs/small_segments/shallow_
 
 imported_segments_btw_0.1_3mb = read.table(file="./test_outputs/small_segments/imported_segments_btw_0.1_3mb.txt", sep="\t", header=TRUE)
 shallow_segments_btw_0.1_3mb = read.table(file="./test_outputs/small_segments/shallow_segments_btw_0.1_3mb.txt", sep="\t", header=TRUE)
+
+imported_segments_reinserted = read.table(file="./test_outputs/small_segments/imported_segments_inserted.txt", sep="\t", header=TRUE)
+shallow_segments_reinserted = read.table(file="./test_outputs/small_segments/shallow_segments_inserted.txt", sep="\t", header=TRUE)
+
+imported_segments_leftovers = read.table(file="./test_outputs/small_segments/imported_segments_leftovers.txt", sep="\t", header=TRUE)
+shallow_segments_leftovers = read.table(file="./test_outputs/small_segments/shallow_segments_leftovers.txt", sep="\t", header=TRUE)

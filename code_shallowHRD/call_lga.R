@@ -16,7 +16,7 @@ source("helpers_small_segments.R") # borrowing the helper that checks if segment
 BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
   segments <- GetSegmentID(threshold=threshold,
                           segments=segments)
-  segments < ShrinkTeprTMP(segments=segments,
+  segments <- ShrinkReprTMP(segments=segments,
                            granges_obj=granges_obj)
   
   small_breaks = 0
@@ -28,7 +28,7 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
     
     if (length(segments_lt3mb) > 0 & pass < 10000) {
       # Ordering segments (their indices, really) in segments_lt3mb by their size
-      ordered_segments_lt3mb <- segments_lt3mb[order((segments[,5] - segments[,5])/10^6)]
+      ordered_segments_lt3mb <- segments_lt3mb[order((segments[segments_lt3mb,5] - segments[segments_lt3mb,4])/10^6)]
       pass = pass + 1
       
       # Iterating through these small segments
@@ -63,7 +63,7 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
             # Previous index is not 0 AND
             # Next's index is not 0
             # Then set Segment's index to 0
-            if (previous_next_same_arms & 
+            if (previous_next_same_arm & 
                 (segments[ordered_segments_lt3mb[i]-1, 1] != 0) & 
                 (segments[ordered_segments_lt3mb[i]+1, 1] != 0)) {
               segments[ordered_segments_lt3mb[i], 1] <- 0 
@@ -142,7 +142,7 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
   }
   segments <- GetSegmentID(threshold=threshold,
                            segments=segments)
-  segments < ShrinkTeprTMP(segments=segments,
+  segments < ShrinkReprTMP(segments=segments,
                            granges_obj=granges_obj)
   segments[1,1] <- small_breaks
   segments
@@ -165,14 +165,15 @@ GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame) {
   bam_ratios_frame = bam_ratios_frame[,-1]
   bam_ratios_frame = bam_ratios_frame[,-5]
   colnames(bam_ratios_frame) <- c("chr", "start", "end", "readcount")
+  print(bam_ratios_frame[1:3,])
   
   # Here we are adding all the segments in the same chromosome number
   attach(bam_ratios_frame)
   merged_bam = merge(aggregate(start ~ chr, bam_ratios_frame, min), 
                      aggregate(end ~ chr, bam_ratios_frame, max))[seq(from=1, to=23, by=1),]
-  detach(b)
+  detach(bam_ratios_frame)
   
-  small_segments[1,4] = bam_ratios_frame[1,2]
+  segments[1,4] = bam_ratios_frame[1,2]
   
   # We're going to iterate through the large segments.
   # If large_segment and next_large are in different Chr_N, then:
@@ -220,9 +221,9 @@ CallLGA <- function(threshold, segments, second_round) {
     segments_with_LGA <- DetermineNumberOfLGAs(threshold=threshold,
                                                size_lga=i,
                                                segments=segments) 
-    result[i-2,2] = sum(segments_with_LGA[,1])
+    result[i-2,2] = sum(segments_with_LGA)
   }
-  
+  result
 }
 
 #' Returns the segments that are LGAs of the given size
@@ -237,17 +238,16 @@ GetLGAOfSize <- function(threshold, size_lga, segments) {
   segments_with_LGA <- DetermineNumberOfLGAs(threshold=threshold,
                                              size_lga=size_lga,
                                              segments=segments) 
-  result = cbind(segments, segments_with_LGA[,1])
+  result = cbind(segments, segments_with_LGA)
   colnames(result) <- c("index", "chr","chr_arm", "start", "end", "ratio_median", "size", "level", "WC")
   
   N = dim(result)[1]
   i = 1
-  
   # Iterate through the segments, and remove the ones that aren't an LGA (their index in segments_with_LGA are not 1)
   # and whose next segment is also not an LGA.
   # Essentially keeping the segments that are LGAs (i.e their index in segments_with_LGA is 1)
   while (i + 1 < N) {
-    n = dim(result)[1]
+    N = dim(result)[1]
     if (result[i,9] == 0 & result[i+1,9] != 1) {
       result = result[-i,]
     } else {

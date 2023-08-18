@@ -72,7 +72,7 @@ ShrinkReprTMP <- function(segments, granges_obj) {
   
   temp <- which(segments[,1] == 0)
   if (length(temp) != 0) {
-    segments <- segments[-tt,]
+    segments <- segments[-temp,]
   }
   
   segments
@@ -102,7 +102,7 @@ DetermineNumberOfLGAs <- function(threshold, size_lga, segments) {
   
   for (i in 2:dim(segments)[1]) {
     # Segment and Previous in same arm, size of space < 3Mb
-    if (segments[i,3] == segments[i+1,3] & round((segments[i,4] - segments[i-1,5])/10^6,1) < 3) {
+    if (segments[i,3] == segments[i-1,3] & round((segments[i,4] - segments[i-1,5])/10^6,1) < 3) {
       # Segment & Previous have sizes >= size_lga
       if (round((segments[i,5] - segments[i,4]+1)/10^6,0) >= size_lga & round((segments[i-1,5] - segments[i-1,4]+1)/10^6,0) >= size_lga) {
         # If their median ratio difference > THR*coefficient (coefficient = 1 anyways so there's no param for it)
@@ -115,6 +115,5 @@ DetermineNumberOfLGAs <- function(threshold, size_lga, segments) {
       }
     }
   }
-  segments_with_LGA <- segments[,6] * 0
-  
+  segments_with_LGA
 }
