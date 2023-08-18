@@ -100,7 +100,7 @@ SmallMissingChrArms <- function(large_segments, small_segments) {
 }
 
 #' Adds small segments in `small_segments` that meet certain criteria (position wise w.r.t large segments)
-#' into the `large_segments` data frame. Merges if necessary (i.e. if ratio difference < THR).
+#' into the `large_segments` data frame. Merges if necessary (i.e. if ratio difference < threshold).
 #'
 #' @description
 #' Does a lot of things. In InitializeSmallSegments, we insert all the small segments that come before the first
@@ -171,7 +171,7 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
     else {
       # If small segment ends before the start of the large segment
       if (small_segments[i,5] < large_segments[c,4]) {
-        # If their ratio difference is > THR, then no merge. We add small segment before this large segment
+        # If their ratio difference is > threshold, then no merge. We add small segment before this large segment
         # in `large_segments` (i.e row bind before)
         if (abs(small_segments[i,6] - large_segments[c,6]) > threshold) {
           large_segments = rbind(c(small_segments[i,1], small_segments[i,2], small_segments[i,3],
@@ -221,7 +221,7 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
                                  large_segments[c:N_large,])
           i = i + 1
         } else {
-          # Else: below THR, we merge
+          # Else: below threshold, we merge
           gr = GRanges(seqnames = c(large_segments[c,2]),
                        ranges = IRanges(start=c(small_segments[i,4]), end=c(large_segments[c,5])),
                        strand = c("*"))
@@ -253,7 +253,7 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
 #' @description
 #' We add small segments from `small_segments` to `large_segments` in 6 cases, 
 #' each depending on where the small segment fits in between the large ones. 
-#' We merge segments if the ratio difference between the small and the large are <= THR. 
+#' We merge segments if the ratio difference between the small and the large are <= threshold. 
 #' Otherwise, we keep small segment as its own segment in `large_segments`. 
 #' 
 #' Visually, these are the 6 cases:
@@ -301,7 +301,7 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
         # Getting the segments we'll work with
         large_segment = as.numeric(large_segments[c,])
         small_segment = as.numeric(small_segments[i,])
-      
+        
         # Ratio difference below threshold?
         below_threshold = RatioDiffBelowThreshold(large_segment = large_segment, small_segment = small_segment, threshold = threshold)
         
@@ -412,8 +412,8 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
               c = N_large + 1
             }
           }
-        #### Case Five ####
-        } else if (c+1 > N_large && small_segment[4] >= large_segment[5]) {
+          #### Case Five ####
+        } else if (c == N_large && small_segment[4] >= large_segment[5]) {
           if (below_threshold == TRUE) {
             large_segments <- MergeSegmentsFiveLargeSmall(granges_obj = granges_obj, 
                                                           small_segment = small_segment,
@@ -426,8 +426,7 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
             large_segments = rbind(large_segments[1:c,],
                                    c(small_segment[1], small_segment[2], small_segment[3],
                                      small_segment[4], small_segment[5], small_segment[6],
-                                     small_segment[7], small_segment[8]),
-                                   large_segments[(c+1):N_large,])
+                                     small_segment[7], small_segment[8]))
             i = i + 1
             c = N_large + 1
           }
@@ -533,7 +532,7 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
             i = i + 1
             c = N_large + 1
           }
-        #### Case Six ####
+          #### Case Six ####
         } else if (small_segment[4] >= large_segment[5] && large_segment[3] != large_segments[c+1,3] | is.null(large_segments[c+1,3])) {
           # If large and small ratio diff <= THR
           if (below_threshold == TRUE) {
@@ -575,11 +574,11 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
               c = N_large + 1
             }
           }
-        # None of the 6 cases
+          # None of the 6 cases
         } else {
           c = c + 1
         }
-      # Different chromosome arms
+        # Different chromosome arms
       } else {
         c = c + 1
       }
