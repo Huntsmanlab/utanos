@@ -157,22 +157,40 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
 #' 
 #' @param segments A data frame of segments with size > 3Mb. Ideally this
 #' frame has already gone through merging, small segments reinsertion, etc.
-#' @param bam_ratios_frame A data frame: the cleaned-up version of the initial
-#' ratio file tsv.
-#' 
+#' @param bam_ratios_frame A data frame. For first pass: the cleaned-up version of the initial
+#' ratio file tsv. For second pass: this clean-up segments but merged by ratio_median.
+#' @param second_round A boolean: FALSE if first pass, TRUE if second pass. 
 #' @export
-GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame) {
-  bam_ratios_frame = bam_ratios_frame[,-1]
-  bam_ratios_frame = bam_ratios_frame[,-5]
-  colnames(bam_ratios_frame) <- c("chr", "start", "end", "readcount")
-  print(bam_ratios_frame[1:3,])
+GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame, second_round) {
+  if (second_round == FALSE) {
+    # Setting up frame
+    bam_ratios_frame = bam_ratios_frame[,-1]
+    bam_ratios_frame = bam_ratios_frame[,-5]
+    colnames(bam_ratios_frame) <- c("chr", "start", "end", "readcount")
+    
+    # Setting variables that are specific to the first pass
+    attach(bam_ratios_frame)
+    merged_bam = merge(aggregate(start ~ chr, bam_ratios_frame, min), 
+                       aggregate(end ~ chr, bam_ratios_frame, max))[seq(from=1, to=23, by=1),]
+    detach(bam_ratios_frame)
+    
+    while_loop_index = 2 # chromosome number
+    num_chr = 23
+  } else {
+    # Setting up frame
+    colnames(bam_ratios_frame) <- c("chr", "chr_arm", "start", "end", "ratio_median", "size")
+    
+    # Setting variables that are specific to the second pass
+    attach(bam_ratios_frame)
+    merged_bam = merge(aggregate(start ~ chr_arm, bam_ratios_frame, min), 
+                       aggregate(end ~ chr_arm, bam_ratios_frame, max))[seq(from=1, to=41, by=1),]
+    detach(bam_ratios_frame)
+    
+    while_loop_index = 3 # chromosome arm
+    num_chr = 41
+  }
   
-  # Here we are adding all the segments in the same chromosome number
-  attach(bam_ratios_frame)
-  merged_bam = merge(aggregate(start ~ chr, bam_ratios_frame, min), 
-                     aggregate(end ~ chr, bam_ratios_frame, max))[seq(from=1, to=23, by=1),]
-  detach(bam_ratios_frame)
-  
+  # First segment
   segments[1,4] = bam_ratios_frame[1,2]
   
   # We're going to iterate through the large segments.
@@ -183,7 +201,7 @@ GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame) {
   c = 1
   n = 1
   while (c < N_large) {
-    if (segments[c,2] != segments[c+1,2]) {
+    if (segments[c,while_loop_index] != segments[c+1,while_loop_index]) {
       segments[c,5] = merged_bam[n,3]
       n = n + 1
       segments[c+1,4] = merged_bam[n,2]
@@ -191,7 +209,7 @@ GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame) {
     c = c + 1
   }
   
-  segments[N_large,5] = merged_bam[23,3]
+  segments[N_large,5] = merged_bam[num_chr,3]
   segments[,7] = segments[,5] - segments[,4] + 1
   
   segments
@@ -205,11 +223,10 @@ GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame) {
 #' @param threshold A float. Threshold in ratio_median difference previously estimated.
 #' @param segments A data frame: segment data that's (ideally) already been processed (merging segments,
 #' small ones have been reinserted, and so on)
-#' @param second_round A boolean. Minor changes if this is set to TRUE (FALSE for first round).
-#'
+#' 
 #' @export
 
-CallLGA <- function(threshold, segments, second_round) {
+CallLGA <- function(threshold, segments) {
   result <- as.data.frame(matrix(0, ncol=2, nrow=9))
   result[,1] <- c(3:11)
   colnames(result) <- c("Size_LGA", "Number_LGA")
