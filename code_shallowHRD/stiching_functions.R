@@ -17,19 +17,18 @@ granges_obj <- GetGRangesObject(bam_ratios_frame=clean_ratios_file)
 first_threshold <- FindThreshold(granges_obj=granges_obj, 
                                  segments=gathered_by_ratio_median, 
                                  second_round=FALSE, 
-                                 num_simulations = 100000)
+                                 num_simulations = 10000)
 
 #### Reading and Initialization ####
 prepped_gathered_by_ratio_median <- InitializeReadingInitialization(segments=gathered_by_ratio_median) # Graph 1 `tmp`
 segments_wo_short_arms <- ExcludeShortArms(segments=prepped_gathered_by_ratio_median) # Graph 2
 segments_gt3mb <- GetLargeSegments(segments=segments_wo_short_arms)
 segments_btw_0.1_3mb <- GetSmallSegments(segments=segments_wo_short_arms)
-
 segments_gt3mb <- AssignLevels(segments=segments_gt3mb,
                                segments_copy=segments_gt3mb,
                                thr=first_threshold)
 segments_gt3mb <- GatherSegmentsByLevels(segments=segments_gt3mb,
-                                         bam_ratios_frame=clean_ratios_file) # Graph 3
+                                         granges_obj=granges_obj) # Graph 3
 
 #### Re-inserting small segments into segments_gt3mb####'
 segments_gt3mb <- LargeMissingChrArms(large_segments=segments_gt3mb,
@@ -41,23 +40,18 @@ segments_gt3mb_small_reinserted <- InsertSmallSegments(large_segments=segments_g
                                                        threshold=first_threshold,
                                                        granges_obj=granges_obj)
 segments <- CorrectLeftovers(segments=segments_gt3mb_small_reinserted,
-                             second_round=FALSE,
                              granges_obj=granges_obj) # Graph 4
-write.table(segments_gt3mb_small_reinserted, file = "./test_outputs/small_segments/imported_segments_leftovers.txt", sep = "\t", row.names = FALSE)
-
-
 #### Determining LGAs ####
 segments <- BreakSmoothToLGA(threshold=first_threshold,
                              segments=segments,
                              granges_obj=granges_obj)
 segments <- CorrectLeftovers(segments=segments,
-                             second_round=FALSE,
                              granges_obj=granges_obj)
 segments <- GetSegmentationBeforeLGACall(segments=segments,
-                                         bam_ratios_frame=clean_ratios_file) # Graph 5
+                                         bam_ratios_frame=clean_ratios_file,
+                                         second_round=FALSE) # Graph 5
 initial_lga_res <- CallLGA(threshold=first_threshold,
-                          segments=segments,
-                          second_round=FALSE) # Could save this as a .txt
+                          segments=segments) # Could save this as a .txt
 lga_segments <- GetLGAOfSize(threshold=first_threshold,
                              size_lga=10,
                              segments=segments) # Graph 6: to plot the LGAs 
@@ -66,8 +60,50 @@ lga_segments <- GetLGAOfSize(threshold=first_threshold,
 second_threshold <- FindThreshold(granges_obj=granges_obj, 
                                   segments=segments, 
                                   second_round=TRUE, 
-                                  num_simulations = 100000)
+                                  num_simulations = 10000)
 
+#### v2 Reading & Initialization ####
+segments_gt3mb <- GetLargeSegments(segments=segments_wo_short_arms)
+segments_btw_0.1_3mb <- GetSmallSegments(segments=segments_wo_short_arms)
+
+v2_segments_gt3mb <- AssignLevels(segments=segments_gt3mb,
+                                  segments_copy=segments_gt3mb,
+                                  thr=second_threshold)
+v2_segments_gt3mb <- GatherSegmentsByLevels(segments=v2_segments_gt3mb,
+                                            granges_obj=granges_obj) # v2 Graph 3
+
+#### v2 Re-inserting small segments ####
+v2_segments_gt3mb <- LargeMissingChrArms(large_segments=v2_segments_gt3mb,
+                                         small_segments=segments_btw_0.1_3mb)
+v2_segments_btw_0.1_3mb <- SmallMissingChrArms(large_segments=v2_segments_gt3mb,
+                                               small_segments=segments_btw_0.1_3mb)
+v2_segments_gt3mb_small_reinserted <- InsertSmallSegments(large_segments=v2_segments_gt3mb,
+                                                          small_segments=v2_segments_btw_0.1_3mb,
+                                                          threshold=second_threshold,
+                                                          granges_obj=granges_obj)
+v2_segments <- CorrectLeftovers(segments=v2_segments_gt3mb_small_reinserted,
+                                granges_obj=granges_obj) # v2 Graph 4
+v2_graph_4_copy <- v2_segments
+write.table(v2_graph_4_copy, "./test_outputs/v2_small_segments/imported_v2_segments_small_inserted.txt", sep="\t", row.names = FALSE)
+
+#### v2 Determining LGAs ####
+v2_segments <- BreakSmoothToLGA(threshold=second_threshold,
+                                segments=v2_segments,
+                                granges_obj=granges_obj)
+v2_segments <- LargeMissingChrArms(large_segments=v2_segments,
+                                   small_segments=v2_graph_4_copy,
+                                   second_round=TRUE)
+v2_segments <- CorrectLeftovers(segments=v2_segments,
+                                granges_obj=granges_obj)
+v2_segments <- GetSegmentationBeforeLGACall(segments=v2_segments,
+                                            bam_ratios_frame=gathered_by_ratio_median,
+                                            second_round=TRUE) # v2 Graph 5
+final_lga_res <- CallLGA(threshold=second_threshold,
+                         segments=v2_segments) # Could save this as a .txt
+write.table(final_lga_res, "./number_of_lgas.txt", sep="\t", row.names = FALSE)
+final_lga_segments <- GetLGAOfSize(threshold=second_threshold,
+                                   size_lga=10,
+                                   segments=v2_segments) # Graph 6: to plot the LGAs 
 
 
 

@@ -67,7 +67,7 @@ FindThreshold <- function(granges_obj, segments, num_simulations=100000, second_
     second_local_maxima = density(all_ratio_differences)$x[maxima]
     
     if (is.na(second_local_maxima) == FALSE) {
-      if (abs((first_local_minima - first_local_maxima) - (second_local_maxima - first_local_minima)) < 0.05) {
+      if (abs((first_local_minima - first_local_maxima) - (second_local_maxima - first_local_minima)) < 0.10) {
         if (first_local_minima < thr) {
           thr = first_local_minima
         }

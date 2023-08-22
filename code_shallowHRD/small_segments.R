@@ -47,7 +47,7 @@ GetGRangesObject <- function(bam_ratios_frame) {
 #'
 #' @export
 
-LargeMissingChrArms <- function(large_segments, small_segments) {
+LargeMissingChrArms <- function(large_segments, small_segments, second_round) {
   values = unique(small_segments[,3][!small_segments[,3] %in% large_segments[,3]])
   length_values = length(values)
   
@@ -59,7 +59,7 @@ LargeMissingChrArms <- function(large_segments, small_segments) {
       if (missing_chr_arm > max(large_segments[,3])) {
         large_segments = rbind(large_segments,
                                small_segments[which(small_segments[,3] == missing_chr_arm),])
-      } else if (missing_chr_arm < lage_segments[i,3]) {
+      } else if (missing_chr_arm < large_segments[i,3]) {
         if (i == 1) {
           large_segments = rbind(small_segments[which(small_segments[,3] == missing_chr_arm),],
                                  large_segments[1:N_large,])
@@ -292,9 +292,6 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
     N_large = dim(large_segments)[1]
     
     while  (c < N_large + 1) {   
-      print("checking...")
-      print(c)
-      print(N_large)
       # If in the same chromosome arm
       if (small_segments[i,3] == large_segments[c,3]) {
         
@@ -599,13 +596,11 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
 #' Do this as long as adjacent segments are in the same chromosome arm. 
 #'
 #' @param segments A data frame. Segments with size >= 3Mb.
-#' @param second_round A boolean. If true, some indices where we check in the frame
-#' are different.
 #' @param granges_obj A GRanges object: is used as reference to check whenever we have
 #' empty space between segments and get the ratio_median of this missing portion. 
 #' 
 #' @export
-CorrectLeftovers <- function(segments, second_round, granges_obj) {
+CorrectLeftovers <- function(segments, granges_obj) {
   c = 1 
   
   while (c < dim(segments)[1]) {

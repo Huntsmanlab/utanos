@@ -119,7 +119,7 @@ AssignLevels <- function(segments, segments_copy, thr) {
       segments[which(segments[,1] == closest_indices[i]), 8] = level
       
       # Getting the rest of the segments and keeping them in `segments_copy`. 
-      segments_copy <- segments_copy[which(!(segments_copy[,1] == closest_indices[i])), ]
+      segments_copy <- segments_copy[which(segments_copy[,1] != closest_indices[i]), ]
     }
     level = level + 1
   }
@@ -135,21 +135,11 @@ AssignLevels <- function(segments, segments_copy, thr) {
 #' @param segments A data frame containing segment data. For the first pass, these segments
 #' are those with size >= 3mb. Their last column should be their level, and should be non-zero
 #' (i.e. already determined)
-#' @param bam_ratios_frame A data frame. The cleaned raw bam ratios file.
+#' @param granges_obj A GRanges object: used to obtain genomic data from regions.
 #'
 #' @export
 
-GatherSegmentsByLevels <- function(segments, bam_ratios_frame) {
-  #### Creating GRanges object from bam ratios file ####
-  bam_ratios_frame = bam_ratios_frame[,-1]
-  colnames(bam_ratios_frame) <- c("chr", "start", "end", "ratio", "ratio_median")
-  GRanges_object_bam_ratio_file = makeGRangesFromDataFrame(bam_ratios_frame,
-                                                           keep.extra.columns = TRUE,
-                                                           ignore.strand = TRUE,
-                                                           seqnames.field = "chr",
-                                                           start.field = "start",
-                                                           end.field = "end")
-  
+GatherSegmentsByLevels <- function(segments, granges_obj) {
   #### Iterate through rows in segments ####
   N = dim(segments)[1]
   result = matrix(0, ncol=8, nrow=N)
@@ -202,7 +192,7 @@ GatherSegmentsByLevels <- function(segments, bam_ratios_frame) {
           genomic_ranges = GRanges(seqnames = vector_of_chr_numbers,
                                    ranges = IRanges(start = vector_of_seg_starts, end = vector_of_seg_ends),
                                    strand = vector_strands)
-          subsetGRobject = subsetByOverlaps(GRanges_object_bam_ratio_file, genomic_ranges)
+          subsetGRobject = subsetByOverlaps(granges_obj, genomic_ranges)
           
           # Adding the merged segment into the result matrix
           result[c,] = c(segments[i,1],
