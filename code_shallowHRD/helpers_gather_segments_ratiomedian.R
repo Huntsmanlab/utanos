@@ -1,21 +1,29 @@
 #' Removes centromeres and telomeres from 22 chromosomes (23rd if specified)
 #'
 #' @description 
-#' RemoveCentromereTelomeres takes in a Data Frame and removes each chromosomes centromere and telomeres. 
-#' Returns a modified Data Frame with these segments removed. 
+#' Removes each chromosome's centromere and telomeres. The positions of these centromeres/telomeres is specified in the
+#' given arrays. So, the start positions of the 23 centromeres is in `centromere_starts`, the end positions of the 23 centromeres
+#' is in `centromere_ends`, and so on. By 'telomere 2' we mean the second (bottom) telomere, while telomere 1 woud be the first (top) one.
+#' Note that there are parameters for telomere 2 (`telomere_2_starts` and `telomere_2_ends`), but not for telomere 1. The reason for this
+#' is that, in the algorithm, the start position and end position of telomere 1 is the same for ALl chromosomes (base 0 up to 10000).
 #'
-#' @param df A Data Frame with segment data, column 1 must indicate Chromosome Number, column 2 the start position of the segment,
-#' and column 3 the end position of the segment. 
-#' @param include_chr_X A boolean: True if chromosome X/23 is included in df AND wants its regions removed. False otherwise. 
+#' @param df A Data Frame with segment data. Requirements:
+#' 1. Column 1 is chromosome number
+#' 2. Column 2 is the start position of the segment
+#' 3. column 3 is the end position of the segment. 
+#' @param include_chr_X A boolean: True if you want its spurious regions removed. False otherwise. 
+#' @param centromere_starts An array: contains the start positions of all 23 chromosome's centromeres IN ORDER from 1 to 23.
+#' @param centromere_ends An array: contains the end positions of all 23 chromosome's centromeres IN ORDER from 1 to 23.
+#' @param telomere_2_starts An array: contains the start positions of all 23 chromosome's second telomere IN ORDER from 1 to 23.
+#' @param telomere_2_ends An array: contains the end positions of all 23 chromosome's second telomere IN ORDER from 1 to 23.
 #'
 #' @export
 #' 
-#' TODO: Could probably check first that df has 23 unique values in df, if include_chr_x is True, just to make we can access that column
 #' TODO: implement for hg38
 #' TODO: can check that df's columns match what's needed (column 1= chr_n, etc.)
 RemoveCentromereTelomeres <- function(df, include_chr_X, centromere_starts, centromere_ends, telomere_2_starts, telomere_2_ends) {
   if (include_chr_X == TRUE) {
-    n_chr_to_check = 23 # so in for-loop next we look for the 23rd centromere
+    n_chr_to_check = 23 # so in for-loop  we look iterate 23 times: we check 23 chromosomes.
   } else {
     n_chr_to_check = 22 # otherwise skip it
   }
@@ -31,17 +39,26 @@ RemoveCentromereTelomeres <- function(df, include_chr_X, centromere_starts, cent
   df
 }
 
-#' Adds a Chromosome Arm column in df at the respective positions for each chromosome
+#' Adds a chromosome arm column to df at the respective positions for each chromosome.
 #' 
 #' @description
-#' AddChromosomeArmColumn determines the chromosome arm for each segment in each chromosome. 
+#' Determines the chromosome arm for each segment in each chromosome. This is determined by the positions given in `centromere_positions`.
 #' Segments before centromere are in Chr_N (first arm), segments after centromere are in Chr_N.5 (second arm). '
+#' 
+#' The procedure goes like this. For each chromosome, the segments that are before its middle position have their chromosome arm set to 1.
+#' The segments that are after the middle position have their chromosome arm set to 2. Then, the chromosome arm column is:
+#'      chromosome_arm = chromosome_number + (chromosome_arm - 1)/2
+#' So the segments whose arm was 1 have 0 added to their chromosome number, meaning that if a segment its chromosome arm is Chr_N.
+#' But, the segments whose arm was 2 have 1 added to their chromosome number, meaning that its chromosome arm is Chr_N.5.
+#' 
+#' Edge case: segments that start before the middle pos but end after the middle pos. In that case, we split it into 2 and proceed like above.
 #'
 #' @param df The Data Frame to modify. Column numbers are same as in RemoveCentromereTelomeres. 
-#' @param include_chr_X A boolean. Whether to set chromosome arms for segments in Chr X or not.
+#' @param include_chr_X A boolean. Whether to set chromosome arms for segments in Chr X/23 or not.
+#' @param centromere_positions An array: the middle positions for each chromosome IN ORDER from 1 to 23.
 #'
 #' @export
-AddChromosomeArmColumn <- function(df, include_chr_X, centromere_positions) {
+AddChromosomeArmHelper <- function(df, include_chr_X, centromere_positions) {
   if (include_chr_X == TRUE) {
     n_chr_to_check = 23 # so in for-loop next we look for the 23rd centromere
   } else {
@@ -85,10 +102,10 @@ AddChromosomeArmColumn <- function(df, include_chr_X, centromere_positions) {
   df
 }
 
-#' Gathers (merges) segments that have the same ratio_median
+#' Merges segments that have the same ratio_median and are in the same chromosome arm.
 #'
 #' @description 
-#' GatherByRatioMedian takes the segment data (df) and gathers/merges the segments according to their ratio_median
+#' Takessegment data (df) and gathers/merges the segments according to their ratio_median
 #' or chromosome arm. 
 #' 
 #' @param df The Data Frame with segment data: first column is chromosome number, second column is chromosome arm,

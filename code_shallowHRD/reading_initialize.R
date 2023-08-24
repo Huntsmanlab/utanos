@@ -11,7 +11,7 @@ library("GenomicRanges")
 #'
 #' @export
 
-InitializeReadingInitialization <- function(segments) {
+PrepForInitialization <- function(segments) {
   #### Have to convert it into a .txt file and then use the readSegmFile helper ####
   write.table(segments, file="./test_outputs/gathered_by_ratio_median.txt", sep = "\t", row.names = FALSE)
   segment_files <- list.files("./test_outputs/", pattern = "gathered_by_ratio_median.txt", full.names = TRUE)
@@ -88,20 +88,20 @@ GetLargeSegments <- function(segments) {
 #' @description 
 #' Iterates through the given segments_copy data frame. Does the following at each iteration:
 #' 1. Finds the largest segment (by size). Then, finds all the segments 'close' to it: closeness
-#" here means that that ratio_median difference between them is less than the estimates threshold.
+#'    here means that that ratio_median difference between them is less than threshold (`thr`).
 #' 2. Once we identify these segments that are 'close' to each other (called closest_indices),
-#' we iterate through them, and set their level in `segments`.
+#'    we iterate through them, and set their level in `segments`.
 #' 3. Finally, remove these closest_indices segments from `segments_copy`.
 #' 
-#' @param segments  A data frame containing segment data. For the first pass, these segments
-#' are those with size >= 3mb. 
-#' @param segments_copy A data frame: copy of `segments`
+#' @param segments  A data frame containing segment data. 
 #' @param thr A float: the threshold previously estimated via KDE. Used to determine whether
-#' big segments are merged.
+#' large segments are merged.
 #'
 #' @export
 
-AssignLevels <- function(segments, segments_copy, thr) {
+AssignLevels <- function(segments, thr) {
+  segments_copy <- segments
+  
   #### Iterate through the rows in segments_copy, while there are still any segments left ####
   level = 1
   while (dim(segments_copy)[1] > 1) {
@@ -135,7 +135,7 @@ AssignLevels <- function(segments, segments_copy, thr) {
 #' @param segments A data frame containing segment data. For the first pass, these segments
 #' are those with size >= 3mb. Their last column should be their level, and should be non-zero
 #' (i.e. already determined)
-#' @param granges_obj A GRanges object: used to obtain genomic data from regions.
+#' @param granges_obj A GRanges object: used to obtain genomic data from regions we're merging.
 #'
 #' @export
 

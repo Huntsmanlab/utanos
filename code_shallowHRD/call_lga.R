@@ -235,9 +235,7 @@ CallLGA <- function(threshold, segments) {
   segments = as.matrix(segments)
   
   for (i in (3:11)) {
-    segments_with_LGA <- DetermineNumberOfLGAs(threshold=threshold,
-                                               size_lga=i,
-                                               segments=segments) 
+    segments_with_LGA <- DetermineNumberOfLGAs(threshold=threshold, size_lga=i, segments=segments) 
     result[i-2,2] = sum(segments_with_LGA)
   }
   result
