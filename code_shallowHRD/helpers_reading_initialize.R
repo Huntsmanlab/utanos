@@ -47,7 +47,6 @@ FindBigSegmentsIndices <- function(segments_copy, thr) {
   segments_indices
 }
 
-## Function readSegmFile ##
 #' TODO: write docs
 ReadSegmFile<-function(seg_file_name){
   aa<-scan(seg_file_name,nlines=1,what="character",quiet = T)

@@ -45,15 +45,17 @@ PrepSecondRound <- function(segments) {
 
 #' Runs simulations to obtain a list of possible thresholds from the segment ratio differences
 #'
-#'
 #' @description 
-#' RunThresholdSimulations takes a number of simulations (num_simulations) and an array with all
-#' the ratio differences (all_ratio_differences), and at each simulation:
+#' At each simulation:
 #' - Takes a random number of samples from all_ratio_differences (the batch)
 #' - Passes this batch to GetCriticalPoints to estimate (via KDE) the batch's density minima/maxima
-#' - Adds the minima as a possible threshold if it meets certain criteria.
+#' - Adds the minima as a possible threshold if it meets certain criteria. Most specifically, a local minima from a batch
+#'   is considered a valid possible threshold if the difference between the distance between first maxima and the minima, and the
+#'   second maxima and the minima, are 'close' to each other. If first round, this closeness is < 0.10 distance-wise. If second_round,
+#'   this closeness is < 0.05 distance-wise. So, for the second round, we really care about the minima being very close to the two
+#'   neighboring maxima. The point of these tolerances is that we do not get a 'low' and a 'flat' local minima, meaning that it is a ratio_median
+#'   difference that's not very common. This would affect the rest of the algorithm as not many segments would meet this threshold.
 #' Once simulations are done and we have a list of possible thresholds, we return the threshold (mean of list) 
-#' If second_round == True, we return the threshold + mean of second maxima. 
 #' 
 #' @param num_simulations An integer: the number of simulations to run on all_ratio_differences. Set to 100,000
 #' by default
@@ -116,7 +118,7 @@ RunThresholdSimulations <- function(num_simulations=100000, all_ratio_difference
 }
 
 #' Finds critical points (minima or maxima) of the differences between
-#' segments ratios
+#' segments ratios.
 #'
 #' @description
 #' GetCriticalPoints takes the estimated density values (via KDE) from a batch of samples
