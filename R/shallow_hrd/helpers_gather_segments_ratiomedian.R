@@ -105,14 +105,14 @@ AddChromosomeArmHelper <- function(df, include_chr_X, centromere_positions) {
 #' Merges segments that have the same ratio_median and are in the same chromosome arm.
 #'
 #' @description 
-#' Takessegment data (df) and gathers/merges the segments according to their ratio_median
+#' Takes segment data (df) and gathers/merges the segments according to their ratio_median
 #' or chromosome arm. 
 #' 
 #' @param df The Data Frame with segment data: first column is chromosome number, second column is chromosome arm,
 #' third column is start position, fourth is end position, and fifth is the ratio_median.
 #'
 #' @export
-GatherByRatioMedian <- function(df) {
+GatherSegmentsByRatioMedianHelper <- function(df) {
   N = dim(df)[1]
   gathered_by_ratio_median = matrix(0, ncol=6, nrow=N)
   
