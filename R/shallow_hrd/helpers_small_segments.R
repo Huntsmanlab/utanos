@@ -284,8 +284,7 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
             large_segments <- MergeSegmentsFiveLargeSmall(granges_obj = granges_obj, 
                                                           small_segment = small_segment,
                                                           large_segments = large_segments, 
-                                                          j = c, 
-                                                          N_large = N_large)
+                                                          j = c)
             i = i + 1
             c = N_large + 1
           } else {
@@ -310,8 +309,7 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
               large_segments <- MergeSegmentsFiveLargeSmall(granges_obj = granges_obj, 
                                                             small_segment = small_segment,
                                                             large_segments = large_segments, 
-                                                            j = c, 
-                                                            N_large = N_large)
+                                                            j = c)
               i = i + 1
               c = N_large + 1
             } else {
@@ -564,7 +562,7 @@ MergeSegmentsTwo <- function(granges_obj, small_segment, large_segments, j, belo
                              c(large_segment[1], 
                                large_segment[2], 
                                large_segment[3],
-                               small_segment[4],
+                               small_segment[4], 
                                large_segment[5], 
                                median(subsetGRobject$ratio),
                                large_segment[5] - small_segment[4] + 1, 
@@ -617,14 +615,16 @@ MergeSegmentsTwo <- function(granges_obj, small_segment, large_segments, j, belo
 #' Handles merging step for the fourth case of FinalizeSmallSegments.
 #' 
 #' @description
-#' Pretty much the same as in MergeSegments
+#' Pretty much the same as in MergeSegmentsTwo. Both helpers difference in the genomic data we search for
+#' through GRanges. as well as which segment (large or small) we add into the `large_segments` frame. For example,
+#' start position of the large segment? Or he small segment?
 #'
 #' @param granges_obj A GRanges object: is used as reference to obtain true genomic data from specified regions.
 #' @param small_segment An array: the given small segment that might be merged into the `large_segments` frame.
 #' @param large_segments A data frame: segment data. Initially contains only segments with size >= 3Mb, but as we merge
 #' small segments into it, smaller segments are progressively added.
 #' @param j An integer/index: the position of the large segment we're comparing with small_segment, within `large_segments`.
-#' @param below_thr A boolean: whether large_segment and small_segment ratio_median difference is below the threhsold.
+#' @param below_thr A boolean: whether large_segment and small_segment ratio_median difference is below the threshold
 #' @param end_of_file A boolean: whether there's any large segments after `j`.
 #' 
 #' @export
@@ -645,7 +645,7 @@ MergeSegmentsFour <- function(granges_obj, small_segment, large_segments, j, bel
                              c(large_segment[1], 
                                large_segment[2], 
                                large_segment[3],
-                               large_segment[4],
+                               large_segment[4], 
                                small_segment[5], 
                                median(granges_obj$ratio),
                                small_segment[5] - large_segment[4] + 1, 
@@ -655,7 +655,7 @@ MergeSegmentsFour <- function(granges_obj, small_segment, large_segments, j, bel
                              c(large_segment[1], 
                                large_segment[2], 
                                large_segment[3],
-                               large_segment[4],
+                               large_segment[4], 
                                small_segment[5], 
                                median(granges_obj$ratio),
                                small_segment[5] - large_segment[4] + 1, 
@@ -695,6 +695,24 @@ MergeSegmentsFour <- function(granges_obj, small_segment, large_segments, j, bel
   large_segments
 }
 
+#' Deals with merging large segment to small segment.
+#'
+#' @description
+#' Procedure is overall similar to the previous cases. For case five, we have two options when merging:
+#' - Merge large and small
+#' - Merge small and next large
+#' This helper deals with the first option. 
+#' Note that there is no 'below_thr' parameter for these two helpers, since we already know we're going to merge
+#' when they're called in FinalizeSmallSegments.
+#'
+#' @param granges_obj A GRanges object: is used as reference to obtain true genomic data from specified regions.
+#' @param small_segment An array: the given small segment that might be merged into the `large_segments` frame.
+#' @param large_segments A data frame: segment data. Initially contains only segments with size >= 3Mb, but as we merge
+#' small segments into it, smaller segments are progressively added.
+#' @param j An integer/index: the position of the large segment we're comparing with small_segment, within `large_segments`.
+#'
+#' @export
+
 MergeSegmentsFiveLargeSmall <- function(granges_obj, small_segment, large_segments, j) {
   N_large = dim(large_segments)[1]
   large_segment = as.numeric(large_segments[j,])
@@ -718,6 +736,21 @@ MergeSegmentsFiveLargeSmall <- function(granges_obj, small_segment, large_segmen
   
   large_segments
 }
+
+#' Deals with merging small segment to next_large segment.
+#'
+#' @description
+#' Deals with the second option. 
+#'
+#' @param granges_obj A GRanges object: is used as reference to obtain true genomic data from specified regions.
+#' @param small_segment An array: the given small segment that might be merged into the `large_segments` frame.
+#' @param large_segments A data frame: segment data. Initially contains only segments with size >= 3Mb, but as we merge
+#' small segments into it, smaller segments are progressively added.
+#' @param j An integer/index: the position of the large segment we're comparing with small_segment, within `large_segments`.
+#' @param end_of_file A boolean: whether there's any large segments after `j`.
+#'
+#' @export
+
 MergeSegmentsFiveSmallNextLarge <- function(granges_obj, small_segment, large_segments, j, end_of_file) {
   N_large = dim(large_segments)[1]
   large_segment = as.numeric(large_segments[j,])

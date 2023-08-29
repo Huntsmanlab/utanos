@@ -24,7 +24,8 @@ GetSegmentID <- function(threshold, segments){
     # Checking for two conditions:
     # 1) If segments are in the same chromosome arm
     # 2) If their ratio_median difference is below the threshold
-    #    'large' and 'small' are irrelevant here, for the parameters of RatioDiffBelowThreshold
+    #    'large' and 'small' are irrelevant here, for the parameters of RatioDiffBelowThreshold,
+    #     since we don't really care about segment size at this step.
     below_threshold = RatioDiffBelowThreshold(large_segment=segments[i,],
                                               small_segment=segments[i-1,],
                                               threshold=threshold)
@@ -53,10 +54,10 @@ GetSegmentID <- function(threshold, segments){
 ShrinkReprTMP <- function(segments, granges_obj) {
   for (i in 1:(dim(segments)[1]-1)) {
     # If segment (i) and next segment (i+1) have same level:
-    # Next segment's start position is set to segment's start position, essentially a merge.
-    # Then use GRanges to obtain genomic data from this merged segment, and sets 
-    # next segment's median to this genomic data's ratio median.
-    # Then removes segment i.
+    # 1. Next segment's start position is set to segment's start position, essentially a merge.
+    # 2. Then use GRanges to obtain genomic data from this merged segment, and sets 
+    #    next segment's ratio_median to this genomic data's ratio_median.
+    # 3. Then removes segment i.
     if (segments[i,8] == segments[i+1,8]) {
       segments[i+1,4] <- segments[i,4]
       
@@ -84,11 +85,11 @@ ShrinkReprTMP <- function(segments, granges_obj) {
 #' Iterates through the segments in `segments` and firstly checks if the segment meets the definition
 #' of an LGA: 
 #' 1. Segment and Previous are in the same chromosome arm.
-#' 2. Size of space between Segment and Previous is less than 3mb.
+#' 2. Size of space between Segment and Previous is less than 3Mb.
 #' Then, we check that:
 #' 1. Size of Segment >= `size_lga`
 #' 2. Size of Previous >= `size_lga`
-#' Finally, we check that ratio difference between Segment and Previous > THR. If so, then mark segment as an LGA (via 1's in the output frame).
+#' Finally, we check that ratio_median difference between Segment and Previous > THR. If so, then mark segment as an LGA (via 1's in the output frame).
 #'
 #' @param threshold A float. Threshold in ratio_median difference previously estimated.
 #' @param size_lga An integer: size of the LGA to look for.

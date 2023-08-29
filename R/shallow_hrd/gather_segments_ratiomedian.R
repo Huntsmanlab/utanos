@@ -13,9 +13,11 @@ source("helpers_gather_segments_ratiomedian.R")
 #' 6. Removes segments with a ratio_median = -Inf.
 #' 
 #' @param raw_bam_ratios A data frame: the raw bam ratios file obtained from the bam_ratio.txt file. 
+#' @param log_transform A boolean: TRUE if you want to log2 transform the ratio_median column. FALSE otherwise.
+#' If dealing with Controlfreec data, log_transform should be TRUE. If QDNAseq, log_transform should be FALSE.
 #' 
 #' @export
-CleanBamRatiosFrame <- function(raw_bam_ratios) {
+CleanBamRatiosFrame <- function(raw_bam_ratios, log_transform) {
   # Cleaning up raw_bam_ratios file
   raw_bam_ratios = raw_bam_ratios[,1:4]
   raw_bam_ratios[,1] <- gsub('X', '23', raw_bam_ratios[,1])
@@ -36,13 +38,10 @@ CleanBamRatiosFrame <- function(raw_bam_ratios) {
   # More cleaning + log transform
   raw_bam_ratios = raw_bam_ratios[which(!raw_bam_ratios$ratio == -1),]
   raw_bam_ratios = raw_bam_ratios[which(!raw_bam_ratios$ratio_median == -1),]
-  raw_bam_ratios[,5] = log2(raw_bam_ratios[,5])
-  raw_bam_ratios[,6] = log2(raw_bam_ratios[,6])
   
-  # Removing segments with a ratio_median = -Inf
-  inf_ratio_median_indices = which(bam_ratios_frame$ratio_median == -Inf)
-  if (length(inf_ratio_median_indices) >= 1) {
-    bam_ratios_frame = bam_ratios_frame[-inf_ratio_median_indices,]
+  if (log_transform == TRUE) {
+    raw_bam_ratios[,5] = log2(raw_bam_ratios[,5])
+    raw_bam_ratios[,6] = log2(raw_bam_ratios[,6])
   }
   
   bam_ratios_frame <- data.frame(raw_bam_ratios)
@@ -64,6 +63,7 @@ RemoveSpuriousRegions <- function(bam_ratios_frame, include_chr_X) {
   # Dropping the 'feature' and the 'ratio' column.
   bam_ratios_frame <- bam_ratios_frame[,-1]
   bam_ratios_frame <- bam_ratios_frame[,-4]
+  
   bam_ratios_frame <- RemoveCentromereTelomeres(df=bam_ratios_frame, 
                                                 include_chr_X=include_chr_X,
                                                 centromere_starts=hg19_centromere_starts,
@@ -120,6 +120,12 @@ AddChromosomeArm <- function(bam_ratios_frame, include_chr_X) {
 #' 
 #' @export
 GatherSegmentsByRatioMedian <- function(bam_ratios_frame) {
+  # Removing segments with a ratio_median = -Inf
+  inf_ratio_median_indices = which(bam_ratios_frame$ratio_median == -Inf)
+  if (length(inf_ratio_median_indices) >= 1) {
+    bam_ratios_frame = bam_ratios_frame[-inf_ratio_median_indices,]
+  }
+  
   bam_ratios_frame = as.matrix(bam_ratios_frame)
   gathered_by_ratio_median = GatherSegmentsByRatioMedianHelper(df=bam_ratios_frame)
   

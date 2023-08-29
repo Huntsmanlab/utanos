@@ -2,10 +2,13 @@ library("GenomicRanges")
 source("helpers_call_lga.R")
 source("helpers_small_segments.R") # borrowing the helper that checks if segments ratio_median diff < THR
 
-#' TODO: finish docs
+#' Preps `segments` for LGA call.
 #' 
 #' @description
-#' TODO: finish docs
+#' Does many things, details found within function body. First, assigns segments
+#' that meet certain criteria an index of 0 (there's 4 cases + edge cases for assigning an
+#' index of 0, inside the inner for-loop.) Then, removes the segments that were assigned this
+#' index of 0. They're considered "small breaks". 
 #' 
 #' @param threshold A float. Threshold in ratio_median difference previously estimated.
 #' @param segments A data frame: segment data that's (ideally) already been processed (merging segments,
@@ -142,7 +145,7 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
   }
   segments <- GetSegmentID(threshold=threshold,
                            segments=segments)
-  segments < ShrinkReprTMP(segments=segments,
+  segments <- ShrinkReprTMP(segments=segments,
                            granges_obj=granges_obj)
   segments[1,1] <- small_breaks
   segments
@@ -151,7 +154,7 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
 #' Final segmentation before LGA call
 #' 
 #' @description 
-#' Merges the initial `bam_ratios_frame`b by segments in the same chromosome,
+#' Merges the initial `bam_ratios_frame` by segments in the same chromosome,
 #' and then assigns start/end pos to segments in `segments`, whenever
 #' we change Chr_N in the latter.
 #' 
@@ -249,6 +252,8 @@ CallLGA <- function(threshold, segments) {
 #' @param threshold A float. Threshold in ratio_median difference previously estimated.
 #' @param size_lga An integer: size of the LGA to look for.
 #' @param segments A data frame: segment data
+#' 
+#' @export
 GetLGAOfSize <- function(threshold, size_lga, segments) {
   segments_with_LGA <- DetermineNumberOfLGAs(threshold=threshold,
                                              size_lga=size_lga,
