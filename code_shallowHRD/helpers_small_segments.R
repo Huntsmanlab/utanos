@@ -1,4 +1,5 @@
 library("GenomicRanges")
+
 #' Initializes the process of re-inserting the small segments in between the large ones.
 #'
 #' @description
@@ -6,14 +7,14 @@ library("GenomicRanges")
 #' segments to `large_segments` that:
 #' 1. End before the first large segment and
 #' 2. Overlap with the first large segment
-#' We stop the process whenever we've changed chromosome arms 
-#'
+#' We stop the process whenever we've changed chromosome arms between the small segment and the large segment 
+#' 
 #' @param small_segments A data frame. Segments with 3Mb >= size >= 0.1Mb.
 #' @param large_segments A data frame. Segments with size >= Mb.
 #' @param threshold A float: the estimated threshold for ratio_median difference via KDE. Used to determine
 #' whether we insert the small segment or not.
-#' @param granges_obj A GRanges object: is used as reference to check whenever we have
-#' an overlap of segments and get the ratio_median of this overlap. 
+#' @param granges_obj A GRanges object: is used as genomic reference to check whenever we have
+#' an overlap of segments and get the data (specifically the ratio_median) of this overlap. 
 #'
 #' @export
 
@@ -21,9 +22,9 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
   N_large = dim(large_segments)[1]
   N_small = dim(small_segments)[1]
   
-  halt = 0
-  i = 1
-  c = 1
+  halt = 0 # whether we change chromosome arms, or small segment is after first large segment
+  i = 1 # small segment
+  c = 1 # large segment, always equal to 1, since we only care about the first one at this stage. 
   
   while (halt < 1) {
     # If small segment is in a greater chromosome arm than large segment, OR
@@ -40,7 +41,7 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
       # If small segment ends before the start of the large segment
       if (small_segments[i,5] < large_segments[c,4]) {
         # If their ratio difference is > threshold, then no merge. We add small segment before this large segment
-        # in `large_segments` (i.e row bind before)
+        # in `large_segments` (i.e row bind small segment to the left of the large_segments: before)
         if (abs(small_segments[i,6] - large_segments[c,6]) > threshold) {
           large_segments = rbind(c(small_segments[i,1], small_segments[i,2], small_segments[i,3],
                                    small_segments[i,4], small_segments[i,5], small_segments[i,6],
@@ -559,7 +560,7 @@ MergeSegmentsTwo <- function(granges_obj, small_segment, large_segments, j, belo
     
     # Adding into `large_segments`. But this depends whether we're at the end of file or not.
     if (end_of_file == TRUE) {
-      large_segments = rbind(large_segments[1:(j-1),],
+      large_segments = rbind(large_segments[1:(j-1),], 
                              c(large_segment[1], 
                                large_segment[2], 
                                large_segment[3],

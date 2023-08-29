@@ -41,7 +41,20 @@ GetGRangesObject <- function(bam_ratios_frame) {
 #' Deals with missing chromosome arm values in the given data frame of large segments.
 #' 
 #' @description
-#' First finds the missing chromosome arms 
+#' Finds the missing chromosome arms and reinserts them into `large_segments`. Specifically,
+#' the arms that `large_segments` doesn't have, but `small_segments` does. For each of the missing
+#' values, we iterate through the large segments, and re-insert the small segments wherever
+#' appropriate. 
+#' 
+#' For example (first case in while loop), if the missing_chr_arm value is greater than the largest chr_arm
+#' in the arm column (i.e., max(large_segments[,3])), then we should bind the small segments 
+#' to the right of the large segments frame, since there are no more segments after
+#' this largest chr_arm. Note that we only bind the small segments within this missing_chr_arm.
+#' 
+#' Otherwise, missing_chr_arm <= than the largest chr_arm. In this case we care about which large
+#' segment we're looping over (the value of `i`). If i = 1, i.e. the first segment, then we bind
+#' the small segments to the left of the large segments: this is trivial. Otherwise, we fit the
+#' small segments in between `i-1` and `i`.
 #'
 #' @param large_segments A data frame. Segments with size >= Mb.
 #' @param small_segments A data frame. Segments with 3Mb >= size >= 0.1Mb.
@@ -83,9 +96,11 @@ LargeMissingChrArms <- function(large_segments, small_segments) {
 #' Deals with missing chromosome arm values in the given data frame of small segments.
 #' 
 #' @description
-#' TODO
+#' Pretty much as in LargeMissingChrArms, except it removes the small segments
+#' that are not in the missing_chr_arm. 
 #'
-#' @param
+#' @param large_segments A data frame. Segments with size >= Mb.
+#' @param small_segments A data frame. Segments with 3Mb >= size >= 0.1Mb.
 #'
 #' @export
 
@@ -101,7 +116,7 @@ SmallMissingChrArms <- function(large_segments, small_segments) {
 }
 
 #' Adds small segments in `small_segments` that meet certain criteria (position wise w.r.t large segments)
-#' into the `large_segments` data frame. Merges if necessary (i.e. if ratio difference < threshold).
+#' into the `large_segments` data frame. Merges if necessary (i.e. if ratio_median difference < threshold).
 #'
 #' @description
 #' Does a lot of things. In InitializeSmallSegments, we insert all the small segments that come before the first
@@ -109,8 +124,8 @@ SmallMissingChrArms <- function(large_segments, small_segments) {
 #' according to 6 different cases, which are listed in the FinalizeSmallSegments documentation. In the end, returns the updated
 #' `large_segments` with small segments appropriately re-inserted.
 #'
-#' @param small_segments A data frame. Segments with 3Mb >= size >= 0.1Mb.
-#' @param large_segments A data frame. Segments with size >= Mb.
+#' @param small_segments A data frame. Segments with 3Mb > size >= 0.1Mb.
+#' @param large_segments A data frame. Segments with size >= 3Mb.
 #' @param threshold A float: the estimated threshold for ratio_median difference via KDE.
 #' @param granges_obj A GRanges object: is used as reference to check whenever we have
 #' an overlap of segments and get the ratio_median of this overlap.
@@ -123,11 +138,9 @@ InsertSmallSegments <- function(large_segments, small_segments, threshold, grang
                                    threshold = threshold,
                                    granges_obj = granges_obj)
   
-  print("Exited InitializeSmallSegments")
   large_segments <- FinalizeSmallSegments(large_segments = as.data.frame(output[1]),
                                           small_segments = as.data.frame(output[2]),
                                           threshold = threshold,
                                           granges_obj = granges_obj)
-  print("Exited FinalizeSmall")
   large_segments
 }
