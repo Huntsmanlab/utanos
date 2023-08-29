@@ -104,5 +104,5 @@ final_lga_segments <- GetLGAOfSize(threshold=second_threshold,
                                    size_lga=10,
                                    segments=v2_segments) # Graph 6: to plot the LGAs 
 
-write.table(final_lga_res, "./qdna_number_of_lgas.txt", sep="\t", row.names = FALSE)
+write.table(final_lga_res, "./2qdna_number_of_lgas.txt", sep="\t", row.names = FALSE)
 
