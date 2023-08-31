@@ -11,7 +11,7 @@ library("GenomicRanges")
 #'
 #' @export
 
-PrepForInitialization <- function(segments) {
+PrepForLevelsInitialization <- function(segments) {
   #### Have to convert it into a .txt file and then use the readSegmFile helper ####
   write.table(segments, file="./test_outputs/gathered_by_ratio_median.txt", sep = "\t", row.names = FALSE)
   segment_files <- list.files("./test_outputs/", pattern = "gathered_by_ratio_median.txt", full.names = TRUE)
