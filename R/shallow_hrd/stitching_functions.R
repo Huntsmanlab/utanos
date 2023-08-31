@@ -20,7 +20,7 @@ source("hg19_segments.R")
 #'    chromosome arm. 
 #'    
 #'    This is what `GatherSegmentsByRatioMedian` does. The other functions in the section do other minor things: adding chromosome arm column,
-#'    removing spurious/unstable regions from the chromosomes, and other cleaning functions. More description on their activites can be found in
+#'    removing spurious/unstable regions from the chromosomes, and other cleaning stuff. More description on their activities can be found in
 #'    their respective documentation.
 #'    
 #'    NOTE: in `CleanBamRatiosFrame` you have the option to log-transform the ratio_median's. If some ratio_medians in your file are negative,
@@ -31,7 +31,7 @@ source("hg19_segments.R")
 #'    we merge two segments or not. For example, imagine a plot again, and we have two segments (different ratio_medians, so they're not on the same level
 #'    in the y-axis) :
 #'    
-#'    ---- segment 1 ----   |                              <= threshold
+#'    ---- segment 1 ----   |                             diff <= threshold
 #'                          |                           ------------------>          ---- segment 1 + segment 2 ----
 #'                          |  ---- segment 2 ----
 #'                          
@@ -44,7 +44,24 @@ source("hg19_segments.R")
 #'    to determine how confident we are with the rest of the segments. We use the threshold to see how close the other segments are to this largest segment, and if they are
 #'    close (i.e. ratio_median difference <= threshold), then we assign it the same level as the largest segment.
 #'    `AssignLevels` takes care of this. Finally, `GatherSegmentsByLevels` then merges segments in the same chromosome arm and with the same level.
-#' 4) Small segments. For the previous section, we were only working with 'large' segments, meaning their size is >= 3Mb. 
+#' 4) Small segments. For the previous section, we were only working with 'large' segments, meaning their size is >= 3Mb. Now we have to figure out where the small
+#'    segments fit in into our current segment data. `InsertSmallSegments` takes care of this, and it essentially iterates over the small segments and the large segments, 
+#'    and checks if we encounter any of the 6 cases it looks for. The cases depend on the positioning of the small segment with respect to the large segment, and they are all
+#'    listed/visualized in the helper `FinalizeSmallSegments` documentation. Wherever appropriate, we merge small and large segments too (i.e. if their ratio_median diff <= threshold).
+#'    By the end of the section, we have re-inserted small segments into our main segment data frame. 
+#' 5) LGAs: now that we have re-inserted the small segments, we can finally determine the number of LGAs. `CallLGA` does this, and it is basically iterating over the
+#'    finalized segments (marked as Graph 5) and checking which of the segments meet the criteria for an LGA (these requirements are listed in the aforementioned function's documentation.)
+#'    The function returns the number of LGAs for different LGA sizes, the paper mostly cares about LGAs of size 10Mb, but you'll get results for sizes 3 to 11. 
+#'    You can also call `GetLGAOfSize`, which returns the segments that were marked as an LGA for the given LGA size, in case you want to visualize them.
+#'    
+#'    To determine HRD, check the number of LGAs for 10Mb, and if the number of LGAs >= 20, then HRD was detected. 
+#'    
+#' We repeat this procedure from the second step for the second pass. Note how the `FindThreshold` function doesn't receive the bam_ratio segments this time. Instead, we pass the
+#' finalized segments found in the first pass (Graph 5) - this is what we meant by 'improving' our results, as we are going to try to find a better threshold for this second
+#' round of function calling. 
+#' 
+#' To finalize, while some of these choices seem arbitrary (e.g. why 3Mb as 'large' segments, and not 5MB? Why is >= 20 LGAs equal to HRD?), perhaps the following paper by the same author can give
+#' some intuition on their choices. Please refer to https://pubmed.ncbi.nlm.nih.gov/22933060/. 
 
 
 #### Importing data####
