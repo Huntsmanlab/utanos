@@ -65,11 +65,11 @@ source("hg19_segments.R")
 
 
 #### Importing data####
-raw_ratios_file <- data.frame(read.table(file="./test_data/example_2_QDNAseq_final_chrX_hg19.bam_ratio.txt",header=TRUE))
+raw_ratios_file <- data.frame(read.table(file="./test_data/example_1_controlfreec_final_hg19.bam_ratio.txt",header=TRUE))
 
 #### Gathering segments by ratio_median and/or chromosome arm & removing centromeres, telomeres, etc.####
 clean_ratios_file <- CleanBamRatiosFrame(raw_bam_ratios=raw_ratios_file,
-                                         log_transform=FALSE) 
+                                         log_transform=TRUE) 
 clean_ratios_file_copy <- clean_ratios_file # this is ratio_file_tsv
 clean_ratios_file <- RemoveSpuriousRegions(bam_ratios_frame=clean_ratios_file, 
                                            include_chr_X=TRUE)
@@ -164,11 +164,11 @@ final_lga_res <- CallLGA(threshold=second_threshold,
 final_lga_segments <- GetLGAOfSize(threshold=second_threshold,
                                    size_lga=10,
                                    segments=v2_segments) # Graph 6: to plot the LGAs 
-write.table(final_lga_res, "./2qdna_number_of_lgas.txt", sep="\t", row.names = FALSE)
+write.table(final_lga_res, "./test_outputs/controlfreec_number_of_lgas.txt", sep="\t", row.names = FALSE)
 
 #### Plotting ####
 graph <- PlotSegments(gathered_by_ratio_median=prepped_gathered_by_ratio_median,
                       bam_ratios_frame=clean_ratios_file_copy,
-                      segments=segments,
+                      segments=final_lga_segments, # switch this to final_lga-segments so visualize the lgas
                       chr_mid_positions=hg19_middle_positions)
-suppressWarnings(ggsave("./final_segmentation.jpeg",".jpeg", plot = graph, device = "jpeg", width = 23, height = 13))  
+ 
