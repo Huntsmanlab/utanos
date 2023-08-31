@@ -23,6 +23,9 @@ suppressMessages(library("ggrepel"))
 #' @export
 
 PlotSegments <- function(gathered_by_ratio_median, bam_ratios_frame, segments, chr_mid_positions) {
+  print(dim(gathered_by_ratio_median))
+  print(dim(bam_ratios_frame))
+  print(dim(segments))
   gathered_by_ratio_median <- gathered_by_ratio_median[which(gathered_by_ratio_median$chr != 23),]
   
   #### Setting the y-axis limits ####
@@ -38,10 +41,10 @@ PlotSegments <- function(gathered_by_ratio_median, bam_ratios_frame, segments, c
   copy_bam_ratios_frame = bam_ratios_frame
   copy_bam_ratios_frame = copy_bam_ratios_frame[,-1]
   copy_bam_ratios_frame = copy_bam_ratios_frame[,-5]
-  colnames(copy_bam_ratios_frame) <- c("chromosome", "start", "end", "readcount")
+  colnames(copy_bam_ratios_frame) <- c("chr", "start", "end", "readcount")
   attach(copy_bam_ratios_frame)
-  merged_bam = merge(aggregate(start ~ chromosome, copy_bam_ratios_frame, min),
-                     aggregate(end ~ chromosome, copy_bam_ratios_frame, max))[seq(from=1,to=22,by=1),]
+  merged_bam = merge(aggregate(start ~ chr, copy_bam_ratios_frame, min),
+                     aggregate(end ~ chr, copy_bam_ratios_frame, max))[seq(from=1,to=22,by=1),]
   merged_bam <- as.data.frame(merged_bam) #df
   detach(copy_bam_ratios_frame)
   
@@ -78,33 +81,63 @@ PlotSegments <- function(gathered_by_ratio_median, bam_ratios_frame, segments, c
   }
   
   graph <- ggplot() +
-    geom_rect(data=merged_bam, aes(xmin=start, xmax=end, ymin=-Inf, ymax=Inf,fill = 1)) +
-    geom_point(data=copy_bam_ratios_frame, aes(x = start, y = ratio), size=0.1, color= "grey60", na.rm=TRUE) +
-    geom_segment(data=copy_segments, aes(x=start, xend=end, y=ratio_median, yend=ratio_median), size = 3, color = "#990000", na.rm = TRUE) +
-    geom_segment(data=data.segm, mapping=aes(x=x, y=y, xend=xend, yend=yend), 
-                 arrow=arrow(unit(0.30,"cm"), angle = 20), size=0.6, color="black", inherit.aes = FALSE, na.rm=TRUE) +
-    ylim(graph_lower_limit,graph_higher_limit) +   scale_x_continuous(expand = c(0, 0)) + ggtitle("Final Segmentation") +
-    geom_vline(data=mid_pos_frame, mapping=aes(xintercept=start_centromere), color="black", linetype="dotted") +
-    geom_text(data = data.text, mapping = aes(x = x, y = y, label="CCNE1"), size = 3.3, inherit.aes = TRUE, na.rm=TRUE) +
-    geom_point(data = higlight_CCNE1, aes(x=start, y=ratio_median), color = "orange", size = 2, na.rm=TRUE) +
-    geom_text(aes(x=start,y=graph_higher_limit, hjust = "left", vjust = "top", label="CCNE1"), data = merged_bam, fontface = "bold", size = 4.5) + 
+    geom_rect(data=merged_bam, 
+              aes(xmin=start, xmax=end, ymin=-Inf, ymax=Inf, fill= chr %% 2 == 0)) +
+    geom_point(data=copy_bam_ratios_frame, 
+               aes(x=start, y=ratio), 
+               size=0.1, 
+               color="grey60", 
+               na.rm=TRUE) +
+    geom_segment(data=copy_segments, 
+                 aes(x=start, xend=end, y=ratio_median, yend=ratio_median), 
+                 size=3, 
+                 color="#990000",
+                 na.rm=TRUE) +
+    geom_segment(data=data.segm, 
+                 mapping=aes(x=x, y=y, xend=xend, yend=yend), 
+                 arrow=arrow(unit(0.30,"cm"), angle = 20), 
+                 size=0.6, 
+                 color="black", 
+                 inherit.aes=FALSE, 
+                 na.rm=TRUE) +
+    ylim(graph_lower_limit, graph_higher_limit) +   
+    scale_x_continuous(expand = c(0, 0)) + 
+    ggtitle("Segmentation") +
+    geom_vline(data=mid_pos_frame, 
+               mapping=aes(xintercept=start_centromere), 
+               color="black", 
+               linetype="dotted") +
+    geom_text(data=data.text, 
+              mapping=aes(x=x, y=y, label= label), 
+              size=3.3, 
+              inherit.aes=TRUE, 
+              na.rm=TRUE) +
+    geom_point(data=higlight_CCNE1, 
+               aes(x=start, y=ratio_median), 
+               color="orange", 
+               size=2, 
+               na.rm=TRUE) +
+    geom_text(aes(x=start,y=graph_higher_limit, hjust = "left", vjust = "top", label= chr), 
+              data=merged_bam, 
+              fontface="bold", 
+              size=4.5) + 
     scale_fill_manual(values = c("FALSE" = "grey85", "TRUE" = "white")) +
     facet_grid(~chr, scales = "free_x", space = "free_x", switch = "x")
   
   
   graph <- graph + theme(plot.title = element_text(hjust = 0.5),
-                 axis.title.x = element_blank(),
-                 axis.text.x = element_blank(),
-                 axis.ticks.x = element_blank(),
-                 axis.title.y = element_blank(),
-                 axis.text.y = element_text(size=15),
-                 panel.spacing = unit(0, "lines"),
-                 strip.text.x = element_blank(),
-                 line = element_blank(),
-                 legend.position = "none",
-                 panel.background = element_blank())
+                         axis.title.x = element_blank(),
+                         axis.text.x = element_blank(),
+                         axis.ticks.x = element_blank(),
+                         axis.title.y = element_blank(),
+                         axis.text.y = element_text(size=15),
+                         panel.spacing = unit(0, "lines"),
+                         strip.text.x = element_blank(),
+                         line = element_blank(),
+                         legend.position = "none",
+                         panel.background = element_blank())
   
   graph = ggplotGrob(x = graph)
   graph$layout$clip = "off"
-  graph
+  suppressWarnings(ggsave("./final_segmentation.jpeg", plot = graph, device = "jpeg", width = 23, height = 13))  
 }
