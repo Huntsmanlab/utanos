@@ -189,10 +189,10 @@ GatherSegmentsByLevels <- function(segments, granges_obj) {
           }
           
           # Merge the segments: GRanges helps us get ratio_median of the merge
-          genomic_ranges = GRanges(seqnames = vector_of_chr_numbers,
-                                   ranges = IRanges(start = vector_of_seg_starts, end = vector_of_seg_ends),
-                                   strand = vector_strands)
-          subsetGRobject = subsetByOverlaps(granges_obj, genomic_ranges)
+          genomic_ranges = GenomicRanges::GRanges(seqnames = vector_of_chr_numbers,
+                                                  ranges = GenomicRanges::IRanges(start = vector_of_seg_starts, end = vector_of_seg_ends),
+                                                  strand = vector_strands)
+          subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, genomic_ranges)
           
           # Adding the merged segment into the result matrix
           result[c,] = c(segments[i,1],

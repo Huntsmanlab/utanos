@@ -1,6 +1,3 @@
-source("hg19_segments.R")
-source("helpers_gather_segments_ratiomedian.R")
-
 #' Performs some cleaning operations.
 #' 
 #' @description 

@@ -1,5 +1,3 @@
-library("GenomicRanges")
-
 #' Initializes the process of re-inserting the small segments in between the large ones.
 #'
 #' @description
@@ -57,10 +55,10 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
           
           # We add the data before c+1, not before c, meaning that this is essentially the new
           # segment c.
-          gr = GRanges(seqnames = c(small_segments[i,2]),
-                       ranges = IRanges(start=c(small_segments[i,4]), end=c(large_segments[c,5])),
-                       strand = c("*"))
-          subsetGRobject = subsetByOverlaps(granges_obj, gr)
+          gr = GenomicRanges::GRanges(seqnames = c(small_segments[i,2]),
+                                      ranges = GenomicRanges::IRanges(start=c(small_segments[i,4]), end=c(large_segments[c,5])),
+                                      strand = c("*"))
+          subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, gr)
           
           # Adding data into `large_segments`
           large_segments = rbind(c(small_segments[i,1], small_segments[i,2], small_segments[i,3],
@@ -78,10 +76,10 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
       } else if (small_segments[i,4] < large_segments[c,4] && small_segments[i,5] >= large_segments[c,4] && small_segments[i,5] <= large_segments[c,5]) {
         # If above, threshold, we add the segment in ***'s to `large_segments`
         if (abs(small_segments[i,6] - large_segments[c,6]) > threshold) {
-          gr = GRanges(seqnames = c(small_segments[i,2]),
-                       ranges = IRanges(start=c(small_segments[i,4]), end=c(large_segments[c,4])),
-                       strand = c("*"))
-          subsetGRobject = subsetByOverlaps(granges_obj, gr)
+          gr = GenomicRanges::GRanges(seqnames = c(small_segments[i,2]),
+                                      ranges = GenomicRanges::IRanges(start=c(small_segments[i,4]), end=c(large_segments[c,4])),
+                                      strand = c("*"))
+          subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, gr)
           
           # Adding
           large_segments = rbind(c(small_segments[i,1], small_segments[i,2], small_segments[i,3],
@@ -91,12 +89,11 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
           i = i + 1
         } else {
           # Else: below threshold, we merge
-          gr = GRanges(seqnames = c(large_segments[c,2]),
-                       ranges = IRanges(start=c(small_segments[i,4]), end=c(large_segments[c,5])),
-                       strand = c("*"))
-          subsetGRobject = subsetByOverlaps(granges_obj, gr)
+          gr = GenomicRanges::GRanges(seqnames = c(large_segments[c,2]),
+                                      ranges = GenomicRanges::IRanges(start=c(small_segments[i,4]), end=c(large_segments[c,5])),
+                                      strand = c("*"))
+          subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, gr)
           
-          # Adding
           large_segments = rbind(c(large_segments[c,1], large_segments[c,2], large_segments[c,3],
                                    small_segments[i,4], large_segments[c,5], median(subsetGRobject$ratio),
                                    large_segments[c,5] - small_segments[i,4] + 1, large_segments[c,8]),
@@ -182,10 +179,10 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
           
           # Finally, we squeeze it in between segments :c-1 and c+1:
           if (below_threshold == TRUE) {
-            gr = GRanges(seqnames = c(small_segment[2]),
-                         ranges = IRanges(start=c(small_segment[4]), end=c(large_segment[5])),
-                         strand = c("*"))
-            subsetGRobject = subsetByOverlaps(granges_obj, gr)
+            gr = GenomicRanges::GRanges(seqnames = c(small_segment[2]),
+                                        ranges = GenomicRanges::IRanges(start=c(small_segment[4]), end=c(large_segment[5])),
+                                        strand = c("*"))
+            subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, gr)
             
             large_segments = rbind(large_segments[1:(c-1),],
                                    c(small_segment[1], small_segment[2], small_segment[3],
@@ -359,12 +356,12 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
               # Checking if next small segment ends before next large segment (and same chr arm)
               # i.e. if there's a next_small segment in between small segment and next_large.
               if (small_segments[i+1,5] < large_segments[c+1,4] && small_segments[i+1,3] == large_segments[c+1,3]) {
-                gr=GRanges(seqnames=c(small_segment[2]),
-                           ranges=IRanges(start=c(small_segment[4]), end=c(small_segment[5])),
-                           strand=c("*"))
-                subsetGRobject = subsetByOverlaps(granges_obj, gr)
+                gr = GenomicRanges::GRanges(seqnames = c(small_segment[2]),
+                                            ranges = GenomicRanges::IRanges(start=c(small_segment[4]), end=c(small_segment[5])),
+                                            strand = c("*"))
+                subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, gr)
                 
-                large_segments=rbind(large_segments[1:c,], 
+                large_segments = rbind(large_segments[1:c,], 
                                      c(small_segment[1], small_segment[2], small_segment[3], 
                                        small_segment[4], small_segment[5], median(subsetGRobject$ratio), 
                                        small_segment[5] - small_segment[4] + 1, small_segment[8]) , 
@@ -372,12 +369,12 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
                 i= i + 1
                 c= N_large + 1
               } else {
-                gr=GRanges(seqnames=c(small_segment[2]),
-                           ranges=IRanges(start=c(small_segment[4]),end=c(large_segments[c+1,5])),
-                           strand=c("*"))
-                subsetGRobject = subsetByOverlaps(granges_obj, gr)
+                gr = GenomicRanges::GRanges(seqnames = c(small_segment[2]),
+                                            ranges = GenomicRanges::IRanges(start=c(small_segment[4]),end=c(large_segments[c+1,5])),
+                                            strand = c("*"))
+                subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, gr)
                 
-                large_segments=rbind(large_segments[1:c,], 
+                large_segments = rbind(large_segments[1:c,], 
                                      c(large_segments[c+1,1], large_segments[c+1,2], large_segments[c+1,3], 
                                        small_segment[4], large_segments[c+1,5], median(subsetGRobject$ratio), 
                                        large_segments[c+1,5] - small_segment[4] + 1, large_segments[c+1,8]) , 
@@ -475,10 +472,10 @@ CorrectLeftovers <- function(segments, granges_obj) {
     if (segments[c,3] == segments[c+1,3]) {
       # If space between them is > 1 (i.e. missing data)
       if (segments[c+1,4] - segments[c,5] > 1) {
-        gr = GRanges(seqnames=c(segments[c,2]),
-                     ranges=IRanges(start=c(segments[c,5]), end=c(segments[c+1,4])),
-                     strand=c("*"))
-        subsetGRobject = subsetByOverlaps(granges_obj, gr)
+        gr = GenomicRanges::GRanges(seqnames = c(segments[c,2]),
+                                    ranges = GenomicRanges::IRanges(start=c(segments[c,5]), end=c(segments[c+1,4])),
+                                    strand = c("*"))
+        subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, gr)
         
         # Figure out which adjacent segment's ratio_median is closest
         # to the subsetGRobject's ratio_medain
@@ -551,10 +548,10 @@ MergeSegmentsTwo <- function(granges_obj, small_segment, large_segments, j, belo
   small_segment = as.numeric(small_segment)
   
   if (below_thr == TRUE) {
-    gr = GRanges(seqnames = c(large_segment[2]),
-                 ranges = IRanges(start=c(small_segment[4]), end=c(large_segment[5])),
-                 strand = c("*"))
-    subsetGRobject = subsetByOverlaps(granges_obj, gr)
+    gr = GenomicRanges::GRanges(seqnames = c(large_segment[2]),
+                                ranges = GenomicRanges::IRanges(start=c(small_segment[4]), end=c(large_segment[5])),
+                                strand = c("*"))
+    subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, gr)
     
     # Adding into `large_segments`. But this depends whether we're at the end of file or not.
     if (end_of_file == TRUE) {
@@ -580,10 +577,10 @@ MergeSegmentsTwo <- function(granges_obj, small_segment, large_segments, j, belo
                              large_segments[(j+1):N_large,])
     }
   } else {
-    gr = GRanges(seqnames = c(small_segment[2]),
-                 ranges = IRanges(start=c(small_segment[4]), end=c(large_segment[4])),
-                 strand = c("*"))
-    subsetGRobject = subsetByOverlaps(granges_obj, gr)
+    gr = GenomicRanges::GRanges(seqnames = c(small_segment[2]),
+                                ranges = GenomicRanges::IRanges(start=c(small_segment[4]), end=c(large_segment[4])),
+                                strand = c("*"))
+    subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, gr)
     
     # Adding into `large_segments`. But this depends whether we're at the end of file or not.
     if (end_of_file == TRUE) {
@@ -634,10 +631,10 @@ MergeSegmentsFour <- function(granges_obj, small_segment, large_segments, j, bel
   small_segment = as.numeric(small_segment)
   
   if (below_thr == TRUE) {
-    gr = GRanges(seqnames = c(large_segment[2]),
-                 ranges = IRanges(start=c(large_segment[4]), end=c(small_segment[5])),
-                 strand = c("*"))
-    granges_obj = subsetByOverlaps(granges_obj, gr)
+    gr = GenomicRanges::GRanges(seqnames = c(large_segment[2]),
+                                ranges = GenomicRanges::IRanges(start=c(large_segment[4]), end=c(small_segment[5])),
+                                strand = c("*"))
+    granges_obj = GenomicRanges::subsetByOverlaps(granges_obj, gr)
     
     # Adding into `large_segments`. But this depends whether we're at the end of file or not.
     if (end_of_file == TRUE) {
@@ -663,10 +660,10 @@ MergeSegmentsFour <- function(granges_obj, small_segment, large_segments, j, bel
                              large_segments[(j+1):N_large,])
     }
   } else {
-    gr = GRanges(seqnames = c(small_segment[2]),
-                 ranges = IRanges(start=c(large_segment[5]), end=c(small_segment[5])),
-                 strand = c("*"))
-    granges_obj = subsetByOverlaps(granges_obj, gr)
+    gr = GenomicRanges::GRanges(seqnames = c(small_segment[2]),
+                                ranges = GenomicRanges::IRanges(start=c(large_segment[5]), end=c(small_segment[5])),
+                                strand = c("*"))
+    granges_obj = GenomicRanges::subsetByOverlaps(granges_obj, gr)
     
     # Adding into `large_segments`. But this depends whether we're at the end of file or not.
     if (end_of_file == TRUE) {
@@ -718,10 +715,10 @@ MergeSegmentsFiveLargeSmall <- function(granges_obj, small_segment, large_segmen
   large_segment = as.numeric(large_segments[j,])
   small_segment = as.numeric(small_segment)
   
-  gr = GRanges(seqnames = c(large_segment[2]),
-               ranges = IRanges(start=c(large_segment[4]), end=c(small_segment[5])),
-               strand = c("*"))
-  granges_obj = subsetByOverlaps(granges_obj, gr)
+  gr = GenomicRanges::GRanges(seqnames = c(large_segment[2]),
+                              ranges = GenomicRanges::IRanges(start=c(large_segment[4]), end=c(small_segment[5])),
+                              strand = c("*"))
+  granges_obj = GenomicRanges::subsetByOverlaps(granges_obj, gr)
   
   large_segments = rbind(large_segments[1:(j-1),],
                          c(large_segment[1], 
@@ -756,10 +753,10 @@ MergeSegmentsFiveSmallNextLarge <- function(granges_obj, small_segment, large_se
   large_segment = as.numeric(large_segments[j,])
   small_segment = as.numeric(small_segment)
   
-  gr = GRanges(seqnames = c(large_segment[2]),
-               ranges = IRanges(start=c(small_segment[4]), end=c(large_segment[5])),
-               strand = c("*"))
-  granges_obj = subsetByOverlaps(granges_obj, gr)
+  gr = GenomicRanges::GRanges(seqnames = c(large_segment[2]),
+                              ranges = GenomicRanges::IRanges(start=c(small_segment[4]), end=c(large_segment[5])),
+                              strand = c("*"))
+  granges_obj = GenomicRanges::subsetByOverlaps(granges_obj, gr)
   
   if (end_of_file == TRUE) {
     large_segments = rbind(large_segments[1:j-1,],
