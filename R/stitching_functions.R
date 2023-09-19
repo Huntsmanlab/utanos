@@ -1,11 +1,3 @@
-source("gather_segments_ratiomedian.R")
-source("find_threshold.R")
-source("levels.R")
-source("small_segments.R")
-source("call_lga.R")
-source("plot_segments.R")
-source("hg19_segments.R")
-
 #' Utanos version of the shallowHRD algorithm for detecting homologous recombination deficiency (HRD) on tumor samples from the number of 
 #' large genomic alterations (LGAs). Original code found here (https://github.com/aeeckhou/shallowHRD), and original paper found here (https://academic.oup.com/bioinformatics/article/36/12/3888/5823300).
 #' Essentially, the algorithm can be divided into 5 sequential steps. We perform these steps two times (I call them 'passes'), 

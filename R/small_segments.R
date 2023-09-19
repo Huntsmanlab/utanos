@@ -1,6 +1,3 @@
-library("GenomicRanges")
-source("helpers_small_segments.R")
-
 #' Returns the segments with 3Mb >= size >= 0.1Mb
 #' 
 #' @description
@@ -31,9 +28,9 @@ GetGRangesObject <- function(bam_ratios_frame) {
   bam_ratios_frame = bam_ratios_frame[,-1]
   colnames(bam_ratios_frame) <- c("chr", "start", "end", "ratio", "ratio_median")
   
-  granges_obj = makeGRangesFromDataFrame(bam_ratios_frame, keep.extra.columns = TRUE, ignore.strand = TRUE, 
-                                        seqinfo = NULL, seqnames.field = "chr", start.field = "start",
-                                        end.field = "end")
+  granges_obj = GenomicRanges::makeGRangesFromDataFrame(bam_ratios_frame, keep.extra.columns = TRUE, ignore.strand = TRUE, 
+                                                        seqinfo = NULL, seqnames.field = "chr", start.field = "start",
+                                                        end.field = "end")
   granges_obj
 }
   

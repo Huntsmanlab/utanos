@@ -11,11 +11,11 @@
 PrepFirstRound <- function(granges_obj, segments) {
   segments = segments[which(segments$chr != 23),]
   for (i in 1:nrow(segments)) {
-    gr = GRanges(seqnames=c(segments[i,1]),
-                 ranges=IRanges(start=c(segments[i,3]), 
+    gr = GenomicRanges::GRanges(seqnames=c(segments[i,1]),
+                                ranges=GenomicRanges::IRanges(start=c(segments[i,3]), 
                                 end=c(segments[i,4])),
-                 strand=c("*"))
-    subsetGRobject = subsetByOverlaps(granges_obj, gr)
+                                strand=c("*"))
+    subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, gr)
     segments[i,5] = median(subsetGRobject$ratio)
   }
   

@@ -1,6 +1,3 @@
-library("GenomicRanges")
-source("helpers_small_segments.R") # borrowing the helper that checks if segments ratio_median diff < THR
-
 #' Re-assigns level column values for all segments.
 #' 
 #' @description 
@@ -61,10 +58,10 @@ ShrinkReprTMP <- function(segments, granges_obj) {
     if (segments[i,8] == segments[i+1,8]) {
       segments[i+1,4] <- segments[i,4]
       
-      gr = GRanges(seqnames=c(segments[i+1,2]),
-                   ranges=IRanges(start=c(segments[i+1,4]), end=c(segments[i+1,5])),
-                   strand=c("*"))
-      subsetGRobject = subsetByOverlaps(granges_obj, gr)
+      gr = GenomicRanges::GRanges(seqnames=c(segments[i+1,2]),
+                                  ranges=GenomicRanges::IRanges(start=c(segments[i+1,4]), end=c(segments[i+1,5])),
+                                  strand=c("*"))
+      subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, gr)
       
       segments[i+1,6] <- median(subsetGRobject$ratio)
       segments[i,1] <- 0
