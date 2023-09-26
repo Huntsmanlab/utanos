@@ -14,7 +14,6 @@ Install R (version > 4.2)
 Ensure the following basic packages are installed.
 ```R
 install.packages("librarian")
-BiocManager::install(version = "3.16")
 BiocManager::install("Biobase")
 ```
 
