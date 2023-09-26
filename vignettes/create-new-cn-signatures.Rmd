@@ -28,9 +28,9 @@ library(data.table)
 library(dplyr)
 
 # Reading in test data
-segmented_aCNs <- readRDS("~/projects/cn-signatures-project/segmented_aCNs.rds")
+copy_numbers_input <- readRDS("~/projects/cn-signatures-project/segmented_aCNs.rds")
 # QDNAseq object
-dplyr::glimpse(head(segmented_aCNs, 3))
+dplyr::glimpse(head(copy_numbers_input, 3))
 
 List of 3
  $ CC.CHM.1341:'data.frame':	210 obs. of  4 variables:
