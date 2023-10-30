@@ -6,8 +6,9 @@
 \usage{
 SummaryCNPlot(
   x,
-  main = "Summary Plot",
+  main = "Relative Copy-Number Summary Plot",
   maskprob = 0.2,
+  maskaberr = 0.1,
   gaincol = "blue",
   losscol = "red",
   misscol = NA,
