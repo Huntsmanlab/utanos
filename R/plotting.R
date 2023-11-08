@@ -609,7 +609,7 @@ RelToAbsSegPos <- function(chromosomes, rel_start_pos, rel_end_pos, build = "GRC
   for (chrom in uni_chrom) {
     # Since a one-to-one correspondence exists between the vector indicating the chromosome each segment is on, and the vectors of segment start/end positions, we can index the
     # start/end positions based on the chromosomes which are numbered higher than the current chromosome. We then iteratively add the length of lower numbered chromosomes
-    # to the relative start/end positions, obtaining absolute positions.0000000..0
+    # to the relative start/end positions, obtaining absolute positions.
     abs_start_pos[chromosomes > chrom] <- abs_start_pos[chromosomes > chrom] + chrom_lengths[chrom]
     abs_end_pos[chromosomes > chrom] <- abs_end_pos[chromosomes > chrom] + chrom_lengths[chrom]
 
@@ -620,4 +620,39 @@ RelToAbsSegPos <- function(chromosomes, rel_start_pos, rel_end_pos, build = "GRC
   names(chrom_ends) <- as.character(chrom_lengths)
   abs <- list(abs_start_pos = abs_start_pos, abs_end_pos = abs_end_pos, tot_length = tot_length, chrom_ends = chrom_ends)
   return(abs)
+}
+
+#' Label genes of interest on an absolute copy-number plot.
+#'
+#' @description
+#' This function takes an existing absolute copy-number plot, a vector of gene names, and optionally an Ensembl DB to use for looking up gene annotations.
+#' Ensure that you use an Ensembl DB which annotates the same genome version used for your existing plot.
+#' A plot with the genes of interest labeled is returned.
+#'
+#' @param plot A ggplot object, corresponding to the existing absolute copy-number plot.
+#' @param genes A vector of gene symbols you'd like to label on the plot -- use upper case.
+#' @param edb The name of the local Ensembl DB package to use for looking up gene information. Defaults to [EnsDb.Hsapiens.v75], which annotates hg19/GRCh37.
+#' @param ... Additional options controlling the visual display of the labels; passed to ggrepel::geom_label_repel(), and supports any of its arguments.
+#'
+#' @returns A ggplot object with the gene labels added.
+#'
+#' @seealso [ggrepel::geom_label_repel()] for supported arguments that alter the visual display of the labels.
+#'
+#' @export
+AddGenesToPlot <- function(plot, genes, edb = EnsDb.Hsapiens.v75, ...) {
+  # Get the locations of the genes we are interested in.
+  genes_ens <- as.data.frame(genes(edb, filter = ~ gene_name %in% genes, return.type = "DataFrame"))
+
+  # We will bin the genes by their midpoint.
+  genes_ens <- genes_ens %>%
+    dplyr::mutate(midpoint = ((gene_seq_start + gene_seq_end) / 2))
+
+  # Put each gene in its corresponding bin. This lets us borrow the existing absolute bin position for graphing.
+  plot$data <- plot$data %>%
+    dplyr::left_join(y = genes_ens, by = dplyr::join_by(chromosome == seq_name, start < midpoint, end > midpoint))
+
+  plot <- plot +
+    ggrepel::geom_label_repel(aes(label = symbol), ...)
+
+  return(plot)
 }
