@@ -28,15 +28,17 @@ TwoFeatureScatterPlot <- function(featA, featB) {
 }
 
 
+#' Plot Mixture Model Components by Signature
+#'
 #' @description
 #'
-#' This function, for an indicated CN-Signature (S), returns a list of six plots.
+#' This function (MixtureModelPlots), for an indicated CN-Signature (S), returns a list of six ggplots.
 #' Each plot visualizes the mixture models used for each feature.
 #' All mixture components are plotted, but those elevated for S are shaded.
 #'
 #' @param signatures A dataframe with components along the y-axis and signatures along the x.
 #' @param components A list of S4 objects belonging to the class 'flexmix'.
-#' @param sig_of_interest (optional) A single integer or a vector of integers corresponding the signatures for which to make plots. \cr
+#' @param sig_of_interest (optional) A single integer corresponding the signature for which to make plots. \cr
 #' In the absence of any value passed in for this parameter, plots for just the first signature will be returned.
 #' @returns A list of ggplots.
 #'
