@@ -7,6 +7,7 @@
 SummaryCNPlot(
   x,
   main = "Relative Copy-Number Summary Plot",
+  summarytype = "probability",
   maskprob = 0.2,
   maskaberr = 0.1,
   gaincol = "blue",
@@ -16,8 +17,23 @@ SummaryCNPlot(
   ...
 )
 }
+\arguments{
+\item{x}{An S4 object of type QDNAseqCopyNumbers containing multiple samples.}
+
+\item{main}{(optional) String. Plot Title.}
+
+\item{summarytype}{(optional) String. One of either 'probability' or 'frequency'. \cr
+'probability' - The vertical bars represent the average probability that the positions along the chromosome they cover are gained (blue bars) or lost (red bars) across all samples. \cr
+'frequency' - The vertical bars represent the frequency that the positions along the chromosome they cover are gained (blue bars) or lost (red bars) across all samples. \cr}
+
+\item{maskprob}{(optional) Numeric. Gain or loss probabilities that fall below this number are masked. Used to exclude noise.}
+
+\item{maskaberr}{(optional) Numeric. Copy-Number gains or losses that fall below this number are masked. Used to exclude noise.}
+}
 \description{
 This function was copied and modified from another package (CGHbase).
 The original code can be found here on github: https://github.com/tgac-vumc/CGHbase
 The bioconductor page: https://bioconductor.org/packages/release/bioc/html/CGHbase.html
+
+This function creates a summary plot of the copy-number changes of the samples in the provided QDNAseq object.
 }

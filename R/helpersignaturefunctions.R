@@ -32,10 +32,9 @@ FitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",min_prio
     fit
 }
 
-CalculateSumOfPosteriors<-function(CN_feature,components,name, rowIter = 1000, cores = 1)
-{
-
-    if(cores > 1){
+CalculateSumOfPosteriors <- function(CN_feature, components,name,
+                                     rowIter = 1000, cores = 1) {
+    if (cores > 1) {
         require(foreach)
         require(doMC)
 
@@ -44,33 +43,31 @@ CalculateSumOfPosteriors<-function(CN_feature,components,name, rowIter = 1000, c
         lastiter = iters[length(iters)]
 
         registerDoMC(cores)
-        curr_posterior = foreach( i=0:iters, .combine=rbind) %dopar% {
+        curr_posterior = foreach(i=0:iters, .combine=rbind) %dopar% {
             start = i*rowIter+1
-            if(i != lastiter) { end = (i+1)*rowIter } else { end = len }
-                flexmix::posterior(components,data.frame(dat=as.numeric(CN_feature[start:end,2])))
+            if (i != lastiter) { end = (i+1)*rowIter } else { end = len }
+                flexmix::posterior(components, data.frame(dat=as.numeric(CN_feature[start:end,2])))
         }
     } else {
-        curr_posterior<-flexmix::posterior(components,data.frame(dat=as.numeric(CN_feature[,2])))
+        curr_posterior <- flexmix::posterior(components, data.frame(dat=as.numeric(CN_feature[,2])))
     }
-    mat<-cbind(CN_feature,curr_posterior)
-    posterior_sum<-c()
+    mat <- cbind(CN_feature,curr_posterior)
+    posterior_sum <- c()
 
-    ## foreach and parallelising doesn't make the following code faster.
-    for(i in unique(mat$ID))
-    {
-        posterior_sum<-rbind(posterior_sum,colSums(mat[mat$ID==i,c(-1,-2)]))
+    # note - foreach and parallelization doesn't make the following code faster.
+    for (i in unique(mat$ID)) {
+        posterior_sum <- rbind(posterior_sum,colSums(mat[mat$ID==i,c(-1,-2)]))
     }
-    params<-flexmix::parameters(components)
-    if(!is.null(nrow(params)))
-    {
-        posterior_sum<-posterior_sum[,order(params[1,])]
+    params <- flexmix::parameters(components)
+
+    if (!is.null(nrow(params))) {
+        posterior_sum <- posterior_sum[, order(params[1,])]
+    } else {
+        posterior_sum <- posterior_sum[, order(params)]
     }
-    else
-    {
-        posterior_sum<-posterior_sum[,order(params)]
-    }
-    colnames(posterior_sum)<-paste0(name,1:ncol(posterior_sum))
-    rownames(posterior_sum)<-rownames(unique(mat$ID))
+
+    colnames(posterior_sum) <- paste0(name, 1:ncol(posterior_sum))
+    rownames(posterior_sum) <- rownames(unique(mat$ID))
     posterior_sum
 }
 
