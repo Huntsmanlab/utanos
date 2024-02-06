@@ -478,7 +478,7 @@ LowerNorm<-function(x,sig_thresh=0.01)
 }
 
 GetDistsFromCentromere <- function(abs_profiles, centromeres, chrlen) {
-  out<-c()
+  out <- c()
   samps <- GetSampNames(abs_profiles)
   for (i in samps) {
     if (class(abs_profiles) == "QDNAseqCopyNumbers") {
@@ -490,7 +490,7 @@ GetDistsFromCentromere <- function(abs_profiles, centromeres, chrlen) {
     chrs<-unique(segTab$chromosome)
     all_dists<-c()
     for(c in chrs) {
-      if(nrow(segTab)>1) {
+      if(nrow(segTab) > 1) {
         starts <- as.numeric(segTab[segTab$chromosome == c,2])[-1]
         segstart <- as.numeric(segTab[segTab$chromosome == c,2])[1]
         ends <- as.numeric(segTab[segTab$chromosome == c,3])
@@ -511,12 +511,13 @@ GetDistsFromCentromere <- function(abs_profiles, centromeres, chrlen) {
         # have later functions error out due to the presence of NA values.
         # So we toss the NA values.
         ndist <- ndist[!is.na(ndist)]
+        ndist <- abs(ndist)
         ndist <- data.frame(ndist)
 
         all_dists <- rbind(all_dists,ndist)
       }
     }
-    if(nrow(all_dists) >0){
+    if(nrow(all_dists) > 0){
       out <- rbind(out,cbind(ID = i, value = all_dists$ndist))
     }
   }
