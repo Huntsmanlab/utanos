@@ -329,7 +329,6 @@ GenKploidyAcns <- function (segments, ploidies,
 # Corollary to calculate_vaf_acns function.
 # input_file: input path
 #' @export
-#' GenMadAcns <- function (segments, rascal_batch_solutions, cns = FALSE) {
 GenMadAcns <- function (segments, rascal_batch_solutions,
                         return_sols = FALSE, cns = FALSE) {
 

@@ -15,8 +15,6 @@
 #' This function makes a two-way scatterplot of two CN-features.
 #' It then draws contour lines for density.
 #'
-#' @param
-#' @returns
 #'
 #'
 #' @export
@@ -79,6 +77,8 @@ MixtureModelPlots <- function(signatures, components, sig_of_interest = 1) {
 }
 
 
+#' Plot a Mixture of Gaussians
+#'
 #' @description
 #'
 #' This function plots the mixture models for a component that is composed of gaussians.
@@ -198,6 +198,8 @@ GaussiansMixturePlot <- function(signatures, components,
 }
 
 
+#' Plot a Mixture of Poissons
+#'
 #' @description
 #'
 #' This function plots the mixture models for a component that is composed of poisson distributions.
