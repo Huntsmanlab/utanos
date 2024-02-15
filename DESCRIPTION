@@ -2,9 +2,9 @@ Package: utanos
 Title: Utilities for The Analysis of Shallow WGS in R
 Version: 0.0.0.9000
 Authors@R: 
-    c(person("Maxwell", "Douglas", , "jmdougla@ualberta.ca", role = c("aut", "cre"), 
-    person("Nirupama", "Tamvada", , "ntamvada@bccrc.ca", role = c("aut", "cre"),
-    person("Rodrigo", "Vallejos", , "rvallejos@bccrc.ca", role = c("aut", "cre"))
+    c(person("Maxwell", "Douglas", , "jmdougla@ualberta.ca", role = c("aut", "cre")), 
+    person("Nirupama", "Tamvada", , "ntamvada@bccrc.ca", role = c("aut")),
+    person("Sameer", "Shankar", , "sshankar@bccrc.ca", role = c("aut")))
 Description: A set of functions that assist in the analysis of shallow/low-pass 
     whole genome sequencing (WGS) and subsequent visualization. It includes 
     built-in options for evaluating sample quality, visualizing copy-number
@@ -13,14 +13,13 @@ License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3
 Imports: 
-    annotate,
     caret,
     CGHcall,
     data.table,
+    DBI,
     DescTools,
-    doMC,
     dplyr,
     EnsDb.Hsapiens.v75,
     flexmix,
@@ -34,7 +33,6 @@ Imports:
     ks,
     magrittr,
     NMF,
-    org.Hs.eg.db,
     pheatmap,
     plyr,
     purrr,
@@ -43,13 +41,16 @@ Imports:
     RMySQL,
     stringr,
     tidyr,
-    TxDb.Hsapiens.UCSC.hg19.knownGene,
     viridis,
     YAPSA
 Depends: 
     R (>= 2.10)
 LazyData: true
 Suggests: 
+    doMC,
+    knitr,
     rascal,
+    rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+VignetteBuilder: knitr

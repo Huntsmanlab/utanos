@@ -1,6 +1,32 @@
 # This is a script containing plotting functions for shallow WGS analysis
 # January 18th, 2022
 
+
+PlotAbsCopyNumber <- function(x, sample, sample_segments, sample_cns, output) {
+  ploidy <- as.numeric(x["ploidy"])
+  cellularity <- as.numeric(x["cellularity"])
+  chr_order <- c(as.character(1:22), 'X')
+  absolute_segments <- dplyr::mutate(sample_segments,
+                                     copy_number = relative_to_absolute_copy_number(copy_number, ploidy, cellularity))
+  absolute_copy_number <- dplyr::mutate(sample_cns, across(c(copy_number, segmented), relative_to_absolute_copy_number, ploidy, cellularity))
+  chromosomes <- chromosome_offsets(absolute_copy_number)
+  # chromosomes <- chromosomes %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
+  genomic_copy_number <- convert_to_genomic_coordinates(absolute_copy_number, "position", chromosomes)
+  # genomic_copy_number <- genomic_copy_number %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
+  genomic_segments <- convert_to_genomic_coordinates(absolute_segments, c("start", "end"), chromosomes)
+  # genomic_segments <- genomic_segments %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
+  p <- genome_copy_number_plot(genomic_copy_number, genomic_segments, chromosomes,
+                               min_copy_number = 0, max_copy_number = 15,
+                               copy_number_breaks = 0:15,
+                               point_colour = "grey40",
+                               ylabel = "absolute copy number") +
+    ggplot2::ggtitle(paste0(sample, '  ploidy:', ploidy, '  cellularity:', cellularity)) +
+    ggplot2::theme(plot.title = element_text(size = 20))
+  ggsave(filename = paste0('~/Documents/projects/cn_signatures_shallowWGS/plotting/acn_rascal_plots/batch1-13_autosomes_30kb_rascal_plots/', sample, '.pl', ploidy, '.cel', cellularity, '.copynumberplot.png'),
+         p, device = 'png', width = 16, height = 8)
+}
+
+
 # Create Heatmap of Signature Exposures
 #####
 # Converts signature-per-sample data to a heatmap, saves it as a png, and returns the ggplot.
@@ -16,50 +42,52 @@
 # Return: ggplot
 ###
 #' @export
-plot_signature_exposures <- function (signatures, save_path = FALSE,
+PlotSignatureExposures <- function (signatures, save_path = FALSE,
                                       obj_name = 'sig_exposures_obj',
                                       order = FALSE, transpose = FALSE) {
-  long_data <- gather(signatures)
-  long_data$max_sig <- rep(apply(output1, 2, function(x) which.max(x)),
+  nsigs <- nrow(signatures)
+  long_data <- tidyr::gather(signatures)
+  long_data$max_sig <- rep(apply(signatures, 2, function(x) which.max(x)),
                            times = 1,
                            each = nsigs)
-  long_data$sigs <- rep(1:nsigs,dim(output1)[2])
+  long_data$sigs <- rep(1:nsigs,dim(signatures)[2])
   colnames(long_data) <- c('X', 'Z', 'max_sig', 'Y')
-  long_data <- long_data %>% arrange(max_sig)
+  long_data <- long_data %>% dplyr::arrange(max_sig)
   long_data$X <- factor(long_data$X, levels = unique(long_data$X))
 
-  if (order != FALSE) {
+  if (!isFALSE(order)) {
     long_data$X <- factor(long_data$X, levels = order)
   }
 
-  g <- ggplot(long_data, aes(X, Y, fill=Z)) +
-    geom_tile() +
-    scale_fill_viridis(discrete=FALSE) +
-    theme(plot.title = element_text(size = 20),
-          axis.ticks.x = element_blank(),
+  g <- ggplot2::ggplot(long_data, ggplot2::aes(X, Y, fill=Z)) +
+    ggplot2::geom_tile() +
+    viridis::scale_fill_viridis(discrete=FALSE) +
+    ggplot2::theme(plot.title = ggplot2::element_text(size = 20),
+          axis.ticks.x = ggplot2::element_blank(),
           # axis.text.x = element_text(size = 15, angle = 75, vjust = 0.5, hjust=0.5),
-          axis.text.x = element_blank(),
-          axis.title.x = element_text(size = 18),
-          axis.text.y = element_text(size = 18),
-          legend.title = element_text(size = 18)) +
-    labs(fill = 'Signature \nExposure', x = "Samples", y = " ") +
-    scale_y_discrete(limits = paste0('S', 1:dim(signatures)[1])) +
-    ggtitle("Signature exposures called per sample")
+          axis.text.x = ggplot2::element_blank(),
+          axis.title.x = ggplot2::element_text(size = 18),
+          axis.text.y = ggplot2::element_text(size = 18),
+          legend.title = ggplot2::element_text(size = 18)) +
+    ggplot2::labs(fill = 'Signature \nExposure', x = "Samples", y = " ") +
+    ggplot2::scale_y_discrete(limits = paste0('S', 1:dim(signatures)[1])) +
+    ggplot2::ggtitle("Signature exposures called per sample")
   g
 
   if (transpose != FALSE) {
-    g <- g + theme(plot.title = element_text(size = 20),
-                   axis.ticks.y = element_blank(),
-                   axis.text.x = element_text(size = 18),
-                   axis.title.x = element_text(size = 18),
-                   axis.text.y = element_blank(),
-                   legend.title = element_text(size = 18)) + coord_flip()
+    g <- g + ggplot2::theme(plot.title = ggplot2::element_text(size = 20),
+                   axis.ticks.y = ggplot2::element_blank(),
+                   axis.text.x = ggplot2::element_text(size = 18),
+                   axis.title.x = ggplot2::element_text(size = 18),
+                   axis.text.y = ggplot2::element_blank(),
+                   legend.title = ggplot2::element_text(size = 18)) +
+      ggplot2::coord_flip()
   }
   if (save_path != FALSE) {
     if (transpose != FALSE) {
-      ggsave(paste0(save_path, "signatures_heatmap_", obj_name,".png"), plot = g, width = 10, height = 15)
+      ggplot2::ggsave(paste0(save_path, "/signatures_heatmap_", obj_name,".png"), plot = g, width = 10, height = 15)
     } else {
-      ggsave(paste0(save_path, "signatures_heatmap_", obj_name,".png"), plot = g, width = 15, height = 10)
+      ggplot2::ggsave(paste0(save_path, "/signatures_heatmap_", obj_name,".png"), plot = g, width = 15, height = 10)
     }
   }
 
@@ -83,24 +111,25 @@ plot_signature_exposures <- function (signatures, save_path = FALSE,
 # Return: list of ggplot and the ordering of the heatmap in sample names.
 ###
 #' @export
-swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = FALSE,
+SwgsCnvHeatmaps <- function(reads = data.frame(), save_path = FALSE,
                               obj_name = "gyne_cancer_obj",
                               order = FALSE, ret_order = FALSE) {
 
   if(nrow(reads) == 0) { stop("No reads data provided.") }                      # If reads DF is empty, return
-  reads = removeBlacklist(reads)                                                # remove blacklist regions from hg19
+  reads = RemoveBlacklist(reads)                                                # remove blacklist regions from hg19
 
   reads <- reads[, c("chromosome", "start", "sample_id", "state")]
 
-  # Generate standard CNV heatmap
+  # Generate standard CNV heatmap data
   reads$state[reads$state < 0] <- 0
-  slice <- sort_heatmap(reads)
-
+  slice <- SortHeatmap(reads)
   slice$state <- round(slice$state)
   slice$state[slice$state >= 15] <- 15
   slice$state <- as.character(slice$state)
   slice$state[slice$state == '15'] <- '15+'                                     # Assign all copy-numbers greater than 15 to the same value
-  slice$state <- as.factor(slice$state)
+  slice <- slice %>% dplyr::mutate(state = factor(state,
+                                           levels = c(0:14, "15+"))) %>%
+                     dplyr::arrange(chromosome)
 
   # Set colours for the heatmap
   cols <- c("#3182BD", "#9ECAE1", "#CCCCCC", "#FDD49E", "#FE9F4F", "#EA8251",
@@ -108,25 +137,30 @@ swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = FALSE,
             "#A61568", "#CE4191", "#CE8FB4", "#F5B1D9")                            # #FFDBF0
   names(cols) <- c(0:14, "15+")
 
-  if (order != FALSE) {
+  if (!isFALSE(order)) {
     slice$sample_id <- factor(slice$sample_id, level = order)
   }
 
-  g <- ggplot(slice, aes(start, sample_id, fill = state)) + geom_tile() +
-    scale_fill_manual(na.value = "white", values = cols, name = 'Copy-Number \nColour Code') +
-    facet_grid(~chromosome, scales = "free", space = "free", switch = "x") +
-    scale_x_continuous(expand = c(0, 0), breaks = NULL) +
-    theme(panel.spacing = unit(0.1, "lines"),
-          plot.title = element_text(size = 28, hjust = 0.5),
-          axis.text.y=element_blank(),
-          axis.title = element_text(size = 22),
-          legend.title = element_text(size = 22),
-          legend.text = element_text(size = 18)) +
-    labs(x = "Chromosomes", y = "Samples", fill = "Copy Number") +
-    ggtitle("Absolute copy number calls across the genome")
+  g <- ggplot2::ggplot(slice, ggplot2::aes(start, sample_id, fill = state)) + ggplot2::geom_tile() +
+    ggplot2::scale_fill_manual(na.value = "white", values = cols, name = 'Copy-Number \nColour Code') +
+    ggplot2::facet_grid(~chromosome, scales = "free", space = "free", switch = "x") +
+    ggplot2::scale_x_continuous(expand = c(0, 0), breaks = NULL) +
+    ggplot2::theme(panel.spacing = ggplot2::unit(0.1, "lines"),
+          plot.title = ggplot2::element_text(size = 28, hjust = 0.5),
+          axis.text.y = ggplot2::element_blank(),
+          axis.title = ggplot2::element_text(size = 22),
+          legend.title = ggplot2::element_text(size = 22),
+          legend.text = ggplot2::element_text(size = 18)) +
+    ggplot2::labs(x = "Chromosomes", y = "Samples", fill = "Copy Number") +
+    ggplot2::ggtitle("Absolute copy number calls across the genome")
+
+  output <- g
 
   if (save_path != FALSE) {
-    ggsave(paste0(save_path, "cnv_heatmap_", obj_name,".png"), plot = g, width = 24, height = 24)
+    # ggplot2::ggsave(paste0(save_path, "/cnv_diversity_heatmap_", obj_name,".png"), plot = g, width = 24, height = 24)
+    png(paste0(save_path, "/cnv_diversity_heatmap_", obj_name,".png"), width=20, height=20, units = 'in', res = 400, type = 'cairo-png')
+    print(g)
+    dev.off()
   }
   if (ret_order != FALSE) {
     output <- list(plot = g, ordering = levels(slice$sample_id))
@@ -152,7 +186,7 @@ swgs_cnv_heatmaps <- function(reads = data.frame(), save_path = FALSE,
 #   data: Dataframe containing observations describing DLP data
 #   viral_presence:
 # Return: data parameter modified to include a viral presence indicator
-add_viral_presence <- function(data, viral_presence) {
+AddViralPresence <- function(data, viral_presence) {
   viral_range <- seq(1,50000001, 500000)
   viral_presence <- viral_presence[viral_presence$cell_id %in% unique(data$cell_id), ]
   l <- length(viral_range)
@@ -171,16 +205,17 @@ add_viral_presence <- function(data, viral_presence) {
 # Parameters:
 #
 #' @export
-sort_heatmap <- function(slice) {
+SortHeatmap <- function(slice) {
   slice$chromosome <- factor(slice$chromosome, levels = c("V", 1:22, "X", "Y"))
   slice <- dplyr::mutate(slice, pos = paste0(chromosome, ":", start))
-  wide <- spread(slice[, c("sample_id", "pos", "state")], pos, state)
-  rownames(wide) <- wide$sample_id
-  wide$sample_id <- NULL
-  cluster <- hclust(dist(wide), method = "ward.D")
-  slice$sample_id <- factor(slice$sample_id, level = rownames(wide)[cluster$ord])
+  wide <- tidyr::spread(slice[, c("sample_id", "pos", "state")], pos, state)
+  wide_ <- wide[,-which(colnames(wide) == "sample_id")]
+  rownames(wide_) <- wide$sample_id
+  cluster <- hclust(dist(wide_), method = "ward.D")
+  slice$sample_id <- factor(slice$sample_id, level = rownames(wide_)[cluster$ord])
   return(slice)
 }
+
 
 ### Plot cellularity and VAF values
 # DESCRIPTION
@@ -188,13 +223,13 @@ sort_heatmap <- function(slice) {
 # slice: As input we want the order of the samples in the heatmap
 #
 #' @export
-plot_cellularity_and_maxvaf <- function(reads = data.frame(), save_path, obj_name) {
+PlotCellularityAndMaxVaf <- function(reads = data.frame(), save_path, obj_name) {
 
   if(nrow(reads) == 0) { stop("No reads data provided.") }                      # If reads DF is empty, return
   reads = removeBlacklist(reads)                                                # remove blacklist regions from hg19
   reads <- reads[, c("chromosome", "start", "sample_id", "state")]
   reads$state[reads$state < 0] <- 0
-  slice <- sort_heatmap(reads)
+  slice <- SortHeatmap(reads)
 
   vafscels <- data.table::fread(file = '~/Documents/projects/cn_signatures_shallowWGS/metadata/vafs_and_cellularities.tsv', sep = '\t', header = TRUE)
   vafscels$sample_id <- str_replace_all(vafscels$sample_id, "-", ".")
@@ -272,13 +307,13 @@ plot_cellularity_and_maxvaf <- function(reads = data.frame(), save_path, obj_nam
 }
 
 #' @export
-plot_BABAM <- function(reads = data.frame(), save_path, obj_name) {
+PlotBABAM <- function(reads = data.frame(), save_path, obj_name) {
 
   if(nrow(reads) == 0) { stop("No reads data provided.") }                      # If reads DF is empty, return
   reads = removeBlacklist(reads)                                                # remove blacklist regions from hg19
   reads <- reads[, c("chromosome", "start", "sample_id", "state")]
   reads$state[reads$state < 0] <- 0
-  slice <- sort_heatmap(reads)
+  slice <- SortHeatmap(reads)
 
   qual <- data.table::fread(file = '~/Downloads/swgs_sample_biologic_metadata.csv', sep = ',', header = TRUE)
   qual <- qual %>% dplyr::filter(status == 'p53_abn')
@@ -319,7 +354,7 @@ plot_BABAM <- function(reads = data.frame(), save_path, obj_name) {
 #   (ggplot)  output: A cowplot combination of several heatmap bars
 ###
 #' @export
-plot_metadata_heatmaps <- function(met_basic, met_bio = FALSE, met_quality = FALSE, met_vafs = FALSE) {
+PlotMetadataHeatmaps <- function(met_basic, met_bio = FALSE, met_quality = FALSE, met_vafs = FALSE) {
 
 
   stopifnot("The first argument must be a dataframe and should contain
@@ -382,7 +417,7 @@ plot_metadata_heatmaps <- function(met_basic, met_bio = FALSE, met_quality = FAL
 
     browser()
     # test
-    xx <- met_vafs %>% mutate(maxvaf = apply(X = met_vafs, MARGIN = 1, function(x) select_max_element(x)))
+    xx <- met_vafs %>% mutate(maxvaf = apply(X = met_vafs, MARGIN = 1, function(x) SelectMaxElement(x)))
 
     celstab <- celstab %>% dplyr::select(sample_id, minmaxed_cel, minmaxed_vaf, max_vaf)
     metadata <- metadata %>% dplyr::left_join(celstab, by = c('sample_id'))
@@ -424,46 +459,88 @@ plot_metadata_heatmaps <- function(met_basic, met_bio = FALSE, met_quality = FAL
   # ggsave2(plot = p, filename = '~/Downloads/quality_heatmaps.pdf', width = 10, height = 25)
 }
 
-select_max_element <- function (element_vector) {
+SelectMaxElement <- function (element_vector) {
   element_vector <- element_vector[grepl('vaf', names(element_vector), fixed = TRUE)]
   max_value <- max(as.numeric(element_vector), na.rm = TRUE)
   return(max_value)
 }
 
-# Adapted from CGHcall or QDNAseq package
-# What role does this function have to play?
-#
+#' Generate Summary Copy-Number Aberrations Plot
+#'
+#' @description
+#' This function was copied and modified from another package (CGHbase).
+#' The original code can be found here on github: https://github.com/tgac-vumc/CGHbase
+#' The bioconductor page: https://bioconductor.org/packages/release/bioc/html/CGHbase.html
+#'
+#' This function creates a summary plot of the copy-number changes of the samples in the provided QDNAseq object.
+#'
+#' @param x An S4 object of type QDNAseqCopyNumbers containing multiple samples.
+#' @param main (optional) String. Plot Title.
+#' @param summarytype (optional) String. One of either 'probability' or 'frequency'. \cr
+#' 'probability' - The vertical bars represent the average probability that the positions along the chromosome they cover are gained (blue bars) or lost (red bars) across all samples. \cr
+#' 'frequency' - The vertical bars represent the frequency that the positions along the chromosome they cover are gained (blue bars) or lost (red bars) across all samples. \cr
+#' @param maskprob (optional) Numeric. Gain or loss probabilities that fall below this number are masked. Used to exclude noise.
+#' @param maskaberr (optional) Numeric. Copy-Number gains or losses that fall below this number are masked. Used to exclude noise.
+#'
 #' @export
-testSummaryPlot <- function (x, main='Summary Plot', gaincol='blue', losscol='red', misscol=NA, build='GRCh37',... )
-{
-  chrom <- chromosomes(x)
-  pos <- bpstart(x)
-  pos2 <- bpend(x)
+SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
+                           summarytype = 'probability',
+                           maskprob = 0.2, maskaberr = 0.1,
+                           gaincol='blue', losscol='red', misscol=NA,
+                           build='GRCh37',... ) {
+  chrom <- QDNAseq::chromosomes(x)
+  pos <- QDNAseq::bpstart(x)
+  pos2 <- QDNAseq::bpend(x)
   uni.chrom <- unique(chrom)
-  nclass <-3
-  if (!is.null(probamp(x))) nclass <- nclass+1
-  if (!is.null(probdloss(x))) nclass <- nclass+1
+  cns <- log2(CGHbase::segmented(x))
+  com_cns <- as.data.frame(cns) %>% dplyr::mutate(mean = rowMeans(dplyr::across(where(is.numeric))))
+  yaxis_label <- 'mean probability'
 
-  chrom.lengths <- .getChromosomeLengths(build)[as.character(uni.chrom)]
-  chrom.ends <- integer()
-  cumul <- 0
-  for (j in uni.chrom) {
-    pos[chrom > j] <- pos[chrom > j] + chrom.lengths[as.character(j)]
-    pos2[chrom > j] <- pos2[chrom > j] + chrom.lengths[as.character(j)]
-    cumul <- cumul + chrom.lengths[as.character(j)]
-    chrom.ends <- c(chrom.ends, cumul)
-  }
+  nclass <-3
+  if (!is.null(CGHbase::probamp(x))) nclass <- nclass+1
+  if (!is.null(CGHbase::probdloss(x))) nclass <- nclass+1
+
+  chrom.lengths <- GetChromosomeLengths(build)[as.character(uni.chrom)]
+
+  # Convert the segment positions from a relative, per-chromosome basis to absolute positions in the genome
+  abs_seg_pos <- RelToAbsSegPos(chromosomes = chrom, rel_start_pos = pos, rel_end_pos = pos2, build = build)
+  pos <- abs_seg_pos$abs_start_pos
+  pos2 <- abs_seg_pos$abs_end_pos
+  chrom.ends <- abs_seg_pos$chrom_ends
   names(chrom.ends) <- names(chrom.lengths)
 
-  if(nclass==3) {loss.freq <- rowMeans(probloss(x)); gain.freq <- rowMeans(probgain(x))}
-  if(nclass==4) {loss.freq <- rowMeans(probloss(x)); gain.freq <- rowMeans(probgain(x))+rowMeans(probamp(x))}
-  if(nclass==5) {loss.freq <- rowMeans(probloss(x))+rowMeans(probdloss(x)); gain.freq <- rowMeans(probgain(x))+rowMeans(probamp(x))}
+  if (nclass==3) {
+    loss.freq <- rowMeans(CGHbase::probloss(x))
+    gain.freq <- rowMeans(CGHbase::probgain(x))
+  }
+  if (nclass==4) {
+    loss.freq <- rowMeans(CGHbase::probloss(x))
+    gain.freq <- rowMeans(CGHbase::probgain(x)) + rowMeans(CGHbase::probamp(x))
+  }
+  if (nclass==5) {
+    loss.freq <- rowMeans(CGHbase::probloss(x)) + rowMeans(CGHbase::probdloss(x))
+    gain.freq <- rowMeans(CGHbase::probgain(x)) + rowMeans(CGHbase::probamp(x))
+  }
 
-  # remove probabilities of bins that fall below 0.2
-  loss.freq[loss.freq < 0.2] <- 0.001
-  gain.freq[gain.freq < 0.2] <- 0.001
-  browser()
-  plot(NA, xlim=c(0, max(pos2)), ylim=c(-1,1), type='n', xlab='chromosomes', ylab='mean probability', xaxs='i', xaxt='n', yaxs='i', yaxt='n', main=main,...)
+  # Make Frequency plot option instead (rather than probability)
+  if (summarytype == 'frequency') {
+    calls <- CGHbase::calls(x)
+    loss.freq <- rowMeans(calls < 0)
+    gain.freq <- rowMeans(calls > 0)
+    yaxis_label <- summarytype
+  }
+
+  # Mask gain/loss probability bins corresponding to CN aberrations that fall between maskaberr and zero
+  loss.freq[abs(com_cns$mean) < maskaberr] <- 0.001
+  gain.freq[abs(com_cns$mean) < maskaberr] <- 0.001
+
+  # remove probabilities of bins that fall below maskprob
+  loss.freq[loss.freq < maskprob] <- 0.001
+  gain.freq[gain.freq < maskprob] <- 0.001
+
+  plot(NA, xlim=c(0, max(pos2)), ylim=c(-1,1), type='n', xlab='chromosomes',
+       ylab=yaxis_label, xaxs='i', xaxt='n', yaxs='i', yaxt='n',
+       main=main,...)
   if (!is.na(misscol)) {
     rect(0, -1, max(pos2), 1, col=misscol, border=NA)
     rect(pos, -1, pos2, 1, col='white', border=NA)
@@ -476,24 +553,36 @@ testSummaryPlot <- function (x, main='Summary Plot', gaincol='blue', losscol='re
     for (j in names(chrom.ends)[-length(chrom.ends)])
       abline(v=chrom.ends[j], lty='dashed')
   ax <- (chrom.ends + c(0, chrom.ends[-length(chrom.ends)])) / 2
-  axis(side=1,at=ax,labels=uni.chrom,cex=.2,lwd=.5,las=1,cex.axis=1,cex.lab=1)
-  axis(side=2, at=c(-1, -0.5, 0, 0.5, 1), labels=c('100 %', ' 50 %', '0 %', '50 %', '100 %'), las=1)
+  uni.chrom.labels <-uni.chrom
+  uni.chrom.labels[seq(2, length(uni.chrom.labels), 2)] <- "" # Make every second x-axis label empty, in order to fit labels neatly on the plot
+  axis(side=1,at=ax,labels=uni.chrom.labels,
+      lwd=.5,las=1,cex.axis=0.7,cex.lab=1)
+  axis(side=2, at=c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1),
+       labels=c('100 %', '75 %', '50 %', '25 %', '0 %', '25 %', '50 %', '75 %', '100 %'),
+       las=1)
   mtext('gains', side=2, line=3, at=0.5)
   mtext('losses', side=2, line=3, at=-0.5)
   ### number of data points
   str <- paste(round(nrow(x) / 1000), 'k x ', sep='')
-  probe <- median(bpend(x)-bpstart(x)+1)
+  probe <- median(QDNAseq::bpend(x)-QDNAseq::bpstart(x)+1)
   if (probe < 1000) {
     str <- paste(str, probe, ' bp', sep='')
   } else {
     str <- paste(str, round(probe / 1000), ' kbp', sep='')
   }
   mtext(str, side=3, line=0, adj=0)
+  ### number of samples
+  nsamps <- paste0('n=', as.character(dim(x)[2]))
+  masks <- paste0('masks: prob=', as.character(maskprob), ', aberr=',
+                  as.character(maskaberr))
+  mtext(paste0(masks, '  |  ', nsamps), side=3, line=0, adj=1)
 }
 
+
+#' Plot relative CN diversity heatmap
 #'
 #' @description Function to plot the copy number profile from relative copy numbers
-#' @details Vosualizing relative copy number calls from WiseCondorX and QDNASeq as heatmaps
+#' @details Visualizing relative copy number calls from WiseCondorX and QDNASeq as heatmaps
 #' @param x *dataframe* containing the copy number segments in long format: columns should be start, sample id (named sample) and segmented
 #' @param order_by optional *character vector* containing the order the samples in the heatmap should be in
 #' @param order_by optional *character vector* to plot a subset of samples
@@ -528,7 +617,15 @@ rCNplotProfile <- function(x, order_by = NULL, cluster = TRUE, subset = NULL, li
   return(p)
 }
 
-#' @description Updated QDNASeq unction to plot the segments for relative copy number calls from WiseCondorX
+#' Plot Relative Copy Numbers
+#'
+#' @description
+#' Just an updated version of the QDNASeq plot() method.
+#' Our version just allows for relative copy number calls from WiseCondorX.
+#' All else remains the same.
+#' See the <[`QDNAseq plotting`][QDNAseq::plot]> method for details.
+#'
+#'
 setMethod("plot", signature(x="QDNAseqSignals", y="missing"),
           function (x, y, main=NULL, includeReadCounts=TRUE,
                     logTransform=TRUE, scale=TRUE, sdFUN="sdDiffTrim",
@@ -798,4 +895,83 @@ setMethod("plot", signature(x="QDNAseqSignals", y="missing"),
             options("QDNAseq::plotScale"=scale)
           })
 
+
+### Given chromosomal segment positions, convert the relative (to a given chromosome) start and end positions of each segment to absolute positions in the genome.
+# DESCRIPTION
+# Parameters:
+#   (character vector)  chromosomes: A vector of length(segments) indicating the chromosome each segment is on, as returned by QDNAseq::chromosomes
+#   (numeric vector)    rel_start_pos: A vector of length(segments) indicating the relative start position of each segment, as returned by QDNAseq::bpstart
+#   (numeric vector)    rel_end_pos: A vector of length(segments) indicating the relative end position of each segment, as returned by QDNAseq::bpend
+#   (string)            build: The reference genome build to use when retrieving chromosome lengths.
+#
+# Returns:
+#   (list)              abs: A list containing the absolute start/end positions and the total chromosome length.
+#   (numeric vector)    abs_start_pos: A vector of length(segments) indicating the absolute start position of each segment
+#   (numeric vector)    abs_end_pos: A vector of length(segments) indicating the absolute end position of each segment
+#   (integer)           tot_length: The total length of all the chromosomes
+#   (numeric vector)    chrom_ends: The absolute end position of each chromosome
+###
+#' @export
+RelToAbsSegPos <- function(chromosomes, rel_start_pos, rel_end_pos, build = "GRCh37") {
+  chrom_lengths <- GetChromosomeLengths(build)[as.character(unique(chromosomes))]
+
+  chromosomes <- replace(chromosomes, chromosomes == "X", "23")
+  chromosomes <- as.integer(replace(chromosomes, chromosomes == "Y", "24")) # Map all chromosomes to integers so we can iterate in numeric order
+  uni_chrom <- unique(chromosomes)
+
+  abs_start_pos <- rel_start_pos
+  abs_end_pos <- rel_end_pos
+  tot_length <- 0
+  chrom_ends <- integer()
+
+  for (chrom in uni_chrom) {
+    # Since a one-to-one correspondence exists between the vector indicating the chromosome each segment is on, and the vectors of segment start/end positions, we can index the
+    # start/end positions based on the chromosomes which are numbered higher than the current chromosome. We then iteratively add the length of lower numbered chromosomes
+    # to the relative start/end positions, obtaining absolute positions.
+    abs_start_pos[chromosomes > chrom] <- abs_start_pos[chromosomes > chrom] + chrom_lengths[chrom]
+    abs_end_pos[chromosomes > chrom] <- abs_end_pos[chromosomes > chrom] + chrom_lengths[chrom]
+
+    tot_length <- tot_length + chrom_lengths[chrom]
+    chrom_ends <- c(chrom_ends, tot_length)
+  }
+
+  names(chrom_ends) <- as.character(chrom_lengths)
+  abs <- list(abs_start_pos = abs_start_pos, abs_end_pos = abs_end_pos, tot_length = tot_length, chrom_ends = chrom_ends)
+  return(abs)
+}
+
+#' Label genes of interest on an absolute copy-number plot.
+#'
+#' @description
+#' This function takes an existing absolute copy-number plot, a vector of gene names, and optionally an Ensembl DB to use for looking up gene annotations.
+#' Ensure that you use an Ensembl DB which annotates the same genome version used for your existing plot.
+#' A plot with the genes of interest labeled is returned.
+#'
+#' @param plot A ggplot object, corresponding to the existing absolute copy-number plot.
+#' @param genes A vector of gene symbols you'd like to label on the plot -- use upper case.
+#' @param edb The name of the local Ensembl DB package to use for looking up gene information. Defaults to [EnsDb.Hsapiens.v75], which annotates hg19/GRCh37.
+#' @param ... Additional options controlling the visual display of the labels; passed to ggrepel::geom_label_repel(), and supports any of its arguments.
+#'
+#' @returns A ggplot object with the gene labels added.
+#'
+#' @seealso [ggrepel::geom_label_repel()] for supported arguments that alter the visual display of the labels.
+#'
+#' @export
+AddGenesToPlot <- function(plot, genes, edb = EnsDb.Hsapiens.v75, ...) {
+  # Get the locations of the genes we are interested in.
+  genes_ens <- as.data.frame(genes(edb, filter = ~ gene_name %in% genes, return.type = "DataFrame"))
+
+  # We will bin the genes by their midpoint.
+  genes_ens <- genes_ens %>%
+    dplyr::mutate(midpoint = ((gene_seq_start + gene_seq_end) / 2))
+
+  # Put each gene in its corresponding bin. This lets us borrow the existing absolute bin position for graphing.
+  plot$data <- plot$data %>%
+    dplyr::left_join(y = genes_ens, by = dplyr::join_by(chromosome == seq_name, start < midpoint, end > midpoint))
+
+  plot <- plot +
+    ggrepel::geom_label_repel(aes(label = symbol), ...)
+
+  return(plot)
+}
 

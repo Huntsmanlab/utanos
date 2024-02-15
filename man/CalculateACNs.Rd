@@ -5,19 +5,24 @@
 \title{Calculate Absolute Copy Numbers}
 \usage{
 CalculateACNs(
-  relative_cns,
-  rascal_sols,
-  variants = FALSE,
+  relative_segs,
   acnmethod,
-  acn_save_path = FALSE
+  rascal_sols = FALSE,
+  variants = FALSE,
+  relative_cns = FALSE,
+  addplots = FALSE,
+  acn_save_path = FALSE,
+  return_sols = FALSE
 )
 }
 \arguments{
-\item{relative_cns}{A tsv of the relative copy-numbers.}
+\item{relative_segs}{A tsv of the relative segmented copy-numbers.}
 
-\item{rascal_sols}{A tsv of the calculated rascal solutions.}
-
-\item{variants}{A dataframe of the variants including variant allele frequencies per gene and per sample.
+\item{acnmethod}{The method by which to calculate ACNs. Can be one of: \cr
+"maxvaf" - Calculate ACNs assuming the maximum discovered VAF for the sample is an appropriate representation for the tumour fraction. \cr
+char vector - Same as above but rather than using the max vaf provide a character vector of the genes from which to pull VAFs.
+The genes are assumed to be in order of decreasing precedence. ex. c('TP53', 'KRAS', 'PTEN') \cr
+"mad" - Calculate ACNs using the mean absolute difference (MAD) column from the solutions table. \cr
 If using variant allele frequencies from targeted panel sequencing or some other technology: \cr
 \itemize{
 \item The variants must must be in a datatable/dataframe. \cr
@@ -25,27 +30,32 @@ If using variant allele frequencies from targeted panel sequencing or some other
 \item Each row of said table must correspond to a unique variant. \cr
 \item Each variant must have an associated variant allele frequency. \cr
 \item Each row must also be associated with a specific sample. \cr
+A dataframe of known ploidies per sample - Calculate ACNs at each bin given we already know the ploidy of the samples. \cr
 }}
 
-\item{acnmethod}{The method by which to calculate ACNs. Can be one of: \cr
-"maxvaf" - Calculate ACNs assuming the maximum discovered VAF for the sample is an appropriate representation for the tumour fraction. \cr
-char vector - Same as above but rather than using the max vaf provide a character vector of the genes from which to pull VAFs.
-The genes are assumed to be in order of decreasing precedence. ex. c('TP53', 'KRAS', 'PTEN') \cr
-"mad" - Calculate ACNs using the mean absolute difference (MAD) column from the solutions table. \cr}
+\item{rascal_sols}{A tsv of the calculated rascal solutions.}
 
-\item{acn_save_path}{(optional) The output path (absolute path recommended) where to save the result.}
+\item{variants}{A dataframe of the variants including variant allele frequencies per gene and per sample.}
+
+\item{relative_cns}{A tsv of the relative copy-numbers. Required if 'addplots' param is set to true.}
+
+\item{addplots}{(optional) Logical. Indicates whether or not plots should be returned alongside the ACNs.}
+
+\item{acn_save_path}{(optional) String. The output path (absolute path recommended) where to save the result.}
+
+\item{return_sols}{(optional) Logical. Return the selected rascal solution.}
 }
 \value{
-A list of dataframes. One DF for each sample where an Absolute Copy Number profile was successfully found.
+A list of dataframes. One DF for each sample where an Absolute Copy Number profile was successfully found. \cr
+Optionally a second list of plot objects (ggplot); one for each sample where a profile was found.
 }
 \description{
-Use the rascal package in R to do this transformation.
-Based on instructions in the vignette: \cr
-https://github.com/crukci-bioinformatics/rascal/blob/master/vignettes/rascal.Rmd \cr \cr
-
-CalculateACNs() calculates the absolute copy numbers (ACNs) from the relative copy numbers of one or more samples.
+CalculateACNs() calculates the absolute copy numbers (ACNs) from the relative copy number profiles of one or more samples.
 There are several included options by which to do this.
-Note: If not providing a table of of variant allele frequencies (VAFs) then 'mad' is the only method available.
+Note: If not providing a table of variant allele frequencies (VAFs) then 'mad' is the only method available. \cr
+
+This function makes use of the rascal package in R and instructions can be found in the vignette: \cr
+https://github.com/crukci-bioinformatics/rascal/blob/master/vignettes/rascal.Rmd  \cr
 }
 \details{
 \if{html}{\out{<div class="sourceCode">}}\preformatted{solutions <- "~/Documents/.../rascal_solutions.csv"
@@ -56,11 +66,11 @@ variants <- data.table::fread(file = variants, sep = ',')
 variants <- variants \%>\% dplyr::rename(chromosome = chr,
                                        gene_name = genecode_gene_name)
 variants$sample_id <- stringr::str_replace_all(variants$sample_id, "-", ".")
-output <- CalculateACNs(relative_cns = rcn_segs,
+output <- CalculateACNs(relative_segs = rcn_segs,
                         rascal_sols = solutions,
                         variants = variants,
                         acnmethod = 'maxvaf')
-output <- CalculateACNs(relative_cns = rcn_segs,
+output <- CalculateACNs(relative_segs = rcn_segs,
                         rascal_sols = solutions,
                         variants = variants,
                         acnmethod = c('TP53', 'KRAS', 'BRCA1',
