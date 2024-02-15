@@ -21,3 +21,4 @@ data/endometrium/
 data/mixture_models/
 data/external_datasets/
 data/feat_sig_mat.rds
+inst/doc

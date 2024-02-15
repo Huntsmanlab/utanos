@@ -1,0 +1,198 @@
+---
+title: "How to Create New Copy-Number Signatures"
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{create-new-cn-signatures}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+### Pre-amble
+
+This vignette serves to demonstrate how to use copy-number (CN) abnormalities in shallow Whole Genome Sequencing (sWGS) data, which could represent the imprints of distinct mutational processes, to build CN-Signatures.  
+This workflow is based on the one described in the methods section of a paper published by Macintyre et. al. in 2018 - https://www.nature.com/articles/s41588-018-0179-8  
+In order to generate new copy-number signatures, a set of samples are needed for which you have segmented copy-number profiles.
+These profiles should be formatted as a list of named dataframes. One for each sample.
+
+### I - The input data...
+
+```{r setup, eval=FALSE}
+library(utanos)
+library(QDNAseq)
+library(data.table)
+library(dplyr)
+
+# Reading in test data
+copy_numbers_input <- readRDS("~/projects/cn-signatures-project/segmented_aCNs.rds")
+# QDNAseq object
+dplyr::glimpse(head(copy_numbers_input, 2))
+
+List of 2
+ $ CC.CHM.1341:'data.frame':	210 obs. of  4 variables:
+  ..$ chromosome: chr [1:210] "1" "1" "1" "1" ...
+  ..$ start     : int [1:210] 2850001 32100001 44670001 116790001 117960001 118740001 119010001 145530001 171090001 171660001 ...
+  ..$ end       : int [1:210] 32100000 44490000 116790000 117960000 118740000 119010000 120270000 171090000 171660000 172530000 ...
+  ..$ segVal    : num [1:210] 1.12 4.68 1.41 5.12 4.15 ...
+ $ CC.CHM.1347:'data.frame':	683 obs. of  4 variables:
+  ..$ chromosome: chr [1:683] "1" "1" "1" "1" ...
+  ..$ start     : int [1:683] 2850001 3450001 4020001 5970001 15630001 15960001 18030001 19200001 22020001 23340001 ...
+  ..$ end       : int [1:683] 3120000 3810000 5970000 15630000 15960000 18030000 19200000 21840000 23340000 23910000 ...
+  ..$ segVal    : num [1:683] 3.01 5.19 3.27 5.48 1.39 ...
+
+```
+
+### II - Extract and examine features
+
+To begin we want to extract copy number features using the ExtractCopynumberFeatures() function. \
+These features include \
+1. Absolute copy-numbers at each genomic bin  (copynumbers)  
+2. The magnitude of each copy number change (changepoints)  
+3. The genomic length (in bp) of each segment  (segsizes)  
+4. The number of breakpoints per chromosome arm  (brchrmarm)  
+5. The number of breakpoints per 10 megabases  (bp10MB)
+6. The genomic length (in bp) of oscillating copy number regions  (osCNs)  
+
+The distribution of these features can be visualized alone or in combination to get an idea of what this data looks like. \
+First alone... \
+
+```{r, eval=FALSE}
+
+```
+
+and then in combination... \
+```{r, eval=FALSE}
+
+```
+
+
+```{r, eval=FALSE}
+CN_features <- ExtractCopynumberFeatures(copy_numbers_input)
+```
+
+
+### III - Do some modelling
+
+Run code to do the following... \
+1. Fit mixture components.  
+2. Calculate a patient-by-component sum-of-posterior probabilities matrix.  
+**Note** the returned sample_by_component matrix will have the components in a different order than the components in the component_models object. The components are not in increasing order in the component_models object.
+3. Search for the optimal number of signatures (interval of 3-12 is used by default), running NMF 1000 times with different random seeds for each signature number.  
+
+```{r, eval=FALSE}
+CN_features <- ExtractCopynumberFeatures(copy_numbers_input)
+component_models <- FitMixtureModels(CN_features)
+sample_by_component <- GenerateSampleByComponentMatrix(CN_features, component_models)
+library(NMF)                                                  # The next function contains a method that MUST have NMF loaded, it is a known issue
+ChooseNumberSignatures(sample_by_component)
+
+```
+
+
+#3 Expanded: For each copy-number event in each sample, compute the posterior probability of belonging to a component. For each sample, sum these posterior event vectors to a sum-of-posterior probabilities vector. Combine sum-of-posterior vectors into a patient-by-component sum-of-posterior probabilities matrix.  
+  
+  
+The output from the ChooseNumberSignatures() function is a figure plotting several metrics that aid in the selection of an optimal number of signatures.
+These metrics include cophenetic, dispersion, silhouette, and sparseness.  
+  
+What to look for in the values of each metric:  
+cophenetic: after the trend begins increasing (after 2) choose the max value before it decreases again.  
+dispersion: higher == better, measures the reproducibility  
+silhouette: higher == better, measures consistency between clusters  
+sparseness: higher == better, try to choose the maximum sparsity which can be achieved without that for the corresponding randomly permuted matrix exceeding it 
+  
+Here is an example of said figure.  
+```{r, echo = FALSE}
+knitr::include_graphics("../images/choose_optimal_Nsignatures_metrics.png", dpi = 200)
+```
+  
+  
+### IV - Stop and evaluate
+
+At this point it is a good idea to stop and reflect about the quality of the data being used to create your new signatures.
+If the metrics provided above for the input matrices do not appear to be outperforming the randomized matrices, you may wish to set more restrictive demands on what samples can be used as input data.
+It also could be helpful to examine the sample-by-component matrix as a heatmap to see if there are  major contributions from many different samples to each component.  
+If a clear Factorization rank (number of signatures) emerges, continue on...
+  
+### V - Create the signatures
+  
+```{r, eval=FALSE}
+signatures <- GenerateSignatures(sample_by_component,<num signatures>)
+saveRDS(signatures, file = paste0("path_to_signatures/signatures_object.rds"))
+
+# Also save the component models created earlier for re-use
+saveRDS(component_models, file = paste0("path_to_signatures/component_models_object.rds"))
+```
+  
+Create the signatures using the GenerateSignatures() function, and then save them.
+Evaluate your handi-work by visualizing both the:  
+-> component-by-signature matrix as a heatmap  
+-> sample-by-signature matrix as a heatmap (contribution of each sample to each signature)  
+  
+```{r, eval=FALSE}
+# Using the aheatmap functions built into NMF package...
+library(NMF)
+
+pdf(file = '~/projects/cn-signatures-project/plots/sample-by-signature_heatmap.pdf', 7, 7, onefile = FALSE)
+coefmap(signatures, Colv="consensus", tracks=c("basis:"), main="Sample x Signature matrix")
+dev.off()
+
+pdf(file = file = '~/projects/cn-signatures-project/plots/component-by-signature_heatmap.pdf', 7, 7, onefile = FALSE)
+basismap(signatures, Rowv = NA, main = "Signature x Component matrix")
+dev.off()
+```
+  
+  
+### VI - Example figures
+  
+Signature by Component matrix  
+```{r, echo = FALSE}
+knitr::include_graphics("../images/signature-by-component_heatmap.png", dpi = 300)
+```
+  
+  
+Sample by Signature matrix  
+```{r, echo = FALSE}
+knitr::include_graphics("../images/sample-by-signature_heatmap.png", dpi = 300)
+```
+  
+  
+### VII - Digging Deeper
+
+We can also visualize the individual mixture components for our signatures using shaded line plots.
+In the case of the "segment size" copy-number feature this will be a series of Gaussians. The `MixtureModelPlots` function from utanos can return plots for any or all of the components that compose each signature. Additionally, the specific components that are most prevalent for the signature indicated are shaded.  
+Here are a few examples.
+
+First, let's look at the signatures created for the Britroc cohort of high-grade serous ovarian carcinomas in this paper (Macintyre et al. 2018).  
+The component models and signatures can be found here:  
+https://bitbucket.org/britroc/cnsignatures/src/master/ (component models named component_parameters.rds)  
+Or here:  
+https://github.com/Huntsmanlab/utanosmodellingdata/tree/main  
+  
+```{r, eval=FALSE}
+component_models <- readRDS("~/repos/utanosmodellingdata/component_models/30kb_ovarian/component_models_britroc_aCNs.rds")
+signatures <- readRDS("~/repos/utanosmodellingdata/signatures/30kb_ovarian/component_by_signature_britroc_aCNs.rds")
+
+signature_df <- basis(signatures)                   # Grab the basis matrix
+reord_britroc <- as.integer(c(2,6,5,4,7,3,1))
+signature_df <- signature_df[,reord_britroc]        # Reorder the signatures the same way as is done in the paper (keep things nice and easy to compare)
+
+# Get mixture plots for signature 7
+mixture_plots <- MixtureModelPlots(signature_df, component_models, 7)
+
+mixture_plots$copynumber
+```
+
+```{r, echo = FALSE}
+knitr::include_graphics("../images/sig7copynumbercomponents.png", dpi = 300)
+```
+
+
+Second, let's look at the signatures created for p53 abnormal endometrial carcinomas in this paper published in 2024.
+

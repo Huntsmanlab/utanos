@@ -55,7 +55,4 @@ Thus, a workflow that could be followed is as such: all the samples with a high 
 
 `filter_quality` - A function that takes in the rascal MAD/VAF optimal solutions as the input and outputs a dataframe with the filtered "good-quality samples". It additionally outputs the "outlier" samples identified. 
 
-`PlotQualitySamples` - A function that takes in the rascal MAD/VAF optimal solutions and returns a facetted plot of 3 randomly selected outliers and 3 randomly selected "high-quality samples". This is a quick summary alternative to glancing at all the copy-number profiles individually. 
-
-
-
+`PlotQualitySamples` - A function that takes in the rascal MAD/VAF optimal solutions and returns a facetted plot of 3 randomly selected outliers and 3 randomly selected "high-quality samples". This is a quick summary alternative to glancing at all the copy-number profiles individually.
