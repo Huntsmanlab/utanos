@@ -1,25 +1,9 @@
 ########################### Sample quality functions ################################
-#'
-#' @description Function to classify the quality of relative copy number profile calls from QDNAseq or WiseCondorX
-#' @details The sample quality function supports an input of an  QDNAseq object from relative copy number callers for shallow whole genome sequencing data (such as QDNASeq or WiseCondorX) and classifies relative copy number profiles as "High" or "Low" quality
-#' @param x *QDNASeq object* containing the relative copy number calls as well as the segmented relative copy number calls
-#'
 
-#' @description Function to format chromosome and position information
-ChromosomeSplitPos <- function(x) {
-  x$position <- x$chr
-  x$chr <- str_split_fixed(x$chr, ":", n = 2)
-  x$chromosome <- x$chr[, 1]
-  x$pos <- str_split_fixed(x$chr[, 2], "-", n = 2)
-  x$start <- x$pos[, 1]
-  x$end <- x$pos[, 2]
-  x$chr <- NULL
-  x$pos <- NULL
-  x[, c("value", "start", "end")] <- lapply(x[, c("value", "start", "end")], as.numeric)
-  return(x)
-}
-
-#' @description Function to create a dataframe containing both the relative copy numbers and the segmented calls from a QDNASeq object
+#' Make a DF of CNs and Segments from S4 QDNAseq object
+#'
+#' @description
+#' Function to create a dataframe containing both the relative copy numbers and the segmented calls from a QDNAseq object.
 CopySegFlat <- function(x) {
   copy_number <- x@assayData[["copynumber"]]
   segmented <- x@assayData[["segmented"]]
@@ -42,18 +26,16 @@ CopySegFlat <- function(x) {
   return(comb_table)
 }
 
+#' Collapse segments
+#'
 #' @description Collapsed segmented dataframe
 #' @param x Dataframe containing the following columns: chromosome, start, stop, segmented, and copy_number
-
 CollapsedSegs <- function(x) {
   x <- as.data.frame(x)
   stopifnot(is.data.frame(x))
   stopifnot("sample" %in% names(x))
   stopifnot("chromosome" %in% names(x))
   x[, c("start", "end", "segmented")] <- lapply(x[, c("start", "end", "segmented")], as.numeric)
-  # stopifnot("start" %in% names(x), is.numeric(x))
-  #  stopifnot("end" %in% names(x), is.numeric(x))
-  # stopifnot("segmented" %in% names(x), is.numeric(x))
   x <- x %>%
     dplyr::filter(!is.na(segmented)) %>%
     dplyr::mutate(length = end - start + 1) %>%
@@ -63,6 +45,8 @@ CollapsedSegs <- function(x) {
   return(x)
 }
 
+#' Calculate segment sizes
+#'
 #' @description Calculate segment sizes
 #' @param x Dataframe containing the following columns: chromosome, start, stop, segmented, copy_number and new_segment (indicator variable for the segment the copy_number call belongs to)
 
@@ -82,6 +66,8 @@ GetSegCounts <- function(x) {
   return(x)
 }
 
+#' Calculate median segment-level variance per sample
+#'
 #' @description Calculate median segment-level variances per sample (median absolute deviance)
 #' @param x Dataframe containing the following columns: chromosome, start, stop, segmented, and copy_number and new_segment (indicator variable for the segment the copy_number call belongs to)
 #'
@@ -95,6 +81,8 @@ MedSegVar <- function(x) {
   return(x)
 }
 
+#' Extract sample grouping
+#'
 #' @description Extract sample grouping
 #' @param x param_dat containing the following columns: sample and sample quality parameters
 #'
@@ -118,8 +106,18 @@ SampleGrouping <- function(x) {
     ))
 }
 
-#' @description Output sample quality decision ("Low" or "High" quality sample)
+#' Calculate and make a quality call for relative copy number profiles
+#'
+#' @description
+#' Function to classify the quality of relative copy number profile calls from QDNAseq or WiseCondorX
 #' @param x *QDNASeq object* containing the relative copy number calls as well as the segmented relative copy number calls
+#' @details
+#' Expects the input of a QDNAseq object containing relative copy-number calls (such as from QDNASeq or WiseCondorX). \cr
+#' Classifies relative copy number profiles as "High" or "Low" quality.
+#' @return
+#' A dataframe of sample quality decisions ("Low" or "High" quality sample)
+#'
+#' @export
 GetSampleQualityDecision <- function(x, metric = "quantile", cutoff = 0.95) {
   comb_dat <- CopySegFlat(x)
   comb_collapsed <- CollapsedSegs(comb_dat)
