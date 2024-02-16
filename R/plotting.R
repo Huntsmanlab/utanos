@@ -590,7 +590,7 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
 #' @param limits *vector* containing the limits of your colour gradient. Passed to scale_fill_gradientn
 #' @return Heatmap of relative copy number calls
 #'
-#'
+#' @export
 rCNplotProfile <- function(x, order_by = NULL, cluster = TRUE, subset = NULL, limits = c(-1, 1), breaks = c(-2.5, -1, -0.75, 0, 0.75, 1)) {
   if(isTRUE(cluster)) {
     sort_heatmap(x)
@@ -620,12 +620,15 @@ rCNplotProfile <- function(x, order_by = NULL, cluster = TRUE, subset = NULL, li
 #' Plot Relative Copy Numbers
 #'
 #' @description
-#' Just an updated version of the QDNASeq plot() method.
-#' Our version just allows for relative copy number calls from WiseCondorX.
+#' Just an updated version of the \pkg{QDNAseq} package's plot() method.
+#' This version just allows for relative copy number calls from WiseCondorX too.
 #' All else remains the same.
 #' See the <[`QDNAseq plotting`][QDNAseq::plot]> method for details.
+#' @details
+#' Supply a QDNAseq object.
 #'
-#'
+#' @importClassesFrom QDNAseq QDNAseqReadCounts QDNAseqCopyNumbers
+#' @export plot
 setMethod("plot", signature(x="QDNAseqSignals", y="missing"),
           function (x, y, main=NULL, includeReadCounts=TRUE,
                     logTransform=TRUE, scale=TRUE, sdFUN="sdDiffTrim",
@@ -703,8 +706,8 @@ setMethod("plot", signature(x="QDNAseqSignals", y="missing"),
               all.chrom <- as.character(all.chrom)
             chrom <- all.chrom[condition]
             uni.chrom <- unique(chrom)
-            uni.chrom <- as.character(str_sort(uni.chrom, numeric = TRUE))
-            chrom.num <- as.integer(factor(chrom, levels= uni.chrom, ordered=TRUE))
+            uni.chrom <- as.character(stringr::str_sort(uni.chrom, numeric = TRUE))
+            chrom.num <- as.integer(factor(chrom, levels = uni.chrom, ordered=TRUE))
             uni.chrom.num <- unique(chrom.num)
             uni.chrom.num <- sort( uni.chrom.num )
             if (!scale) {
@@ -715,13 +718,13 @@ setMethod("plot", signature(x="QDNAseqSignals", y="missing"),
               if (inherits(x, c("cghRaw", "cghSeg", "cghCall"))) {
                 chrom.lengths <- .getChromosomeLengths("GRCh37")
               } else {
-                all.chrom.lengths <- aggregate(bpend(x),
+                all.chrom.lengths <- aggregate(QDNAseq::bpend(x),
                                                by=list(chromosome=all.chrom), FUN=max)
                 chrom.lengths <- all.chrom.lengths$x
                 names(chrom.lengths) <- all.chrom.lengths$chromosome
               }
-              pos <- as.numeric(bpstart(x)[condition])
-              pos2 <- as.numeric(bpend(x)[condition])
+              pos <- as.numeric(QDNAseq::bpstart(x)[condition])
+              pos2 <- as.numeric(QDNAseq::bpend(x)[condition])
               chrom.lengths <- chrom.lengths[uni.chrom]
               chrom.ends <- integer()
               cumul <- 0
@@ -774,12 +777,12 @@ setMethod("plot", signature(x="QDNAseqSignals", y="missing"),
                 segment <- .makeSegments(segmented, chrom)
               }
               if (doCalls) {
-                losses <- probloss(x)[condition, i]
-                gains <- probgain(x)[condition, i]
-                if (!is.null(probdloss(x)))
-                  losses <- losses + probdloss(x)[condition, i]
-                if (!is.null(probamp(x)))
-                  gains <- gains + probamp(x)[condition, i]
+                losses <- CGHbase::probloss(x)[condition, i]
+                gains <- CGHbase::probgain(x)[condition, i]
+                if (!is.null(CGHbase::probdloss(x)))
+                  losses <- losses + CGHbase::probdloss(x)[condition, i]
+                if (!is.null(CGHbase::probamp(x)))
+                  gains <- gains + CGHbase::probamp(x)[condition, i]
                 par(mar=c(5, 4, 4, 4) + 0.2)
                 plot(NA, main=main[i], xlab=NA, ylab=NA, las=1,
                      xlim=c(0, max(chrom.ends)), ylim=ylim, xaxs="i", xaxt="n",
@@ -801,18 +804,18 @@ setMethod("plot", signature(x="QDNAseqSignals", y="missing"),
                      col=losscol, border=losscol)
                 if (!is.null(probdloss(x)))
                   rect(pos[segment[,2]], 0, pos2[segment[,3]],
-                       probdloss(x)[condition, i][segment[,2]],
+                       CGHbase::probdloss(x)[condition, i][segment[,2]],
                        col=delcol, border=delcol)
                 rect(pos[segment[,2]], 1, pos2[segment[,3]], 1-gains[segment[,2]],
                      col=gaincol, border=gaincol)
                 if (!is.null(probamp(x)))
                   rect(pos[segment[,2]], 1, pos2[segment[,3]],
-                       1-probamp(x)[condition, i][segment[,2]],
+                       1-CGHbase::probamp(x)[condition, i][segment[,2]],
                        col=ampcol, border=ampcol)
-                axis(3, at=pos[which(probamp(x)[condition,i] >= 0.5)],
+                axis(3, at=pos[which(CGHbase::probamp(x)[condition,i] >= 0.5)],
                      labels=FALSE, col=ampcol, col.axis="black", srt=270, las=1,
                      cex.axis=1, cex.lab=1)
-                axis(1, at=pos[which(probdloss(x)[condition,i] >= 0.5)],
+                axis(1, at=pos[which(CGHbase::probdloss(x)[condition,i] >= 0.5)],
                      labels=FALSE, col=delcol, col.axis="black", srt=270, las=1,
                      cex.axis=1, cex.lab=1)
                 box()
@@ -879,7 +882,7 @@ setMethod("plot", signature(x="QDNAseqSignals", y="missing"),
               ### number of data points
               if (showDataPoints) {
                 str <- paste(round(sum(condition) / 1000), "k x ", sep="")
-                probe <- median(bpend(x)-bpstart(x)+1)
+                probe <- median(QDNAseq::bpend(x)-QDNAseq::bpstart(x)+1)
                 if (probe < 1000) {
                   str <- paste(str, probe, " bp", sep="")
                 } else {
