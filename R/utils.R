@@ -1009,3 +1009,33 @@ GetChromosomeLengths <- function(build) {
   chromosome.lengths
 }
 
+
+#'  Split Chromosome Name
+#'
+#' @description
+#' Function to split compounded chromosome-position names into separate columns.
+#' Distinct columns for chromosome number, start, and ending positions are the result.
+#'
+#' @param x *dataframe* containing the copy number segments in long format with columns: \cr
+#' chr sample segVal
+#'
+#' @details
+#' A QDNAseq object generally contains the chromosome and position information as such: \cr
+#' chromosome:start-end.
+#' This is inconvenient for plotting and other data wrangling.
+#'
+#' @return dataframe containing three separate columns for the chromosome number, sample and segVal
+#'
+ChromosomeSplitPos <- function(x) {
+  x$position <- x$chr
+  x$chr <- str_split_fixed(x$chr, ":", n = 2)
+  x$chromosome <- x$chr[, 1]
+  x$pos <- str_split_fixed(x$chr[, 2], "-", n = 2)
+  x$start <- x$pos[, 1]
+  x$end <- x$pos[, 2]
+  x$chr <- NULL
+  x$pos <- NULL
+  x[, c("value", "start", "end")] <- lapply(x[, c("value", "start", "end")], as.numeric)
+  return(x)
+}
+
