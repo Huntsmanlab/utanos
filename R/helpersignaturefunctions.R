@@ -171,48 +171,44 @@ GetOscilation<-function(abs_profiles,chrlen)
     data.frame(out,stringsAsFactors = F)
 }
 
-GetRelativeOscilation<-function(abs_profiles,chrlen)
-{
-  out<-c()
-  samps<-GetSampNames(abs_profiles)
-  for(i in samps)
-  {
-    if(class(abs_profiles)=="QDNAseqCopyNumbers")
-    {
-      segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
-    }else
-    {
-      segTab<-abs_profiles[[i]]
-      colnames(segTab)[4]<-"segVal"
+GetRelativeOscilation <- function(abs_profiles, chrlen) {
+  out <- c()
+  samps <- GetSampNames(abs_profiles)
+  for (i in samps) {
+    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
+      segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
+    } else {
+      segTab <- abs_profiles[[i]]
+      colnames(segTab)[4] <- "segVal"
     }
-    chrs<-unique(segTab$chromosome)
-    oscCounts<-c()
-    for(c in chrs)
-    {
-      currseg<-segTab[segTab$chromosome==c,"segVal"]
+    chrs <- unique(segTab$chromosome)
+    oscCounts <- c()
+    for (c in chrs) {
+      currseg <- segTab[segTab$chromosome == c, "segVal"]
       # Rather than being rounded to integers...
       # in the relative case I round to the nearest 0.1 to determine an oscillation
       # Change to currseg$segVal from currseg in order to work with datatables (but that usually screws up more stuff)
-      currseg<-round(as.numeric(currseg),1)
-      if(length(currseg)>3)
+      # browser()
+      currseg <- RoundToNearest(as.numeric(currseg), 0.02)
+      if (length(currseg) > 3)
       {
-        prevval<-currseg[1]
-        count=0
-        for(j in 3:length(currseg))
-        {
+        prevval <- currseg[1]
+        count <- 0
+        for (j in 3:length(currseg)) {
           # Adapt the if statement to handle the decimals -> fudge factor of 0.1 on oscillation detection
-          if(between(currseg[j], prevval-0.1, prevval+0.1)&(currseg[j]!=currseg[j-1])&(prevval!=currseg[j-1]))
-          {
-            count<-count+1
-          }else{
-            oscCounts<-c(oscCounts,count)
-            count=0
+          if (dplyr::between(currseg[j], prevval - 0.02, prevval + 0.02) &
+              (currseg[j] != currseg[j - 1]) &
+              (prevval != currseg[j - 1])) {
+            count <- count + 1
+          } else {
+            oscCounts <- c(oscCounts, count)
+            count <- 0
           }
-          prevval<-currseg[j-1]
+          prevval <- currseg[j - 1]
         }
       }
     }
-    out<-rbind(out,cbind(ID=rep(i,length(oscCounts)),value=oscCounts))
+    out <- rbind(out,cbind(ID=rep(i,length(oscCounts)),value=oscCounts))
     if(length(oscCounts)==0)
     {
       out<-rbind(out,cbind(ID=i,value=0))

@@ -10,6 +10,7 @@ vignettes/*.R
 /manuscript_Rmarkdown
 /output
 /plots
+/local_scratch_work
 data/sample_data/
 data/britroc/
 data/input_copy_numbers/

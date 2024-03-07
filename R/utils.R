@@ -1008,3 +1008,8 @@ GetChromosomeLengths <- function(build) {
   chromosome.lengths
 }
 
+
+RoundToNearest <- function(value, x) {
+  rounded_value <- round(value / x) * x
+  return(rounded_value)
+}
