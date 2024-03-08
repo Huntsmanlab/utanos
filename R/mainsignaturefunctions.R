@@ -128,7 +128,9 @@ ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data 
 }
 
 #' @export
-ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1, multi_sols_data = FALSE, additional = FALSE)
+ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1,
+                                              multi_sols_data = FALSE,
+                                              extra_features = FALSE)
 {
     # get chromosome and centromere locations
     if (genome == 'hg19') {
@@ -168,13 +170,23 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1, multi_
         osCN<-GetRelativeOscilation(CN_data,chrlen)
         bpchrarm<-GetBPChromArmCounts(CN_data,centromeres,chrlen)
         changepoint<-GetRelativeChangePointCN(CN_data)
+
         if (class(multi_sols_data) == "list") {
             copynumber = GetRelativeCN(multi_sols_data)
         } else {
             copynumber<-GetRelativeCN(CN_data)
         }
-        list(segsize=segsize,bp10MB=bp10MB,osCN=osCN,bpchrarm=bpchrarm,changepoint=changepoint,copynumber=copynumber)
+
+        features <- list(segsize = segsize, bp10MB = bp10MB, osCN = osCN,
+                         bpchrarm = bpchrarm, changepoint = changepoint,
+                         copynumber = copynumber)
+
+        if (extra_features) {
+          nc50 <- GetNC50(CN_data)
+          features[["nc50"]] <- nc50
+        }
     }
+  return(features)
 }
 
 #' @export
