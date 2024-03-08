@@ -64,12 +64,12 @@ ChooseNumberSignatures<-function(sample_by_component, save_path = FALSE, outfile
     V.random <- NMF::randomize(t(sample_by_component))
     estim.r.random <- NMF::nmfEstimateRank(V.random, min_sig:max_sig, seed =seed,nrun=iter,
                                       verbose=FALSE, method=nmfalg, .opt=list(shared.memory=FALSE, paste0("p", cores) ) )
+    p <- NMF::plot(estim.r,estim.r.random,
+                   what = c("cophenetic", "dispersion","sparseness", "silhouette"),
+                   xname="Observed",yname="Randomised",main="")
 
     if (save_path != FALSE) {
       png(file = paste0(save_path, "/", outfile), width=10, height=12, units = 'in', res = 400, type = 'cairo-png' )
-      p <- NMF::plot(estim.r,estim.r.random,
-                 what = c("cophenetic", "dispersion","sparseness", "silhouette"),
-                 xname="Observed",yname="Randomised",main="")
       print(p)
       dev.off()
     }
@@ -100,7 +100,7 @@ ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data 
             } else if (i == 3) {
                 list(osCN = GetOscilation(CN_data,chrlen) )
             } else if (i == 4) {
-                list(bpchrarm = GetCentromereDistCounts(CN_data,centromeres,chrlen) )
+                list(bpchrarm = GetBPChromArmCounts(CN_data,centromeres,chrlen) )
             } else if (i == 5) {
                 list(changepoint = GetChangePointCN(CN_data) )
             } else {
@@ -116,7 +116,7 @@ ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data 
         segsize<-GetSegSize(CN_data)
         bp10MB<-GetBPNum(CN_data,chrlen)
         osCN<-GetOscilation(CN_data,chrlen)
-        bpchrarm<-GetCentromereDistCounts(CN_data,centromeres,chrlen)
+        bpchrarm<-GetBPChromArmCounts(CN_data,centromeres,chrlen)
         changepoint<-GetChangePointCN(CN_data)
         if (class(multi_sols_data) == "list") {
             copynumber = GetCN(multi_sols_data)
@@ -128,7 +128,7 @@ ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data 
 }
 
 #' @export
-ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
+ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1, multi_sols_data = FALSE, additional = FALSE)
 {
     # get chromosome and centromere locations
     if (genome == 'hg19') {
@@ -150,14 +150,14 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1, multi_
             } else if (i == 3) {
                 list(osCN = GetRelativeOscilation(CN_data,chrlen) )
             } else if (i == 4) {
-                list(bpchrarm = GetCentromereDistCounts(CN_data,centromeres,chrlen) )
+                list(bpchrarm = GetBPChromArmCounts(CN_data,centromeres,chrlen) )
             } else if (i == 5) {
-                list(changepoint = GetChangePointCN(CN_data) )
+                list(changepoint = GetRelativeChangePointCN(CN_data) )
             } else {
                 if (class(multi_sols_data) == "list") {
-                    list(copynumber = GetCN(multi_sols_data))
+                    list(copynumber = GetRelativeCN(multi_sols_data))
                 } else {
-                    list(copynumber = GetCN(CN_data))
+                    list(copynumber = GetRelativeCN(CN_data))
                 }
             }
         }
@@ -166,12 +166,12 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1, multi_
         segsize<-GetSegSize(CN_data)
         bp10MB<-GetBPNum(CN_data,chrlen)
         osCN<-GetRelativeOscilation(CN_data,chrlen)
-        bpchrarm<-GetCentromereDistCounts(CN_data,centromeres,chrlen)
-        changepoint<-GetChangePointCN(CN_data)
+        bpchrarm<-GetBPChromArmCounts(CN_data,centromeres,chrlen)
+        changepoint<-GetRelativeChangePointCN(CN_data)
         if (class(multi_sols_data) == "list") {
-            copynumber = GetCN(multi_sols_data)
+            copynumber = GetRelativeCN(multi_sols_data)
         } else {
-            copynumber<-GetCN(CN_data)
+            copynumber<-GetRelativeCN(CN_data)
         }
         list(segsize=segsize,bp10MB=bp10MB,osCN=osCN,bpchrarm=bpchrarm,changepoint=changepoint,copynumber=copynumber)
     }
