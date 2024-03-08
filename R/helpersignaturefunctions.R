@@ -202,7 +202,7 @@ GetRelativeOscilation <- function(cn_profiles, chrlen) {
   data.frame(out,stringsAsFactors = F)
 }
 
-GetCentromereDistCounts <- function(abs_profiles,centromeres,chrlen)
+GetBPChromArmCounts<-function(abs_profiles,centromeres,chrlen)
 {
     out<-c()
     samps<-GetSampNames(abs_profiles)
@@ -243,13 +243,12 @@ GetCentromereDistCounts <- function(abs_profiles,centromeres,chrlen)
                 # So we toss the NA values.
                 ndist <- ndist[!is.na(ndist)]
 
-                all_dists<-rbind(all_dists,sum(ndist>0))
-                all_dists<-rbind(all_dists,sum(ndist<=0))
+                all_dists <- rbind(all_dists, sum(ndist > 0))
+                all_dists <- rbind(all_dists, sum(ndist <= 0))
             }
         }
-        if(nrow(all_dists)>0)
-        {
-            out<-rbind(out,cbind(ID=i,ct1=all_dists[,1]))
+        if(nrow(all_dists) > 0){
+            out <- rbind(out,cbind(ID = i,value = all_dists[,1]))
         }
     }
     rownames(out)<-NULL
@@ -290,6 +289,40 @@ GetChangePointCN<-function(abs_profiles)
     data.frame(out,stringsAsFactors = F)
 }
 
+GetRelativeChangePointCN<-function(abs_profiles)
+{
+  out<-c()
+  samps<-GetSampNames(abs_profiles)
+  for(i in samps)
+  {
+    if(class(abs_profiles)=="QDNAseqCopyNumbers")
+    {
+      segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
+    }
+    else
+    {
+      segTab<-abs_profiles[[i]]
+      colnames(segTab)[4]<-"segVal"
+    }
+    segTab$segVal[as.numeric(segTab$segVal)<0]<-0
+    segTab$segVal<-log(as.numeric((segTab$segVal))) #log transform segVal for relative CN
+    chrs<-unique(segTab$chromosome)
+    allcp<-c()
+    for(c in chrs)
+    {
+      currseg<-as.numeric(segTab[segTab$chromosome==c,"segVal"])
+      allcp<-c(allcp,abs(currseg[-1]-currseg[-length(currseg)]))
+    }
+    if(length(allcp)==0)
+    {
+      allcp<-0 #if there are no changepoints
+    }
+    out<-rbind(out,cbind(ID=rep(i,length(allcp)),value=allcp))
+  }
+  rownames(out)<-NULL
+  data.frame(out,stringsAsFactors = F)
+}
+
 # The minimal number of chromosome with 50% CNV
 GetNC50 <- function(cn_profiles) {
   out <- c()
@@ -314,7 +347,6 @@ GetNC50 <- function(cn_profiles) {
   return(out)
 }
 
-
 GetCN<-function(abs_profiles)
 {
     out<-c()
@@ -336,6 +368,30 @@ GetCN<-function(abs_profiles)
     }
     rownames(out)<-NULL
     data.frame(out,stringsAsFactors = F)
+}
+
+GetRelativeCN<-function(abs_profiles)
+{
+  out<-c()
+  samps<-GetSampNames(abs_profiles)
+  for(i in samps)
+  {
+    if(class(abs_profiles)=="QDNAseqCopyNumbers")
+    {
+      segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
+    }
+    else
+    {
+      segTab<-abs_profiles[[i]]
+      colnames(segTab)[4]<-"segVal"
+    }
+    segTab$segVal[as.numeric(segTab$segVal)<0]<-0
+    segTab$segVal<-log(as.numeric((segTab$segVal))) #log transform segVal for relative CN
+    relative_cn<-as.numeric(segTab$segVal)
+    out<-rbind(out,cbind(ID=rep(i,length(relative_cn)),value=relative_cn))
+  }
+  rownames(out)<-NULL
+  data.frame(out,stringsAsFactors = F)
 }
 
 GetSampNames<-function(abs_profiles)
@@ -427,4 +483,51 @@ LowerNorm<-function(x,sig_thresh=0.01)
         }
     }
     new_x
+}
+
+GetDistsFromCentromere <- function(abs_profiles, centromeres, chrlen) {
+  out<-c()
+  samps <- GetSampNames(abs_profiles)
+  for (i in samps) {
+    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
+      segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles) == i)])
+    } else {
+      segTab<-abs_profiles[[i]]
+      colnames(segTab)[4]<-"segVal"
+    }
+    chrs<-unique(segTab$chromosome)
+    all_dists<-c()
+    for(c in chrs) {
+      if(nrow(segTab)>1) {
+        starts <- as.numeric(segTab[segTab$chromosome == c,2])[-1]
+        segstart <- as.numeric(segTab[segTab$chromosome == c,2])[1]
+        ends <- as.numeric(segTab[segTab$chromosome == c,3])
+        segend <- ends[length(ends)]
+        ends <- ends[-length(ends)]
+        centstart <- as.numeric(centromeres[substr(centromeres[,2],4,5) == c,3])
+        centend <- as.numeric(centromeres[substr(centromeres[,2],4,5) == c,4])
+        chrend <- chrlen[substr(chrlen[,1],4,5) == c,2]
+        ndist <- cbind(rep(NA,length(starts)),rep(NA,length(starts)))
+        ndist[starts <= centstart,1] <- (centstart-starts[starts<=centstart])/(centstart-segstart)*-1
+        ndist[starts >= centend,1] <- (starts[starts>=centend]-centend)/(segend-centend)
+        ndist[ends <= centstart,2] <- (centstart-ends[ends<=centstart])/(centstart-segstart)*-1
+        ndist[ends >= centend,2] <- (ends[ends>=centend]-centend)/(segend-centend)
+        ndist <- apply(ndist,1,min)
+
+        # If any segments spill over into a centromere an NA is thrown.
+        # We don't want to count these seg. ends as breakpoints nor...
+        # have later functions error out due to the presence of NA values.
+        # So we toss the NA values.
+        ndist <- ndist[!is.na(ndist)]
+        ndist <- data.frame(ndist)
+
+        all_dists <- rbind(all_dists,ndist)
+      }
+    }
+    if(nrow(all_dists) >0){
+      out <- rbind(out,cbind(ID = i, value = all_dists$ndist))
+    }
+  }
+  rownames(out)<-NULL
+  data.frame(out,stringsAsFactors = F)
 }
