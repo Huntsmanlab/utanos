@@ -95,25 +95,20 @@ GetSegSize<-function(abs_profiles)
     data.frame(out,stringsAsFactors = F)
 }
 
-GetBPNum<-function(abs_profiles,chrlen)
-{
-    out<-c()
-    samps<-GetSampNames(abs_profiles)
-    for(i in samps)
-    {
-        if(class(abs_profiles)=="QDNAseqCopyNumbers")
-        {
-            segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
-        }else
-        {
-            segTab<-abs_profiles[[i]]
-            colnames(segTab)[4]<-"segVal"
+GetBPNum<-function(abs_profiles,chrlen) {
+    out <- c()
+    samps <- GetSampNames(abs_profiles)
+    for (i in samps) {
+        if (class(abs_profiles) == "QDNAseqCopyNumbers") {
+            segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
+        } else {
+            segTab <- abs_profiles[[i]]
+            colnames(segTab)[4] <- "segVal"
         }
-        chrs<-unique(segTab$chromosome)
-        allBPnum<-c()
-        for(c in chrs)
-        {
-            currseg<-segTab[segTab$chromosome==c,]
+        chrs <- unique(segTab$chromosome)
+        allBPnum <- c()
+        for (c in chrs) {
+            currseg <- segTab[segTab$chromosome == c,]
             intervals<-seq(1,chrlen[chrlen[,1]==paste0("chr",c),2]+10000000,10000000)
             res <- hist(as.numeric(currseg$end[-nrow(currseg)]),breaks=intervals,plot=FALSE)$counts
             allBPnum<-c(allBPnum,res)
@@ -124,105 +119,91 @@ GetBPNum<-function(abs_profiles,chrlen)
     data.frame(out,stringsAsFactors = F)
 }
 
-GetOscilation<-function(abs_profiles,chrlen)
-{
-    out<-c()
-    samps<-GetSampNames(abs_profiles)
-    for(i in samps)
-    {
-        if(class(abs_profiles)=="QDNAseqCopyNumbers")
-        {
-            segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
-        }else
-        {
-            segTab<-abs_profiles[[i]]
-            colnames(segTab)[4]<-"segVal"
+GetOscilation <- function(abs_profiles, chrlen) {
+    out <- c()
+    samps <- GetSampNames(abs_profiles)
+    for (i in samps) {
+        if (class(abs_profiles) == "QDNAseqCopyNumbers") {
+            segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
+        } else {
+            segTab <- abs_profiles[[i]]
+            colnames(segTab)[4] <- "segVal"
         }
-        chrs<-unique(segTab$chromosome)
-        oscCounts<-c()
-        for(c in chrs)
-        {
-            currseg<-segTab[segTab$chromosome==c,"segVal"]
-            currseg<-round(as.numeric(currseg))                          # Change to currseg$segVal from currseg in order to work with datatables (but that usually screws up more stuff)
-            if(length(currseg)>3)
-            {
-                prevval<-currseg[1]
-                count=0
-                for(j in 3:length(currseg))
-                {
-                    if(currseg[j]==prevval&currseg[j]!=currseg[j-1])
-                    {
-                        count<-count+1
-                    }else{
-                        oscCounts<-c(oscCounts,count)
-                        count=0
+        chrs <- unique(segTab$chromosome)
+        oscCounts <- c()
+        for (c in chrs) {
+            currseg <- segTab[segTab$chromosome == c,"segVal"]
+            currseg <- round(as.numeric(currseg))                          # Change to currseg$segVal from currseg in order to work with datatables (but that usually screws up more stuff)
+            if (length(currseg) > 3) {
+                prevval <- currseg[1]
+                count = 0
+                for (j in 3:length(currseg)) {
+                    if ((currseg[j] == prevval) & (currseg[j] != currseg[j-1])) {
+                        count <- count + 1
+                    } else {
+                        oscCounts <- c(oscCounts, count)
+                        count <- 0
                     }
-                    prevval<-currseg[j-1]
+                    prevval <- currseg[j-1]
                 }
             }
         }
-        out<-rbind(out,cbind(ID=rep(i,length(oscCounts)),value=oscCounts))
-        if(length(oscCounts)==0)
-        {
-            out<-rbind(out,cbind(ID=i,value=0))
+        out <- rbind(out, cbind(ID = rep(i, length(oscCounts)),
+                                value = oscCounts))
+        if (length(oscCounts) == 0) {
+            out <- rbind(out, cbind(ID = i, value = 0))
         }
     }
-    rownames(out)<-NULL
-    data.frame(out,stringsAsFactors = F)
+    rownames(out) <- NULL
+    data.frame(out, stringsAsFactors = F)
 }
 
-GetRelativeOscilation<-function(abs_profiles,chrlen)
-{
-  out<-c()
-  samps<-GetSampNames(abs_profiles)
-  for(i in samps)
-  {
-    if(class(abs_profiles)=="QDNAseqCopyNumbers")
-    {
-      segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
-    }else
-    {
-      segTab<-abs_profiles[[i]]
-      colnames(segTab)[4]<-"segVal"
+
+GetRelativeOscilation <- function(cn_profiles, chrlen) {
+  out <- c()
+  samps <- GetSampNames(cn_profiles)
+  for (i in samps) {
+    if (class(cn_profiles) == "QDNAseqCopyNumbers") {
+      segTab <- GetSegTable(cn_profiles[, which(colnames(cn_profiles) == i)])
+    } else {
+      segTab <- cn_profiles[[i]]
+      colnames(segTab)[4] <- "segVal"
     }
-    chrs<-unique(segTab$chromosome)
-    oscCounts<-c()
-    for(c in chrs)
-    {
-      currseg<-segTab[segTab$chromosome==c,"segVal"]
-      # Rather than being rounded to integers...
-      # in the relative case I round to the nearest 0.1 to determine an oscillation
-      # Change to currseg$segVal from currseg in order to work with datatables (but that usually screws up more stuff)
-      currseg<-round(as.numeric(currseg),1)
-      if(length(currseg)>3)
-      {
-        prevval<-currseg[1]
-        count=0
-        for(j in 3:length(currseg))
-        {
+    chrs <- unique(segTab$chromosome)
+    # Rather than being rounded to integers...
+    # In the relative case we round to the nearest 0.1 to determine an oscillation
+    # Change to currseg$segVal from currseg in order to work with datatables (but that usually screws up more stuff)
+    segTab$segVal <- RoundToNearest(log(as.numeric(segTab$segVal)), 0.1)
+    oscCounts <- c()
+    for (c in chrs) {
+      currseg <- segTab[segTab$chromosome == c, "segVal"]
+      if (length(currseg) > 3) {
+        prevval <- currseg[1]
+        count <- 0
+        for (j in 3:length(currseg)) {
           # Adapt the if statement to handle the decimals -> fudge factor of 0.1 on oscillation detection
-          if(between(currseg[j], prevval-0.1, prevval+0.1)&(currseg[j]!=currseg[j-1])&(prevval!=currseg[j-1]))
-          {
-            count<-count+1
-          }else{
-            oscCounts<-c(oscCounts,count)
-            count=0
+          if (dplyr::between(currseg[j], prevval - 0.1, prevval + 0.1) &
+              (currseg[j] != currseg[j - 1]) &
+              (prevval != currseg[j - 1])) {
+            count <- count + 1
+          } else {
+            oscCounts <- c(oscCounts, count)
+            count <- 0
           }
           prevval<-currseg[j-1]
         }
       }
     }
-    out<-rbind(out,cbind(ID=rep(i,length(oscCounts)),value=oscCounts))
-    if(length(oscCounts)==0)
-    {
-      out<-rbind(out,cbind(ID=i,value=0))
+    out <- rbind(out, cbind(ID = rep(i, length(oscCounts)), value = oscCounts))
+    if (length(oscCounts) == 0) {
+      out <- rbind(out, cbind(ID = i, value = 0))
     }
   }
-  rownames(out)<-NULL
+  rownames(out) <- NULL
   data.frame(out,stringsAsFactors = F)
 }
 
-GetCentromereDistCounts<-function(abs_profiles,centromeres,chrlen)
+GetCentromereDistCounts <- function(abs_profiles,centromeres,chrlen)
 {
     out<-c()
     samps<-GetSampNames(abs_profiles)
@@ -308,6 +289,30 @@ GetChangePointCN<-function(abs_profiles)
     }
     rownames(out)<-NULL
     data.frame(out,stringsAsFactors = F)
+}
+
+# The minimal number of chromosome with 50% CNV
+GetNC50 <- function(cn_profiles) {
+  out <- c()
+  samps <- GetSampNames(cn_profiles)
+  for (i in samps) {
+    if (class(cn_profiles) == "QDNAseqCopyNumbers") {
+      segTab <- GetSegTable(cn_profiles[, which(colnames(cn_profiles) == i)])
+    } else {
+      segTab <- cn_profiles[[i]]
+      colnames(segTab)[4] <- "segVal"
+    }
+    # Count the breaks per chrom, arrange, then identify the min # needed for 50%
+    breaks_per_chrom <- as.data.frame(table(segTab$chromosome)) %>%
+                            dplyr::arrange(desc(Freq))
+    breaks_per_chrom$cumsum <- cumsum(breaks_per_chrom$Freq)
+    nc50_count <- data.frame(
+      ID = i,
+      value = sum(!breaks_per_chrom$cumsum > max(breaks_per_chrom$cumsum)/2) + 1
+      )
+    out <- rbind(out, nc50_count)
+  }
+  return(out)
 }
 
 
