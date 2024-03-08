@@ -519,6 +519,7 @@ GetDistsFromCentromere <- function(abs_profiles, centromeres, chrlen) {
         # have later functions error out due to the presence of NA values.
         # So we toss the NA values.
         ndist <- ndist[!is.na(ndist)]
+        ndist <- abs(ndist)
         ndist <- data.frame(ndist)
 
         all_dists <- rbind(all_dists,ndist)
