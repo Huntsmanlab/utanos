@@ -45,6 +45,7 @@ PlotAbsCopyNumber <- function(x, sample, sample_segments, sample_cns, output) {
 PlotSignatureExposures <- function (signatures, save_path = FALSE,
                                       obj_name = 'sig_exposures_obj',
                                       order = FALSE, transpose = FALSE) {
+  signatures <- as.data.frame(signatures) #convert to dataframe
   nsigs <- nrow(signatures)
   long_data <- tidyr::gather(signatures)
   long_data$max_sig <- rep(apply(signatures, 2, function(x) which.max(x)),

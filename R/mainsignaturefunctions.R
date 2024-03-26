@@ -157,9 +157,9 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1,
                 list(changepoint = GetRelativeChangePointCN(CN_data) )
             } else {
                 if (class(multi_sols_data) == "list") {
-                    list(copynumber = GetRelativeCN(multi_sols_data))
+                    list(relativecopynumber = GetRelativeCN(multi_sols_data))
                 } else {
-                    list(copynumber = GetRelativeCN(CN_data))
+                    list(relativecopynumber = GetRelativeCN(CN_data))
                 }
             }
         }
@@ -172,14 +172,14 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1,
         changepoint<-GetRelativeChangePointCN(CN_data)
 
         if (class(multi_sols_data) == "list") {
-            copynumber = GetRelativeCN(multi_sols_data)
+          relativecopynumber = GetRelativeCN(multi_sols_data)
         } else {
-            copynumber<-GetRelativeCN(CN_data)
+          relativecopynumber<-GetRelativeCN(CN_data)
         }
 
         features <- list(segsize = segsize, bp10MB = bp10MB, osCN = osCN,
                          bpchrarm = bpchrarm, changepoint = changepoint,
-                         copynumber = copynumber)
+                         relativecopynumber = relativecopynumber)
 
         if (extra_features) {
           nc50 <- GetNC50(CN_data)
@@ -306,3 +306,4 @@ GenerateSampleByComponentMatrix<-function(CN_features, all_components=NULL, core
     full_mat[is.na(full_mat)]<-0
     full_mat
 }
+
