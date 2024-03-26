@@ -78,7 +78,9 @@ ChooseNumberSignatures<-function(sample_by_component, save_path = FALSE, outfile
 }
 
 #' @export
-ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data = FALSE)
+ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1,
+                                    multi_sols_data = FALSE,
+                                    extra_features = FALSE)
 {
     # get chromosome and centromere locations
     if (genome == 'hg19') {
@@ -118,13 +120,23 @@ ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1, multi_sols_data 
         osCN<-GetOscilation(CN_data,chrlen)
         bpchrarm<-GetBPChromArmCounts(CN_data,centromeres,chrlen)
         changepoint<-GetChangePointCN(CN_data)
+
         if (class(multi_sols_data) == "list") {
             copynumber = GetCN(multi_sols_data)
         } else {
             copynumber<-GetCN(CN_data)
         }
-        list(segsize=segsize,bp10MB=bp10MB,osCN=osCN,bpchrarm=bpchrarm,changepoint=changepoint,copynumber=copynumber)
+
+        features <- list(segsize = segsize, bp10MB = bp10MB, osCN = osCN,
+                         bpchrarm = bpchrarm, changepoint = changepoint,
+                         copynumber = copynumber)
+
+        if (extra_features) {
+          nc50 <- GetNC50(CN_data)
+          features[["nc50"]] <- nc50
+        }
     }
+  return(features)
 }
 
 #' @export
@@ -190,18 +202,18 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1,
 }
 
 #' @export
-FitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min_prior=0.001, model_selection="BIC",
-                            nrep=1, niter=1000, cores = 1, featsToFit = seq(1, 6))
-{
+FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2, max_comp = 10,
+                           min_prior = 0.001, model_selection = "BIC",
+                            nrep = 1, niter = 1000, cores = 1, featsToFit = seq(1, 6)) {
 
-    if(cores > 1) {
+    if (cores > 1) {
         require(foreach)
 
         doMC::registerDoMC(cores)
 
         temp_list = foreach(i=1:6) %dopar% {
 
-            if(i == 1 & i %in% featsToFit ){
+            if (i == 1 & i %in% featsToFit ) {
 
                 dat<-as.numeric(CN_features[["segsize"]][,2])
                 list( segsize = FitComponent(dat,seed=seed,model_selection=model_selection,
@@ -236,7 +248,6 @@ FitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min
                 dat<-as.numeric(CN_features[["copynumber"]][,2])
                 list( copynumber = FitComponent(dat,seed=seed,model_selection=model_selection,
                     nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000) )
-
             }
 
         }
@@ -266,13 +277,21 @@ FitMixtureModels<-function(CN_features, seed=77777, min_comp=2, max_comp=10, min
         copynumber_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
                                 nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000)
 
-        list(segsize=segsize_mm,bp10MB=bp10MB_mm,osCN=osCN_mm,bpchrarm=bpchrarm_mm,changepoint=changepoint_mm,copynumber=copynumber_mm)
+        if (exists("nc50", CN_features)) {
+          dat<-as.numeric(CN_features[["nc50"]][,2])
+          nc50_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+                                    min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
+        }
+
+        list(segsize = segsize_mm, bp10MB = bp10MB_mm, osCN = osCN_mm,
+             bpchrarm = bpchrarm_mm, changepoint = changepoint_mm,
+             copynumber = copynumber_mm, nc50 = nc50_mm)
     }
 }
 
 #' @export
-GenerateSampleByComponentMatrix<-function(CN_features, all_components=NULL, cores = 1, rowIter = 1000, subcores = 2)
-{
+GenerateSampleByComponentMatrix <- function (CN_features, all_components=NULL,
+                                             cores = 1, rowIter = 1000, subcores = 2) {
     if ((class(all_components) == 'character') && (file.exists(all_components))) {
         all_components<-readRDS(file = all_components)
     } else if (class(all_components) == 'character') {
@@ -280,10 +299,10 @@ GenerateSampleByComponentMatrix<-function(CN_features, all_components=NULL, core
     } else if ((class(all_components) == 'list') && (class(all_components[[1]]) != 'flexmix')) {
         stop('Component models object not valid. Expecting list of flexmix S4 objects.')
     }
-    if(cores > 1){
+    if (cores > 1) {
         require(foreach)
 
-        feats = c( "segsize", "bp10MB", "osCN", "changepoint", "copynumber", "bpchrarm" )
+        feats = c( "segsize", "bp10MB", "osCN", "changepoint", "copynumber", "bpchrarm", "nc50" )
         doMC::registerDoMC(cores)
         full_mat = foreach(feat=feats, .combine=cbind) %dopar% {
             CalculateSumOfPosteriors(CN_features[[feat]],all_components[[feat]],
@@ -296,7 +315,8 @@ GenerateSampleByComponentMatrix<-function(CN_features, all_components=NULL, core
         CalculateSumOfPosteriors(CN_features[["osCN"]],all_components[["osCN"]],"osCN"),
         CalculateSumOfPosteriors(CN_features[["changepoint"]],all_components[["changepoint"]],"changepoint"),
         CalculateSumOfPosteriors(CN_features[["copynumber"]],all_components[["copynumber"]],"copynumber"),
-        CalculateSumOfPosteriors(CN_features[["bpchrarm"]],all_components[["bpchrarm"]],"bpchrarm"))
+        CalculateSumOfPosteriors(CN_features[["bpchrarm"]],all_components[["bpchrarm"]],"bpchrarm"),
+        CalculateSumOfPosteriors(CN_features[["nc50"]],all_components[["nc50"]],"nc50"))
     }
 
     rownames(full_mat)<-unique(CN_features[["segsize"]][,1])
