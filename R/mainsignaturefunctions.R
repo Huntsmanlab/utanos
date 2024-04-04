@@ -134,6 +134,9 @@ ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1,
         if (extra_features) {
           nc50 <- GetNC50(CN_data)
           features[["nc50"]] <- nc50
+
+          distsFromCentro <- GetDistsFromCentromere(CN_data,centromeres,chrlen)
+          features[["distsFromCentro"]] <- distsFromCentro
         }
     }
   return(features)

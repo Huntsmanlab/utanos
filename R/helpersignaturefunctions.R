@@ -532,3 +532,91 @@ GetDistsFromCentromere <- function(abs_profiles, centromeres, chrlen) {
   rownames(out)<-NULL
   data.frame(out,stringsAsFactors = F)
 }
+
+
+extract_bin_from_QDNAseq <- function (object, type = c("copynumber", "segments", "calls"), filter = TRUE,
+          logTransform = FALSE, chromosomeReplacements = c(`23` = "X",
+                                                                      `24` = "Y", `25` = "MT"), ...)
+{
+  if (inherits(object, "QDNAseqSignals")) {
+    if (filter) {
+      object <- object[fData(object)$use, ]
+    }
+    chromosome <- fData(object)$chromosome
+    start <- fData(object)$start
+    end <- fData(object)$end
+    if (inherits(object, "QDNAseqReadCounts")) {
+      if (type != "copynumber")
+        warning("Ignoring argument 'type' and returning read counts.")
+      dat <- assayDataElement(object, "counts")
+      type <- "read counts"
+    }
+    else {
+      if (type == "copynumber") {
+        dat <- assayDataElement(object, "copynumber")
+      }
+      else if (type == "segments") {
+        if (!"segmented" %in% assayDataElementNames(object))
+          stop("Segments not found, please run segmentBins() first.")
+        dat <- assayDataElement(object, "segmented")
+      }
+      else if (type == "calls") {
+        if (!"calls" %in% assayDataElementNames(object))
+          stop("Calls not found, please run callBins() first.")
+        dat <- assayDataElement(object, "calls")
+      }
+    }
+    if (logTransform && type != "calls") {
+      dat <- log2adhoc(dat)
+    }
+  }
+  else if (inherits(object, c("cghRaw", "cghSeg", "cghCall",
+                              "cghRegions"))) {
+    feature <- featureNames(object)
+    chromosome <- as.character(chromosomes(object))
+    for (chromosomeReplacement in names(chromosomeReplacements)) {
+      chromosome[chromosome == chromosomeReplacement] <- chromosomeReplacements[chromosomeReplacement]
+    }
+    start <- bpstart(object)
+    end <- bpend(object)
+    if (inherits(object, c("cghRaw", "cghSeg", "cghCall"))) {
+      if (type == "copynumber") {
+        dat <- copynumber(object)
+      }
+      else if (type == "segments") {
+        if (!"segmented" %in% assayDataElementNames(object))
+          stop("Segments not found, please run segmentData() first.")
+        dat <- segmented(object)
+      }
+      else if (type == "calls") {
+        if (!"calls" %in% assayDataElementNames(object))
+          stop("Calls not found, please run CGHcall() first.")
+        dat <- calls(object)
+      }
+    }
+    else if (inherits(object, "cghRegions")) {
+      if (type != "calls")
+        warning("Ignoring argument 'type' and returning calls.")
+      dat <- regions(object)
+    }
+  }
+  data.frame(chromosome = chromosome,
+                    start = start, end = end, dat, check.names = FALSE,
+                    stringsAsFactors = FALSE)
+}
+
+
+QDNAseq_to_seg_list <-function(abs_profiles){
+  out<-data.frame()
+  samps<-GetSampNames(abs_profiles)
+  for(i in samps)
+  {
+    segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
+    segTab$sample <- i
+    out<-rbind(out,segTab)
+  }
+  data.frame(out)
+}
+
+
+

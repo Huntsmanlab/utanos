@@ -477,16 +477,16 @@ count_components_wrapper <- function(feature_df, f_name, cn_feature_setting) {
 GetCNTally <- function(CN_data, genome = 'hg19', relative=FALSE, extra_features = FALSE){
   if(relative){
     CN_features <- ExtractRelativeCopyNumberFeatures(CN_data, genome = genome, extra_features = extra_features)
-    feature_setting <- utanos::feature_setting_default
+    feature_setting <- utanos::feature_relative_default
     if(extra_features){
-      feature_setting <- utanos::feature_setting_extra
+      feature_setting <- utanos::feature_relative_extra
     }
   }
   else{
     CN_features <- ExtractCopyNumberFeatures(CN_data, genome = genome, extra_features = extra_features)
-    feature_setting <- utanos::feature_setting_default_absoulute
+    feature_setting <- utanos::feature_absolute_default
     if(extra_features){
-      feature_setting <- utanos::feature_setting_extra_absoulute
+      feature_setting <- utanos::feature_absolute_extra
     }
   }
 
@@ -519,10 +519,10 @@ PlotCNTallySig <- function(sig_matrix, extra_features = FALSE){
 
   sig_long <-  tidyr::gather(sig_matrix, key = "signature", value = "value", -prefix, -suffix)
 
-  suffix_order <- c("0", "1", "<=2", "2", "3", "4", "5", ">5", "6", "7", "8", "9", "10",
+  suffix_order <- c("0", "1", "<=2", "2", "3", "4", ">4 & <=8","5", ">5", "6", "7", "8", ">8", "9", "10",
                     ">10 & <=20", ">20 & <=30", ">30", ">4 & <=10", ">10",
                     ">2 & <=3", ">3 & <=4", ">4 & <=5", ">5 & <=6", ">6 & <=7",
-                    ">7 & <=8", ">8", ">7", "<= -1", ">-1 & <=-0.9", ">-0.9 & <=-0.8", ">-0.8 & <=-0.7",
+                    ">7 & <=8", ">7", "<= -1", ">-1 & <=-0.9", ">-0.9 & <=-0.8", ">-0.8 & <=-0.7",
                     ">-0.7 & <=-0.6", ">-0.6 & <=-0.5", ">-0.5 & <=-0.4", ">-0.4 & <=-0.3",
                     ">-0.3 & <=-0.2", ">-0.2 & <=-0.1", ">-0.1 & <=0", "<=0", ">0 & <=0.1", ">0.1 & <=0.2",
                     ">0.2 & <=0.3", ">0.3 & <=0.4", ">0.4 & <=0.5", ">0.5 & <=0.6",
