@@ -30,47 +30,56 @@
 # source(paste(this_path,"helper_functions.R",sep="/"))
 
 #' @export
-QuantifySignatures<-function(sample_by_component, component_by_signature=NULL)
-{
-    if (class(component_by_signature) == 'character') {
-      if (file.exists(component_by_signature)) {
-        component_by_signature <- NMF::basis(readRDS(file = component_by_signature))
-      } else {
-        stop("Unable to resolve path in component_by_signature variable to a file.")
-      }
-    } else if (!(class(component_by_signature) == 'NMFfitX1')) {
-      stop("Object type not recognized, please supply an object of class 'NMFfitX1'.")
+QuantifySignatures <- function(sample_by_component,
+                               component_by_signature = NULL) {
+
+  if (class(component_by_signature) == 'character') {
+    if (file.exists(component_by_signature)) {
+      component_by_signature <- NMF::basis(readRDS(file = component_by_signature))
+    } else {
+      stop("Unable to resolve path in component_by_signature variable to a file.")
     }
-    signature_by_sample<-YAPSA::LCD(t(sample_by_component),
-                                    YAPSA:::normalize_df_per_dim(component_by_signature,2))
-    signature_by_sample<-NormaliseMatrix(signature_by_sample)
-    signature_by_sample
+  } else if (!(class(component_by_signature) == 'NMFfitX1')) {
+    stop("Object type not recognized, please supply an object of class 'NMFfitX1'.")
+  }
+  signature_by_sample <- YAPSA::LCD(t(sample_by_component),
+                                    YAPSA:::normalize_df_per_dim(component_by_signature, 2))
+  signature_by_sample <- NormaliseMatrix(signature_by_sample)
+  signature_by_sample
 }
 
 #' @export
-GenerateSignatures<-function(sample_by_component,nsig,seed=77777,nmfalg="brunet", cores=4)
-{
-    NMF::nmf(t(sample_by_component),nsig,seed=seed,nrun=1000,method=nmfalg,.opt = paste0("p", cores) )
+GenerateSignatures <- function(sample_by_component, nsig, seed = 77777,
+                               nmfalg="brunet", cores = 4) {
+    NMF::nmf(t(sample_by_component), nsig, seed = seed, nrun = 1000,
+             method = nmfalg,.opt = paste0("p", cores) )
 }
 
 #' @export
-ChooseNumberSignatures<-function(sample_by_component, save_path = FALSE, outfile="numSigs.pdf", min_sig=3, max_sig=12, iter=100, cores=4)
-{
+ChooseNumberSignatures<-function(sample_by_component, save_path = FALSE,
+                                 outfile = "numSigs.pdf", min_sig=3,
+                                 max_sig=12, iter=100, cores=4) {
 
-    nmfalg<-"brunet"
-    seed<-77777
-    estim.r <- NMF::nmfEstimateRank(t(sample_by_component), min_sig:max_sig,seed = seed,nrun=iter,
-                               verbose=FALSE, method=nmfalg, .opt=list(shared.memory=FALSE, paste0("p", cores) ) )
+    nmfalg <- "brunet"
+    seed <- 77777
+    estim.r <- NMF::nmfEstimateRank(t(sample_by_component), min_sig:max_sig,
+                                    seed = seed, nrun = iter, verbose = FALSE,
+                                    method = nmfalg,
+                                    .opt = list(shared.memory = FALSE,
+                                                paste0("p", cores)))
     V.random <- NMF::randomize(t(sample_by_component))
-    estim.r.random <- NMF::nmfEstimateRank(V.random, min_sig:max_sig, seed =seed,nrun=iter,
-                                      verbose=FALSE, method=nmfalg, .opt=list(shared.memory=FALSE, paste0("p", cores) ) )
+    estim.r.random <- NMF::nmfEstimateRank(V.random, min_sig:max_sig,
+                                           seed = seed, nrun = iter,
+                                           verbose = FALSE, method = nmfalg,
+                                           .opt = list(shared.memory = FALSE,
+                                                       paste0("p", cores)))
     p <- NMF::plot(estim.r,estim.r.random,
-                   what = c("cophenetic", "dispersion","sparseness", "silhouette"),
-                   xname="Observed",yname="Randomised",main="")
+                   what = c("cophenetic", "dispersion", "sparseness", "silhouette"),
+                   xname = "Observed", yname = "Randomised", main = "")
 
     if (save_path != FALSE) {
       png(file = paste0(save_path, "/", outfile), width=10, height=12, units = 'in', res = 400, type = 'cairo-png' )
-      print(p)
+      p
       dev.off()
     }
 
@@ -78,10 +87,9 @@ ChooseNumberSignatures<-function(sample_by_component, save_path = FALSE, outfile
 }
 
 #' @export
-ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1,
-                                    multi_sols_data = FALSE,
-                                    extra_features = FALSE)
-{
+ExtractCopyNumberFeatures <- function(CN_data, genome, cores = 1,
+                                      multi_sols_data = FALSE,
+                                      extra_features = FALSE) {
     # get chromosome and centromere locations
     if (genome == 'hg19') {
       chrlen <- as.data.frame(hg19.chrom.sizes[1:24,])
@@ -115,16 +123,16 @@ ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1,
         }
         unlist( temp_list, recursive = FALSE )
     } else {
-        segsize<-GetSegSize(CN_data)
-        bp10MB<-GetBPNum(CN_data,chrlen)
-        osCN<-GetOscilation(CN_data,chrlen)
-        bpchrarm<-GetBPChromArmCounts(CN_data,centromeres,chrlen)
-        changepoint<-GetChangePointCN(CN_data)
+        segsize <- GetSegSize(CN_data)
+        bp10MB <- GetBPNum(CN_data,chrlen)
+        osCN <- GetOscilation(CN_data,chrlen)
+        bpchrarm <- GetBPChromArmCounts(CN_data,centromeres,chrlen)
+        changepoint <- GetChangePointCN(CN_data)
 
         if (class(multi_sols_data) == "list") {
             copynumber = GetCN(multi_sols_data)
         } else {
-            copynumber<-GetCN(CN_data)
+            copynumber <- GetCN(CN_data)
         }
 
         features <- list(segsize = segsize, bp10MB = bp10MB, osCN = osCN,
@@ -133,7 +141,9 @@ ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1,
 
         if (extra_features) {
           nc50 <- GetNC50(CN_data)
+          cdist <- GetDistsFromCentromere(CN_data, centromeres, chrlen)
           features[["nc50"]] <- nc50
+          features[["cdist"]] <- cdist
         }
     }
   return(features)
@@ -142,8 +152,7 @@ ExtractCopyNumberFeatures<-function(CN_data, genome, cores = 1,
 #' @export
 ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1,
                                               multi_sols_data = FALSE,
-                                              extra_features = FALSE)
-{
+                                              extra_features = FALSE) {
     # get chromosome and centromere locations
     if (genome == 'hg19') {
       chrlen <- as.data.frame(hg19.chrom.sizes[1:24,])
@@ -177,16 +186,16 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1,
         }
         unlist( temp_list, recursive = FALSE )
     } else {
-        segsize<-GetSegSize(CN_data)
-        bp10MB<-GetBPNum(CN_data,chrlen)
-        osCN<-GetRelativeOscilation(CN_data,chrlen)
-        bpchrarm<-GetBPChromArmCounts(CN_data,centromeres,chrlen)
-        changepoint<-GetRelativeChangePointCN(CN_data)
+        segsize <- GetSegSize(CN_data)
+        bp10MB <- GetBPNum(CN_data,chrlen)
+        osCN <- GetRelativeOscilation(CN_data,chrlen)
+        bpchrarm <- GetBPChromArmCounts(CN_data, centromeres, chrlen)
+        changepoint <- GetRelativeChangePointCN(CN_data)
 
         if (class(multi_sols_data) == "list") {
-            copynumber = GetRelativeCN(multi_sols_data)
+            copynumber <- GetRelativeCN(multi_sols_data)
         } else {
-            copynumber<-GetRelativeCN(CN_data)
+            copynumber <- GetRelativeCN(CN_data)
         }
 
         features <- list(segsize = segsize, bp10MB = bp10MB, osCN = osCN,
@@ -195,102 +204,118 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data, genome, cores = 1,
 
         if (extra_features) {
           nc50 <- GetNC50(CN_data)
+          cdist <- GetDistsFromCentromere(CN_data, centromeres, chrlen)
           features[["nc50"]] <- nc50
+          features[["cdist"]] <- cdist
         }
     }
   return(features)
 }
 
 #' @export
-FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2, max_comp = 10,
-                           min_prior = 0.001, model_selection = "BIC",
-                            nrep = 1, niter = 1000, cores = 1, featsToFit = seq(1, 6)) {
+FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2,
+                             max_comp = 10, min_prior = 0.001, model_selection = "BIC",
+                             nrep = 1, niter = 1000, cores = 1, featsToFit = seq(1, 6)) {
 
-    if (cores > 1) {
-        require(foreach)
+  if (cores > 1) {
 
-        doMC::registerDoMC(cores)
+    require(foreach)
+    doMC::registerDoMC(cores)
+    temp_list = foreach(i=1:6) %dopar% {
 
-        temp_list = foreach(i=1:6) %dopar% {
+          if (i == 1 & i %in% featsToFit ) {
 
-            if (i == 1 & i %in% featsToFit ) {
+              dat<-as.numeric(CN_features[["segsize"]][,2])
+              list( segsize = FitComponent(dat,seed=seed,model_selection=model_selection,
+                  min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
-                dat<-as.numeric(CN_features[["segsize"]][,2])
-                list( segsize = FitComponent(dat,seed=seed,model_selection=model_selection,
-                    min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+          } else if (i == 2 & i %in% featsToFit ) {
 
-            } else if (i == 2 & i %in% featsToFit ) {
+              dat<-as.numeric(CN_features[["bp10MB"]][,2])
+              list( bp10MB = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+                  min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
-                dat<-as.numeric(CN_features[["bp10MB"]][,2])
-                list( bp10MB = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-                    min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+          } else if (i == 3 & i %in% featsToFit ) {
 
-            } else if (i == 3 & i %in% featsToFit ) {
+              dat<-as.numeric(CN_features[["osCN"]][,2])
+              list( osCN = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+                  min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
-                dat<-as.numeric(CN_features[["osCN"]][,2])
-                list( osCN = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-                    min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+          } else if (i == 4 & i %in% featsToFit ) {
 
-            } else if (i == 4 & i %in% featsToFit ) {
+              dat<-as.numeric(CN_features[["bpchrarm"]][,2])
+              list( bpchrarm = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+                  min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
-                dat<-as.numeric(CN_features[["bpchrarm"]][,2])
-                list( bpchrarm = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-                    min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+          } else if (i == 5 & i %in% featsToFit ) {
 
-            } else if (i == 5 & i %in% featsToFit ) {
+              dat<-as.numeric(CN_features[["changepoint"]][,2])
+              list( changepoint = FitComponent(dat,seed=seed,model_selection=model_selection,
+                  min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
-                dat<-as.numeric(CN_features[["changepoint"]][,2])
-                list( changepoint = FitComponent(dat,seed=seed,model_selection=model_selection,
-                    min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+          } else if (i == 6 & i %in% featsToFit) {
 
-            } else if (i == 6 & i %in% featsToFit) {
+              dat<-as.numeric(CN_features[["copynumber"]][,2])
+              list( copynumber = FitComponent(dat,seed=seed,model_selection=model_selection,
+                  nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000) )
+          }
+      }
+      unlist( temp_list, recursive = FALSE )
+  } else {
+      dat<-as.numeric(CN_features[["segsize"]][,2])
+      segsize_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
+                       min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
 
-                dat<-as.numeric(CN_features[["copynumber"]][,2])
-                list( copynumber = FitComponent(dat,seed=seed,model_selection=model_selection,
-                    nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000) )
-            }
-
-        }
-        unlist( temp_list, recursive = FALSE )
-    } else {
-        dat<-as.numeric(CN_features[["segsize"]][,2])
-        segsize_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
-                         min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
-
-        dat<-as.numeric(CN_features[["bp10MB"]][,2])
-        bp10MB_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-                                min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
-
-        dat<-as.numeric(CN_features[["osCN"]][,2])
-        osCN_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+      dat<-as.numeric(CN_features[["bp10MB"]][,2])
+      bp10MB_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
                               min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
 
-        dat<-as.numeric(CN_features[["bpchrarm"]][,2])
-        bpchrarm_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-                                  min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
+      dat<-as.numeric(CN_features[["osCN"]][,2])
+      osCN_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+                            min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
 
-        dat<-as.numeric(CN_features[["changepoint"]][,2])
-        changepoint_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
-                                     min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
+      dat<-as.numeric(CN_features[["bpchrarm"]][,2])
+      bpchrarm_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+                                min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
 
-        dat<-as.numeric(CN_features[["copynumber"]][,2])
-        copynumber_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
-                                nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000)
+      dat<-as.numeric(CN_features[["changepoint"]][,2])
+      changepoint_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
+                                   min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
 
-        if (exists("nc50", CN_features)) {
-          dat<-as.numeric(CN_features[["nc50"]][,2])
-          nc50_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-                                    min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
-        }
+      dat<-as.numeric(CN_features[["copynumber"]][,2])
+      copynumber_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
+                              nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000)
 
-        list(segsize = segsize_mm, bp10MB = bp10MB_mm, osCN = osCN_mm,
-             bpchrarm = bpchrarm_mm, changepoint = changepoint_mm,
-             copynumber = copynumber_mm, nc50 = nc50_mm)
-    }
+      output <- list(segsize = segsize_mm, bp10MB = bp10MB_mm, osCN = osCN_mm,
+                     bpchrarm = bpchrarm_mm, changepoint = changepoint_mm,
+                     copynumber = copynumber_mm)
+
+      if (exists("nc50", CN_features)) {
+        dat <- as.numeric(CN_features[["nc50"]][,2])
+        nc50_mm <- FitComponent(dat, seed = seed,
+                                model_selection = model_selection,
+                                min_prior = min_prior, niter = niter,
+                                nrep = nrep, min_comp = min_comp,
+                                max_comp = max_comp)
+        output[["nc50"]] <- nc50_mm
+      }
+
+      if (exists("cdist", CN_features)) {
+        dat <- as.numeric(CN_features[["cdist"]][,2])
+        cdist_mm <- FitComponent(dat, dist="pois", seed = seed,
+                                model_selection = model_selection,
+                                min_prior = min_prior, niter = niter,
+                                nrep = nrep, min_comp = min_comp,
+                                max_comp = max_comp)
+        output[["cdist"]] <- cdist_mm
+      }
+
+  }
+  return(output)
 }
 
 #' @export
-GenerateSampleByComponentMatrix <- function (CN_features, all_components=NULL,
+GenerateSampleByComponentMatrix <- function (CN_features, all_components = NULL,
                                              cores = 1, rowIter = 1000, subcores = 2) {
     if ((class(all_components) == 'character') && (file.exists(all_components))) {
         all_components<-readRDS(file = all_components)
@@ -302,24 +327,33 @@ GenerateSampleByComponentMatrix <- function (CN_features, all_components=NULL,
     if (cores > 1) {
         require(foreach)
 
-        feats = c( "segsize", "bp10MB", "osCN", "changepoint", "copynumber", "bpchrarm", "nc50" )
+        feats = c( "segsize", "bp10MB", "osCN",
+                   "changepoint", "copynumber", "bpchrarm", "nc50" )
         doMC::registerDoMC(cores)
         full_mat = foreach(feat=feats, .combine=cbind) %dopar% {
             CalculateSumOfPosteriors(CN_features[[feat]],all_components[[feat]],
                 feat, rowIter = rowIter, cores = subcores)
         }
     } else {
-        full_mat<-cbind(
-        CalculateSumOfPosteriors(CN_features[["segsize"]],all_components[["segsize"]],"segsize"),
-        CalculateSumOfPosteriors(CN_features[["bp10MB"]],all_components[["bp10MB"]],"bp10MB"),
-        CalculateSumOfPosteriors(CN_features[["osCN"]],all_components[["osCN"]],"osCN"),
-        CalculateSumOfPosteriors(CN_features[["changepoint"]],all_components[["changepoint"]],"changepoint"),
-        CalculateSumOfPosteriors(CN_features[["copynumber"]],all_components[["copynumber"]],"copynumber"),
-        CalculateSumOfPosteriors(CN_features[["bpchrarm"]],all_components[["bpchrarm"]],"bpchrarm"),
-        CalculateSumOfPosteriors(CN_features[["nc50"]],all_components[["nc50"]],"nc50"))
+        full_mat <- cbind(
+          CalculateSumOfPosteriors(CN_features[["segsize"]],all_components[["segsize"]],"segsize"),
+          CalculateSumOfPosteriors(CN_features[["bp10MB"]],all_components[["bp10MB"]],"bp10MB"),
+          CalculateSumOfPosteriors(CN_features[["osCN"]],all_components[["osCN"]],"osCN"),
+          CalculateSumOfPosteriors(CN_features[["changepoint"]],all_components[["changepoint"]],"changepoint"),
+          CalculateSumOfPosteriors(CN_features[["copynumber"]],all_components[["copynumber"]],"copynumber"),
+          CalculateSumOfPosteriors(CN_features[["bpchrarm"]],all_components[["bpchrarm"]],"bpchrarm")
+        )
+        if (exists("nc50", CN_features)) {
+          sumofpost <- CalculateSumOfPosteriors(CN_features[["nc50"]],all_components[["nc50"]],"nc50")
+          full_mat <- cbind(full_mat, sumofpost)
+        }
+        if (exists("dist", CN_features)) {
+          sumofpost <- CalculateSumOfPosteriors(CN_features[["dist"]],all_components[["dist"]],"dist")
+          full_mat <- cbind(full_mat, sumofpost)
+        }
     }
 
-    rownames(full_mat)<-unique(CN_features[["segsize"]][,1])
-    full_mat[is.na(full_mat)]<-0
+    rownames(full_mat) <- unique(CN_features[["segsize"]][,1])
+    full_mat[is.na(full_mat)] <- 0
     full_mat
 }
