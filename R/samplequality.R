@@ -124,18 +124,21 @@ GetSampleQualityDecision <- function(x, metric = "quantile", cutoff = 0.95) {
   seg_counts <- GetSegCounts(comb_collapsed)
   median_vars <- MedSegVar(comb_collapsed)
   param_dat <- merge(seg_counts, median_vars, by = "sample")
-  if(is.character(metric)) {
+
+  stopifnot(is.character(metric))
     if (metric %in% c("quantile")) {
       seg_cut <- quantile(param_dat$seg_counts, cutoff)
       med_cut <- quantile(param_dat$median_sd, cutoff)
       param_iqr_dat <- param_dat %>%
-        dplyr::mutate(decision = ifelse((seg_counts > seg_cut) | (median_sd > med_cut), "Low", "High"))
+        dplyr::mutate(decision = ifelse((seg_counts > seg_cut) | (median_sd > med_cut), "Low", "High"),
+                      seg_cut = seg_cut,
+                      med_cut = med_cut)
       # param_iqr_dat <- param_dat %>%
       #   dplyr::mutate(decision = ifelse(seg_counts > seg_cut & median_sd > med_cut, "Low", "High"))
       return(param_iqr_dat)
     } else {
       if(metric %in% c("DecisionTree")) {
-        iso = solitude::isolationForest$new()
+        iso = solitude::isolationForest$new(sample_size = nrow(param_dat) - 1)
         iso$fit(param_dat[, c(2, 3)])
         scores_train = param_dat %>%
           iso$predict() %>%
@@ -149,5 +152,4 @@ GetSampleQualityDecision <- function(x, metric = "quantile", cutoff = 0.95) {
         return(param_iso_dat)
       }
     }
-  }
 }
