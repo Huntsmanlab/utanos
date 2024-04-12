@@ -1013,3 +1013,35 @@ AddGenesToPlot <- function(plot, genes, edb = EnsDb.Hsapiens.v75, ...) {
   return(plot)
 }
 
+
+#' Plot sample quality according to a specified metric.
+#'
+#' @param sample_quality_df The sample quality data-frame returned by GetSampleQualityDecision().
+#' @param metric The quality metric passed to GetSampleQualityDecision(). One of quanitle, or DecisionTree.
+#'
+#' @return A ggplot object of the quality plot.
+#' @export
+QualityPlot <- function(sample_quality_df, metric = "quantile") {
+
+  stopifnot(is.character(metric))
+
+  if (metric == "quantile") {
+    quality_plot <- ggplot2::ggplot(data = sample_quality_df, mapping = ggplot2::aes(x = seg_counts, y = median_sd, colour = decision)) +
+      ggplot2::geom_point() +
+      ggplot2::labs(x = "Segment count", y = "Median segment SD", title = "Sample quality via quantile") +
+      ggplot2::scale_colour_discrete(name = "Quality decision") +
+      ggplot2::geom_vline(xintercept = sample_quality_df$seg_cut[1], linetype = "dashed", colour = "red", size = 0.5) +
+      ggplot2::geom_hline(yintercept = sample_quality_df$med_cut[1], linetype = "dashed", colour = "red", size = 0.5) +
+      ggplot2::theme_bw()
+  }
+
+  else if (metric == "DecisionTree") {
+    quality_plot <- ggplot2::ggplot(data = sample_quality_df, mapping = ggplot2::aes(x = seg_counts, y = median_sd, colour = decision)) +
+      ggplot2::geom_point() +
+      ggplot2::labs(x = "Segment count", y = "Median segment SD", title = "Sample quality via decision tree") +
+      ggplot2::scale_colour_discrete(name = "Quality decision") +
+      ggplot2::theme_bw()
+  }
+
+  return(quality_plot)
+}
