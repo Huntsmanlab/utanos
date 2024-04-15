@@ -458,12 +458,30 @@ SegmentsToCopyNumber <- function(segs, bin_size,
                                  genome = 'hg19', Xincluded = FALSE) {
 
   # Stop execution if we don't have the required input
-  stopifnot(is.list(segs))
-  stopifnot(length(segs) != 0)
-  stopifnot("chromosome" %in% names(segs[[1]]))
-  stopifnot("start" %in% names(segs[[1]]), is.numeric(segs[[1]]$start))
-  stopifnot("end" %in% names(segs[[1]]), is.numeric(segs[[1]]$end))
-  stopifnot("segVal" %in% names(segs[[1]]), is.numeric(segs[[1]]$segVal))
+  if (is.list(segs) && !is.data.frame(segs)) {
+    stopifnot(length(segs) != 0)
+    stopifnot("chromosome" %in% names(segs[[1]]))
+    stopifnot("start" %in% names(segs[[1]]), is.numeric(segs[[1]]$start))
+    stopifnot("end" %in% names(segs[[1]]), is.numeric(segs[[1]]$end))
+    stopifnot("segVal" %in% names(segs[[1]]), is.numeric(segs[[1]]$segVal))
+  } else if (is.data.frame(segs)) {
+    stopifnot(dim(segs)[1] != 0)
+    stopifnot("sample" %in% colnames(segs))
+    stopifnot("chromosome" %in% colnames(segs))
+    stopifnot("start" %in% colnames(segs), is.numeric(segs$start))
+    stopifnot("end" %in% colnames(segs), is.numeric(segs$end))
+    stopifnot("segVal" %in% colnames(segs), is.numeric(segs$segVal))
+    segslist <- list()
+    for (samplename in unique(segs$sample)) {
+      tempvar <- segs %>% dplyr::filter(sample == samplename) %>%
+                    dplyr::select(-sample)
+      segslist[[samplename]] <- as.data.frame(tempvar)
+    }
+    segs <- segslist
+  } else {
+    stop("Please provide either a list of dataframes or a single dataframe of
+         copy-numbers on which to perform this transformation.")
+  }
 
   # Create template binned genome
   chroms <- GetBinnedChromosomes(genome, Xincluded, bin_size)
@@ -495,7 +513,8 @@ SegmentsToCopyNumber <- function(segs, bin_size,
     per_bin_copy_numbers$sample_id <- name
     out <- rbind(out, per_bin_copy_numbers)
   }
-  names(out) <- c("chromosome", "start", "end", "state", "sample_id")
+
+  names(out) <- c("chromosome", "start", "end", "segmented", "sample_id")
   return(out)
 }
 
@@ -1028,14 +1047,112 @@ GetChromosomeLengths <- function(build) {
 #'
 ChromosomeSplitPos <- function(x) {
   x$position <- x$chr
-  x$chr <- str_split_fixed(x$chr, ":", n = 2)
+  x$chr <- stringr::str_split_fixed(x$chr, ":", n = 2)
   x$chromosome <- x$chr[, 1]
-  x$pos <- str_split_fixed(x$chr[, 2], "-", n = 2)
+  x$pos <- stringr::str_split_fixed(x$chr[, 2], "-", n = 2)
   x$start <- x$pos[, 1]
   x$end <- x$pos[, 2]
   x$chr <- NULL
   x$pos <- NULL
   x[, c("value", "start", "end")] <- lapply(x[, c("value", "start", "end")], as.numeric)
   return(x)
+}
+
+
+#'  Export the CN bins of a QDNAseq Object to a wide dataframe
+#'
+#' @description
+#' Function to export the bins of a QDNAseq object to a wide dataframe.
+#' Can be any of the "copynumber", "segments", or "calls" slots.
+#' Unlike the similar function 'exportBins' in the QDNAseq package it does not log-normalize.
+#'
+#' @param object *QDNAseq Object* containing the copy number segments in long format with columns: \cr
+#' chr sample segVal
+#' @param type *character* Type of data to export, options are "copynumber" (corrected or uncorrected read counts), "segments", or "calls".
+#' @param filter *logical* If @TRUE, bins are filtered, otherwise not.
+#' @param digits *numeric* The number of digits to round to.
+#' @param chromosomeReplacements *named char vector* A named character vector of chromosome name replacements to be done.
+#' Only used when `object` is of class: \cr
+#' `cghRaw`, `cghSeg`, `cghCall`, or `cghRegions`, \cr
+#' since these classes store chromosome names as integers, whereas all QDNAseq object types use character vectors.
+#' Defaults to `c("23"="X", "24"="Y", "25"="MT")` for human.
+#'
+#' @return A wide dataframe containing a column for each sample as well as 4 additional columns: \cr
+#' `feature, chromosome, start, end`
+#'
+#' @export
+ExportBinsQDNAObj <- function(object,
+                              type=c("copynumber", "segments", "calls"),
+                              filter=TRUE, digits=3,
+                              chromosomeReplacements=c("23"="X", "24"="Y", "25"="MT"), ...) {
+
+  type <- match.arg(type)
+
+  if (inherits(object, "QDNAseqSignals")) {
+    if (filter) {
+      object <- object[binsToUse(object), ]
+    }
+    feature <- featureNames(object)
+    chromosome <- fData(object)$chromosome
+    start <- fData(object)$start
+    end <- fData(object)$end
+    if (inherits(object, "QDNAseqReadCounts")) {
+      if (type != "copynumber")
+        warning("Ignoring argument 'type' and returning read counts.")
+      dat <- assayDataElement(object, "counts")
+      type <- "read counts"
+    } else {
+      if (type == "copynumber") {
+        dat <- assayDataElement(object, "copynumber")
+      } else if (type == "segments") {
+        if (!"segmented" %in% assayDataElementNames(object))
+          stop("Segments not found, please run segmentBins() first.")
+        dat <- assayDataElement(object, "segmented")
+      } else if (type == "calls") {
+        if (!"calls" %in% assayDataElementNames(object))
+          stop("Calls not found, please run callBins() first.")
+        dat <- assayDataElement(object, "calls")
+      }
+    }
+  } else if (inherits(object, c("cghRaw", "cghSeg", "cghCall",
+                                "cghRegions"))) {
+
+    feature <- featureNames(object)
+    chromosome <- as.character(chromosomes(object))
+    for (chromosomeReplacement in names(chromosomeReplacements)) {
+      chromosome[chromosome == chromosomeReplacement] <-
+        chromosomeReplacements[chromosomeReplacement]
+    }
+    start <- bpstart(object)
+    end <- bpend(object)
+    if (inherits(object, c("cghRaw", "cghSeg", "cghCall"))) {
+      if (type == "copynumber") {
+        dat <- copynumber(object)
+      } else if (type == "segments") {
+        if (!"segmented" %in% assayDataElementNames(object))
+          stop("Segments not found, please run segmentData() first.")
+        dat <- segmented(object)
+      } else if (type == "calls") {
+        if (!"calls" %in% assayDataElementNames(object))
+          stop("Calls not found, please run CGHcall() first.")
+        dat <- calls(object)
+      }
+    } else if (inherits(object, "cghRegions")) {
+      if (type != "calls")
+        warning("Ignoring argument 'type' and returning calls.")
+      dat <- regions(object)
+    }
+  }
+
+  if (is.numeric(digits)) {
+    dat <- round(dat, digits=digits)
+  }
+  oopts2 <- options(scipen=15)
+  on.exit(options(oopts2))
+
+  out <- data.frame(feature=feature, chromosome=chromosome, start=start,
+                    end=end, dat, check.names=FALSE, stringsAsFactors=FALSE)
+
+  return(out)
 }
 
