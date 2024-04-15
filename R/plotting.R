@@ -585,35 +585,71 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
 #' @details Visualizing relative copy number calls from WiseCondorX and QDNASeq as heatmaps
 #' @param x *dataframe* containing the copy number segments in long format: columns should be start, sample id (named sample) and segmented
 #' @param order_by optional *character vector* containing the order the samples in the heatmap should be in
-#' @param order_by optional *character vector* to plot a subset of samples
+#' @param cluster optional *logical* Do you want to do a row-wise sort of the  heatmap (sort the samples)
+#' @param subset optional *character vector* A subset of samples that you'd like to plot.
 #' @param breaks *vector* containing the limits of your colour gradient. Passed to scale_fill_gradientn
 #' @param limits *vector* containing the limits of your colour gradient. Passed to scale_fill_gradientn
 #' @return Heatmap of relative copy number calls
 #'
 #' @export
-rCNplotProfile <- function(x, order_by = NULL, cluster = TRUE, subset = NULL, limits = c(-1, 1), breaks = c(-2.5, -1, -0.75, 0, 0.75, 1)) {
-  if(isTRUE(cluster)) {
-    sort_heatmap(x)
+RCNDiversityPlot <- function(qdnaseq_obj, order_by = NULL, cluster = TRUE,
+                             subset = NULL,
+                             Xchr = FALSE,
+                             limits = c(-1.5, 1.5),
+                             breaks = c( 2.5, 1, 0.5, 0, -0.5, -1, -2.5)) {
+
+  # Extract and re-shape data
+  wide_binwise_segments <- ExportBinsQDNAObj(qdnaseq_obj, type = 'segments',
+                                             filter = FALSE)
+  long_segs <- wide_binwise_segments %>%
+                        tidyr::gather(sample, segmented,
+                                      5:dim(.)[2], factor_key=TRUE)
+  segments <- CopyNumberSegments(long_segs) %>%
+                    dplyr::select(sample, chromosome, start, end, copy_number) %>%
+                    dplyr::rename(segVal = copy_number)
+  long_segs <- SegmentsToCopyNumber(segments, 1000000,
+                                    genome = 'hg19',
+                                    Xincluded = Xchr)
+
+  if (isTRUE(cluster)) {
+    SortHeatmap(long_segs)
   }
-  if(sum(is.na(x) > 0)) {
-    x <- na.omit(x)
-    warning("Removed NA values")
+  if (sum(is.na(long_segs) > 0)) {
+    long_segs <- na.omit(long_segs)
+    warning("Bins with NA values removed. May or may not be an issue. Up to the user.")
   }
-  if(!is.empty(order_by)) {
-    x$sample<- factor(x$sample, level = order)
+  if (!is.null(order_by)) {
+    long_segs$sample <- factor(long_segs$sample_id,
+                                           level = order_by)
   }
-  if(!is.empty(subset)) {
-    x <- x %>%
-      filter(sample_id %in% subset)
+  if (!is.null(subset)) {
+    long_segs <- long_segs %>% filter(sample_id %in% subset)
   }
 
-  p <- ggplot(x, aes(start, sample, fill = segmented)) +
-    geom_tile() +
-    facet_grid(~ chromosome, scales = "free", space = "free", switch = "x") +
-    scale_x_continuous(expand = c(0, 0), breaks = NULL) +
-    theme(panel.spacing = unit(0.1, "lines")) +
-    scale_fill_gradientn(colours = c( "blue", "grey", "red"), breaks = breaks, limits = limits) +
-    theme_bw() + guides(fill = guide_legend(override.aes = list(size = 5))) + labs(fill = "Relative Copy Number")
+  long_segs$segmented <- log2(long_segs$segmented)
+  long_segs <- long_segs[!(long_segs$chromosome == 'Y'), ]
+  long_segs$chromosome <- factor(long_segs$chromosome,
+                                 level = c('1', '2', '3', '4', '5', '6',
+                                           '7', '8', '9', '10', '11', '12',
+                                           '13', '14', '15', '16', '17',
+                                           '18', '19', '20', '21', '22',
+                                           'X'))
+
+  p <- ggplot(long_segs, aes(start, sample_id, fill = segmented)) +
+          geom_tile() +
+          facet_grid(~ chromosome, scales = "free",
+                     space = "free", switch = "x") +
+          scale_x_continuous(expand = c(0, 0), breaks = NULL) +
+          theme(panel.spacing = unit(0.05, "lines")) +
+          scale_fill_gradientn(colours = c( "blue", "grey", "red"),
+                               breaks = breaks,
+                               limits = limits) +
+          theme_bw() +
+          guides(fill = guide_legend(override.aes = list(size = 5))) +
+          labs(fill = "Relative Copy Number") +
+          xlab('chromosomes') +
+          ylab('samples')
+
   return(p)
 }
 
