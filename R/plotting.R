@@ -1,8 +1,12 @@
 # This is a script containing plotting functions for shallow WGS analysis
 # January 18th, 2022
 
-
-PlotAbsCopyNumber <- function(x, sample, sample_segments, sample_cns, output) {
+#' Plot Absolute Copy-Number Segments
+#'
+#'
+#'
+#' @export
+ACNSegmentsPlot <- function(x, sample, sample_segments, sample_cns, output) {
   ploidy <- as.numeric(x["ploidy"])
   cellularity <- as.numeric(x["cellularity"])
   chr_order <- c(as.character(1:22), 'X')
@@ -612,15 +616,17 @@ RCNDiversityPlot <- function(qdnaseq_obj, order_by = NULL, cluster = TRUE,
                                     Xincluded = Xchr)
 
   if (isTRUE(cluster)) {
-    SortHeatmap(long_segs)
+    colnames(long_segs) <- c("chromosome", "start", "end", "state", "sample_id")
+    long_segs <- SortHeatmap(long_segs)
+    colnames(long_segs) <- c("chromosome", "start", "end", "segmented", "sample_id", "pos")
   }
   if (sum(is.na(long_segs) > 0)) {
     long_segs <- na.omit(long_segs)
     warning("Bins with NA values removed. May or may not be an issue. Up to the user.")
   }
   if (!is.null(order_by)) {
-    long_segs$sample <- factor(long_segs$sample_id,
-                                           level = order_by)
+    long_segs$sample_id <- factor(long_segs$sample_id,
+                                           levels = order_by)
   }
   if (!is.null(subset)) {
     long_segs <- long_segs %>% filter(sample_id %in% subset)
@@ -995,9 +1001,9 @@ RelToAbsSegPos <- function(chromosomes, rel_start_pos, rel_end_pos, build = "GRC
 #' @seealso [ggrepel::geom_label_repel()] for supported arguments that alter the visual display of the labels.
 #'
 #' @export
-AddGenesToPlot <- function(plot, genes, edb = EnsDb.Hsapiens.v75, ...) {
+AddGenesToPlot <- function(plot, genes, edb = EnsDb.Hsapiens.v75::EnsDb.Hsapiens.v75, ...) {
   # Get the locations of the genes we are interested in.
-  genes_ens <- as.data.frame(genes(edb, filter = ~ gene_name %in% genes, return.type = "DataFrame"))
+  genes_ens <- as.data.frame(ensembldb::genes(edb, filter = ~ gene_name %in% genes, return.type = "DataFrame"))
 
   # We will bin the genes by their midpoint.
   genes_ens <- genes_ens %>%
