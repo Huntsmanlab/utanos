@@ -9,6 +9,7 @@ RCNDiversityPlot(
   order_by = NULL,
   cluster = TRUE,
   subset = NULL,
+  Xchr = FALSE,
   limits = c(-1.5, 1.5),
   breaks = c(2.5, 1, 0.5, 0, -0.5, -1, -2.5)
 )
