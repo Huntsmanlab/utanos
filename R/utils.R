@@ -547,22 +547,19 @@ StringToGRanges <- function(regions, sep = c("-", "-"), ...) {
   # https://github.com/timoast/signac/blob/master/R/utilities.R
   ranges.df <- data.frame(ranges = regions)
   ranges.df <- tidyr::separate(
-    data = ranges.df,
-    col = "ranges",
-    sep = paste0(sep[[1]], "|", sep[[2]]),
-    into = c("chr", "start", "end")
-  )
+                      data = ranges.df,
+                      col = "ranges",
+                      sep = paste0(sep[[1]], "|", sep[[2]]),
+                      into = c("chr", "start", "end"))
   granges <- GenomicRanges::makeGRangesFromDataFrame(df = ranges.df, ...)
   return(granges)
 }
 
 #' @export
-GetGRangesFromEnsDb <- function(
-    ensdb,
-    standard.chromosomes = TRUE,
-    biotypes = c(ensembldb::listGenebiotypes(ensdb)),
-    verbose = TRUE
-) {
+GetGRangesFromEnsDb <- function (ensdb,
+                                 standard.chromosomes = TRUE,
+                                 biotypes = c(ensembldb::listGenebiotypes(ensdb)),
+                                 verbose = TRUE) {
   # Code taken from Signac
   # https://github.com/timoast/signac/blob/master/R/utilities.R
   if (!requireNamespace("biovizBase", quietly = TRUE)) {
@@ -1028,6 +1025,7 @@ GetChromosomeLengths <- function(build) {
   chromosome.lengths
 }
 
+
 #'  Split Chromosome Name
 #'
 #' @description
@@ -1153,4 +1151,9 @@ ExportBinsQDNAObj <- function(object,
                     end=end, dat, check.names=FALSE, stringsAsFactors=FALSE)
 
   return(out)
+}
+
+RoundToNearest <- function(value, x) {
+  rounded_value <- round(value / x) * x
+  return(rounded_value)
 }

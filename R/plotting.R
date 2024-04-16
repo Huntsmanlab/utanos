@@ -1045,3 +1045,4 @@ QualityPlot <- function(sample_quality_df, metric = "quantile") {
 
   return(quality_plot)
 }
+
