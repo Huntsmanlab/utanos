@@ -10,6 +10,8 @@
 
 
 
+#' Make a two-way scatterplot of two CN-features
+#'
 #' @description
 #'
 #' This function makes a two-way scatterplot of two CN-features.
