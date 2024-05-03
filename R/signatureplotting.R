@@ -7,6 +7,7 @@
 # MixtureModelPlots
 # GaussiansMixturePlot
 # PoissonsMixturePlot
+# WassDistancePlot
 
 
 
@@ -263,4 +264,92 @@ PoissonsMixturePlot <- function(signatures, components,
                                   fill = cbPalette[i], alpha = shading[i])
   }
   return(main_plot)
+}
+
+
+#' Plot a Heatmap of Component-wise Wasserstein Distances
+#'
+#' @description
+#'
+#' This function calculates and builds a heatmap of component-wise wasserstein distances between two mixture models. \cr
+#' Also known as calculating the 'Earth Mover's Distance'.
+#' A CN-feature is indicated by the user using the "component" parameter for this function.
+#' The mixture models for this feature in each set of component models are then pulled out and compared.
+#' In short, for each component in each mixture model indicated, a distance will be calculated.
+#'
+#' @param cm_a A list of S4 objects each of class 'flexmix'. Likely the output from the FitMixtureModels function.
+#' @param cm_b A list of S4 objects each of class 'flexmix'. Likely the output from the FitMixtureModels function.
+#' @param component Which CN-feature models to compare to one another. (options: segsize, copynumber, bp10MB, osCN, bpchrarm)
+#' @returns A *list*. One ggplot and its corresponding matrix.
+#'
+#'
+#' @export
+WassDistancePlot <- function(cm_a, cm_b, component) {
+
+  # Pull component parameters out of the mixture model
+  x <- flexmix::parameters(cm_a[[component]])
+  y <- flexmix::parameters(cm_b[[component]])
+
+  # Calculate Wasserstein distances
+  if (cm_a[[component]]@call$model == "flexmix::FLXMCnorm1()" &&
+      cm_b[[component]]@call$model == "flexmix::FLXMCnorm1()") {
+
+    x <- as.data.frame(x)
+    x <- x[, order(apply(x, 2, function(a) a[1]))]
+    y <- as.data.frame(y)
+    y <- y[, order(apply(y, 2, function(a) a[1]))]
+    dist_matrix <- matrix(0, nrow = ncol(x), ncol = ncol(y))
+    for (i in 1:ncol(x)) {
+      for (j in 1:ncol(y)) {
+        x_n <- rnorm(10000,x[1,i], x[2,i])
+        y_n <- rnorm(10000,y[1,j], y[2,j])
+        dist_matrix[i, j] <- waddR::wasserstein_metric(x_n, y_n)
+      }
+    }
+    dist_df <- expand.grid(x = 1:dim(x)[2], y = 1:dim(y)[2])
+
+  } else if (cm_a[[component]]@call$model == "flexmix::FLXMCmvpois()" &&
+             cm_b[[component]]@call$model == "flexmix::FLXMCmvpois()") {
+
+    x <- as.data.frame(t(x))
+    x <- x[, order(apply(x, 2, function(a) a[1]))]
+    y <- as.data.frame(t(y))
+    y <- y[, order(apply(y, 2, function(a) a[1]))]
+    dist_matrix <- matrix(0, nrow = length(x), ncol = length(y))
+    for (i in 1:length(x)) {
+      for (j in 1:length(y)) {
+        x_n <- rpois(10000,x[1,i])
+        y_n <- rpois(10000,y[1,j])
+        dist_matrix[i, j] <- waddR::wasserstein_metric(x_n, y_n)
+      }
+    }
+    dist_df <- expand.grid(x = 1:length(x), y = 1:length(y))
+
+  } else {
+    stop("Unsuported mixture model(s) used.
+       Please use either normals OR poissons ('flexmix::FLXMCnorm1()' or 'flexmix::FLXMCmvpois()')")
+  }
+
+  # Build Heatmap
+  dist_df$value <- as.vector(dist_matrix)
+  dist_df$value <- (dist_df$value - min(dist_df$value)) / (max(dist_df$value) - min(dist_df$value))
+  dist_df$value <- -(dist_df$value - 0.5) + 0.5
+  dist_df$x <- paste0("c.", as.character(dist_df$x))
+  dist_df$y <- paste0("c.", as.character(dist_df$y))
+  dist_df$x <- factor(dist_df$x, levels = unique(dist_df$x))
+  dist_df$y <- factor(dist_df$y, levels = unique(dist_df$y))
+
+  p1 <- ggplot2::ggplot(dist_df, ggplot2::aes(x = x, y = y, fill = value)) +
+    ggplot2::geom_tile() +
+    viridis::scale_fill_viridis(option = "B",
+                                name = "Similarity",
+                                breaks = seq(0, 1, by = 0.2),
+                                labels = c("", "Low", "", "", "High", "")) +
+    ggplot2::labs(title = paste0("Heatmap of ",
+                                 component,
+                                 " component-wise wasserstein distance"),
+                  x = "A - components", y = "B - components")
+
+  return(list(plot = p1,
+              matrix = dist_matrix))
 }
