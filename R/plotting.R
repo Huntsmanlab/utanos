@@ -1,8 +1,12 @@
 # This is a script containing plotting functions for shallow WGS analysis
 # January 18th, 2022
 
-
-PlotAbsCopyNumber <- function(x, sample, sample_segments, sample_cns, output) {
+#' Plot Absolute Copy-Number Segments
+#'
+#'
+#'
+#' @export
+ACNSegmentsPlot <- function(x, sample, sample_segments, sample_cns, output) {
   ploidy <- as.numeric(x["ploidy"])
   cellularity <- as.numeric(x["cellularity"])
   chr_order <- c(as.character(1:22), 'X')
@@ -579,6 +583,364 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
   mtext(paste0(masks, '  |  ', nsamps), side=3, line=0, adj=1)
 }
 
+
+#' Plot relative CN diversity heatmap
+#'
+#' @description Function to plot the copy number profile from relative copy numbers
+#' @details Visualizing relative copy number calls from WiseCondorX and QDNASeq as heatmaps
+#' @param x *dataframe* containing the copy number segments in long format: columns should be start, sample id (named sample) and segmented
+#' @param order_by optional *character vector* containing the order the samples in the heatmap should be in
+#' @param cluster optional *logical* Do you want to do a row-wise sort of the  heatmap (sort the samples)
+#' @param subset optional *character vector* A subset of samples that you'd like to plot.
+#' @param breaks *vector* containing the limits of your colour gradient. Passed to scale_fill_gradientn
+#' @param limits *vector* containing the limits of your colour gradient. Passed to scale_fill_gradientn
+#' @return Heatmap of relative copy number calls
+#'
+#' @export
+RCNDiversityPlot <- function(qdnaseq_obj, order_by = NULL, cluster = TRUE,
+                             subset = NULL,
+                             Xchr = FALSE,
+                             limits = c(-1.5, 1.5),
+                             breaks = c( 2.5, 1, 0.5, 0, -0.5, -1, -2.5)) {
+
+  # Extract and re-shape data
+  wide_binwise_segments <- ExportBinsQDNAObj(qdnaseq_obj, type = 'segments',
+                                             filter = FALSE)
+  long_segs <- wide_binwise_segments %>%
+                        tidyr::gather(sample, segmented,
+                                      5:dim(.)[2], factor_key=TRUE)
+  segments <- CopyNumberSegments(long_segs) %>%
+                    dplyr::select(sample, chromosome, start, end, copy_number) %>%
+                    dplyr::rename(segVal = copy_number)
+  long_segs <- SegmentsToCopyNumber(segments, 1000000,
+                                    genome = 'hg19',
+                                    Xincluded = Xchr)
+
+  if (isTRUE(cluster)) {
+    colnames(long_segs) <- c("chromosome", "start", "end", "state", "sample_id")
+    long_segs <- SortHeatmap(long_segs)
+    colnames(long_segs) <- c("chromosome", "start", "end", "segmented", "sample_id", "pos")
+  }
+  if (sum(is.na(long_segs) > 0)) {
+    long_segs <- na.omit(long_segs)
+    warning("Bins with NA values removed. May or may not be an issue. Up to the user.")
+  }
+  if (!is.null(order_by)) {
+    long_segs$sample_id <- factor(long_segs$sample_id,
+                                           levels = order_by)
+  }
+  if (!is.null(subset)) {
+    long_segs <- long_segs %>% filter(sample_id %in% subset)
+  }
+
+  long_segs$segmented <- log2(long_segs$segmented)
+  long_segs <- long_segs[!(long_segs$chromosome == 'Y'), ]
+  long_segs$chromosome <- factor(long_segs$chromosome,
+                                 level = c('1', '2', '3', '4', '5', '6',
+                                           '7', '8', '9', '10', '11', '12',
+                                           '13', '14', '15', '16', '17',
+                                           '18', '19', '20', '21', '22',
+                                           'X'))
+
+  p <- ggplot(long_segs, aes(start, sample_id, fill = segmented)) +
+          geom_tile() +
+          facet_grid(~ chromosome, scales = "free",
+                     space = "free", switch = "x") +
+          scale_x_continuous(expand = c(0, 0), breaks = NULL) +
+          theme(panel.spacing = unit(0.05, "lines")) +
+          scale_fill_gradientn(colours = c( "blue", "grey", "red"),
+                               breaks = breaks,
+                               limits = limits) +
+          theme_bw() +
+          guides(fill = guide_legend(override.aes = list(size = 5))) +
+          labs(fill = "Relative Copy Number") +
+          xlab('chromosomes') +
+          ylab('samples')
+
+  return(p)
+}
+
+#' Plot Relative Copy Numbers
+#'
+#' @description
+#' Just an updated version of the \pkg{QDNAseq} package's plot() method.
+#' This version just allows for relative copy number calls from WiseCondorX too.
+#' All else remains the same.
+#' See the <[`QDNAseq plotting`][QDNAseq::plot]> method for details.
+#' @details
+#' Supply a QDNAseq object.
+#'
+#' @export
+RelativeCNSegmentsPlot <- function (x, main=NULL, includeReadCounts=TRUE,
+                            logTransform=TRUE, scale=TRUE, sdFUN="sdDiffTrim",
+                            delcol=getOption("QDNAseq::delcol", "darkred"),
+                            losscol=getOption("QDNAseq::losscol", "red"),
+                            gaincol=getOption("QDNAseq::gaincol", "blue"),
+                            ampcol=getOption("QDNAseq::ampcol", "darkblue"),
+                            pointcol=getOption("QDNAseq::pointcol", "black"),
+                            segcol=getOption("QDNAseq::segcol", "chocolate"),
+                            misscol=getOption("QDNAseq::misscol", NA),
+                            pointpch=getOption("QDNAseq::pointpch", 1L),
+                            pointcex=getOption("QDNAseq::pointcex", 0.1),
+                            xlab=NULL, ylab=NULL, ylim=NULL, xaxt="s", yaxp=NULL,
+                            showDataPoints=TRUE, showSD=TRUE, doSegments=TRUE,
+                            doCalls=TRUE, ...,
+                            verbose=getOption("QDNAseq::verbose", TRUE)) {
+
+  oopts <- options("QDNAseq::verbose"=verbose)
+  on.exit(options(oopts))
+
+  ## Import private functions
+  ns <- asNamespace("CGHbase")
+  .getChromosomeLengths <- get(".getChromosomeLengths", envir=ns, mode="function")
+  .makeSegments <- get(".makeSegments", envir=ns, mode="function")
+
+  if (inherits(x, c("QDNAseqCopyNumbers", "QDNAseqReadCounts"))) {
+    condition <- QDNAseq:::binsToUse(x)
+  } else {
+    condition <- rep(TRUE, times=nrow(x))
+  }
+  baseLine <- NA_real_
+  doCalls <- "calls" %in% assayDataElementNames(x) & doCalls
+  doSegments <- "segmented" %in% assayDataElementNames(x) & doSegments
+  if (doCalls) {
+    if (is.null(ylim))
+      if (logTransform) {
+        ylim <- c(-5, 5)
+      } else {
+        ylim <- c(-2, 4)
+      }
+  }
+  if ("copynumber" %in% assayDataElementNames(x)) {
+    copynumber <- assayDataElement(x, "copynumber")[condition, , drop=FALSE]
+    if (is.null(ylab))
+      ylab <- ifelse(logTransform, expression(log[2]~ratio), "ratio")
+    if (is.null(ylim))
+      if (logTransform) {
+        ylim <- c(-3, 5)
+      } else {
+        ylim <- c(0, 4)
+      }
+    if (is.null(yaxp))
+      yaxp <- c(ylim[1], ylim[2], ylim[2]-ylim[1])
+    baseLine <- ifelse(logTransform, 0, 1)
+  } else {
+    copynumber <- assayDataElement(x, "counts")[condition, , drop=FALSE]
+    if (is.null(ylab))
+      ylab <- ifelse(logTransform, expression(log[2]~read~count),
+                     "read count")
+    if (is.null(ylim))
+      if (logTransform) {
+        ylim <- c(0, max(QDNAseq:::log2adhoc(copynumber)))
+      } else {
+        ylim <- range(copynumber)
+      }
+  }
+  if (is.null(main))
+    main <- sampleNames(x)
+  if (includeReadCounts && "total.reads" %in% names(pData(x)))
+    main <- paste(main, " (",
+                  format(x$total.reads, trim=TRUE, big.mark=","), " reads)", sep="")
+  if (length(ylab) == 1)
+    ylab <- rep(ylab, times=ncol(x))
+  all.chrom <- QDNAseq:::chromosomes(x)
+  if (is.integer(all.chrom)) # when x is a cghRaw, cghSeg, or cghCall object
+    all.chrom <- as.character(all.chrom)
+  chrom <- all.chrom[condition]
+  uni.chrom <- unique(chrom)
+  uni.chrom <- as.character(stringr::str_sort(uni.chrom, numeric = TRUE))
+  chrom.num <- as.integer(factor(chrom, levels = uni.chrom, ordered=TRUE))
+  uni.chrom.num <- unique(chrom.num)
+  uni.chrom.num <- sort( uni.chrom.num )
+  if (!scale) {
+    pos <- pos2 <- 1:sum(condition)
+    chrom.ends <- aggregate(pos,
+                            by=list(chromosome=chrom), FUN=max)$x
+  } else {
+    if (inherits(x, c("cghRaw", "cghSeg", "cghCall"))) {
+      chrom.lengths <- .getChromosomeLengths("GRCh37")
+    } else {
+      all.chrom.lengths <- aggregate(QDNAseq::bpend(x),
+                                     by=list(chromosome=all.chrom), FUN=max)
+      chrom.lengths <- all.chrom.lengths$x
+      names(chrom.lengths) <- all.chrom.lengths$chromosome
+    }
+    pos <- as.numeric(QDNAseq::bpstart(x)[condition])
+    pos2 <- as.numeric(QDNAseq::bpend(x)[condition])
+    chrom.lengths <- chrom.lengths[uni.chrom]
+    chrom.ends <- integer()
+    cumul <- 0
+    for (i in seq_along(uni.chrom)) {
+      pos[chrom.num > uni.chrom.num[i]] <-
+        pos[chrom.num > uni.chrom.num[i]] +
+        chrom.lengths[uni.chrom[i]]
+      pos2[chrom.num > uni.chrom.num[i]] <-
+        pos2[chrom.num > uni.chrom.num[i]] +
+        chrom.lengths[uni.chrom[i]]
+      cumul <- cumul + chrom.lengths[uni.chrom[i]]
+      chrom.ends <- c(chrom.ends, cumul)
+    }
+    names(chrom.ends) <- names(chrom.lengths)
+  }
+  if (length(uni.chrom) == 1) {
+    xax <- pretty(c(0, chrom.lengths[uni.chrom]))
+    xaxlab <- xax / 1e6L
+    if (is.null(xlab))
+      xlab <- paste0("chromosome ", uni.chrom, ", Mbp")
+  } else {
+    xax <- (chrom.ends + c(0, chrom.ends[-length(chrom.ends)])) / 2
+    xaxlab <- uni.chrom
+    if (is.null(xlab))
+      xlab <- "chromosome"
+  }
+  if (inherits(x, c("cghRaw", "cghSeg", "cghCall")))
+    copynumber <- log2adhoc(copynumber, inv=TRUE)
+  if (is.character(sdFUN) && sdFUN == "sdDiffTrim") {
+    symbol <- quote(hat(sigma)[Delta^"*"])
+  } else if (is.character(sdFUN) && length(grep("Diff", sdFUN)) == 1) {
+    symbol <- quote(hat(sigma)[Delta])
+  } else {
+    symbol <- quote(hat(sigma))
+  }
+  sdFUN <- QDNAseq:::sdDiffTrim
+  noise <- apply(copynumber, MARGIN=2L, FUN=sdFUN, na.rm=TRUE)
+  if (logTransform)
+    copynumber <- QDNAseq:::log2adhoc(copynumber)
+  for (i in seq_len(ncol(x))) {
+    QDNAseq:::vmsg("Plotting sample ", main[i], " (", i, " of ", ncol(x), ") ...",
+                   appendLF=FALSE)
+    cn <- copynumber[, i]
+    if (doSegments) {
+      segmented <- assayDataElement(x, "segmented")[condition, i]
+      if (inherits(x, c("cghRaw", "cghSeg", "cghCall")))
+        segmented <- QDNAseq:::log2adhoc(segmented, inv=TRUE)
+      if (logTransform)
+        segmented <- QDNAseq:::log2adhoc(segmented)
+      segment <- .makeSegments(segmented, chrom)
+    }
+    if (doCalls) {
+      losses <- CGHbase::probloss(x)[condition, i]
+      gains <- CGHbase::probgain(x)[condition, i]
+      if (!is.null(CGHbase::probdloss(x)))
+        losses <- losses + CGHbase::probdloss(x)[condition, i]
+      if (!is.null(CGHbase::probamp(x)))
+        gains <- gains + CGHbase::probamp(x)[condition, i]
+      par(mar=c(5, 4, 4, 4) + 0.2)
+      plot(NA, main=main[i], xlab=NA, ylab=NA, las=1,
+           xlim=c(0, max(chrom.ends)), ylim=ylim, xaxs="i", xaxt="n",
+           yaxp=c(ylim[1], ylim[2], ylim[2]-ylim[1]), yaxs="i")
+      lim <- par("usr")
+      lim[3:4] <- c(0, 1)
+      par(usr=lim)
+      dticks <- seq(0, 1, by=0.2)
+      axis(4, at=dticks, labels=NA, srt=270, las=1, cex.axis=1,
+           cex.lab=1, tck=-0.015)
+      axis(4, at=dticks, labels=dticks, srt=270, las=1, cex.axis=1,
+           cex.lab=1, line=-0.4, lwd=0)
+      mtext("probability", side=4, line=2, cex=par("cex"))
+      if (!is.na(misscol)) {
+        rect(0, -1, max(pos2), 1, col=misscol, border=NA)
+        rect(pos, -1, pos2, 1, col="white", border=NA)
+      }
+      rect(pos[segment[,2]], 0, pos2[segment[,3]], losses[segment[,2]],
+           col=losscol, border=losscol)
+      if (!is.null(probdloss(x)))
+        rect(pos[segment[,2]], 0, pos2[segment[,3]],
+             CGHbase::probdloss(x)[condition, i][segment[,2]],
+             col=delcol, border=delcol)
+      rect(pos[segment[,2]], 1, pos2[segment[,3]], 1-gains[segment[,2]],
+           col=gaincol, border=gaincol)
+      if (!is.null(probamp(x)))
+        rect(pos[segment[,2]], 1, pos2[segment[,3]],
+             1-CGHbase::probamp(x)[condition, i][segment[,2]],
+             col=ampcol, border=ampcol)
+      axis(3, at=pos[which(CGHbase::probamp(x)[condition,i] >= 0.5)],
+           labels=FALSE, col=ampcol, col.axis="black", srt=270, las=1,
+           cex.axis=1, cex.lab=1)
+      axis(1, at=pos[which(CGHbase::probdloss(x)[condition,i] >= 0.5)],
+           labels=FALSE, col=delcol, col.axis="black", srt=270, las=1,
+           cex.axis=1, cex.lab=1)
+      box()
+      lim[3:4] <- ylim
+      par(usr=lim)
+      points(pos, cn, cex=pointcex, col=pointcol, pch=pointpch)
+    } else {
+      plot(pos, cn, cex=pointcex, col=pointcol, main=main[i],
+           xlab=NA, ylab=NA, ylim=ylim, xaxt="n", xaxs="i", yaxs="i",
+           yaxp=yaxp, tck=-0.015, las=1, pch=pointpch)
+    }
+    mtext(text=xlab, side=1, line=2, cex=par("cex"))
+    mtext(text=ylab[i], side=2, line=2, cex=par("cex"))
+    abline(h=baseLine)
+    abline(v=chrom.ends[-length(chrom.ends)], lty="dashed")
+    if (!is.na(xaxt) && xaxt != "n") {
+      axis(side=1, at=xax, labels=NA, cex=.2, lwd=.5, las=1,
+           cex.axis=1, cex.lab=1, tck=-0.015)
+      axis(side=1, at=xax, labels=xaxlab, cex=.2, lwd=0, las=1,
+           cex.axis=1, cex.lab=1, tck=-0.015, line=-0.4)
+    }
+    if (doSegments) {
+      for (jjj in seq_len(nrow(segment))) {
+        segments(pos[segment[jjj,2]], segment[jjj,1],
+                 pos[segment[jjj,3]], segment[jjj,1], col=segcol, lwd=3)
+      }
+    }
+    par(xpd=TRUE)
+    amps <- cn
+    amps[amps <= ylim[2]] <- NA_real_
+    amps[!is.na(amps)] <- ylim[2] + 0.01 * (ylim[2]-ylim[1])
+    dels <- cn
+    dels[dels >= ylim[1]] <- NA_real_
+    dels[!is.na(dels)] <- ylim[1] - 0.01 * (ylim[2]-ylim[1])
+    points(pos, amps, pch=24, col=pointcol, bg=pointcol, cex=0.5)
+    points(pos, dels, pch=25, col=pointcol, bg=pointcol, cex=0.5)
+    if (doSegments) {
+      amps <- assayDataElement(x, "segmented")[condition, i]
+      if (logTransform)
+        amps <- QDNAseq:::log2adhoc(amps)
+      amps[amps <= ylim[2]] <- NA_real_
+      amps[!is.na(amps)] <- ylim[2] + 0.01 * (ylim[2]-ylim[1])
+      dels <- assayDataElement(x, "segmented")[condition, i]
+      if (logTransform)
+        dels <- QDNAseq:::log2adhoc(dels)
+      dels[dels >= ylim[1]] <- NA_real_
+      dels[!is.na(dels)] <- ylim[1] - 0.01 * (ylim[2]-ylim[1])
+      points(pos, amps, pch=24, col=segcol, bg=segcol, cex=0.5)
+      points(pos, dels, pch=25, col=segcol, bg=segcol, cex=0.5)
+    }
+    par(xpd=FALSE)
+    ### estimate for standard deviation
+    if (showSD) {
+      if (!is.na(x$expected.variance[i])) {
+        sdexp <- substitute(paste(E~sigma==e, ", ", symbol==sd),
+                            list(e=sprintf("%.3g", sqrt(x$expected.variance[i])),
+                                 symbol=symbol, sd=sprintf("%.3g", noise[i])))
+      } else {
+        sdexp <- substitute(symbol==sd,
+                            list(symbol=symbol, sd=sprintf("%.3g", noise[i])))
+      }
+      mtext(sdexp, side=3, line=0, adj=1, cex=par("cex"))
+    }
+    ### number of data points
+    if (showDataPoints) {
+      str <- paste(round(sum(condition) / 1000), "k x ", sep="")
+      probe <- median(QDNAseq::bpend(x)-QDNAseq::bpstart(x)+1)
+      if (probe < 1000) {
+        str <- paste(str, probe, " bp", sep="")
+      } else {
+        str <- paste(str, round(probe / 1000), " kbp", sep="")
+      }
+      if (doSegments)
+        str <- paste(str, ", ", nrow(segment), " segments", sep="")
+      mtext(str, side=3, line=0, adj=0, cex=par("cex"))
+    }
+    QDNAseq:::vmsg()
+  }
+  options("QDNAseq::plotLogTransform"=logTransform)
+  options("QDNAseq::plotScale"=scale)
+}
+
+
 ### Given chromosomal segment positions, convert the relative (to a given chromosome) start and end positions of each segment to absolute positions in the genome.
 # DESCRIPTION
 # Parameters:
@@ -640,9 +1002,9 @@ RelToAbsSegPos <- function(chromosomes, rel_start_pos, rel_end_pos, build = "GRC
 #' @seealso [ggrepel::geom_label_repel()] for supported arguments that alter the visual display of the labels.
 #'
 #' @export
-AddGenesToPlot <- function(plot, genes, edb = EnsDb.Hsapiens.v75, ...) {
+AddGenesToPlot <- function(plot, genes, edb = EnsDb.Hsapiens.v75::EnsDb.Hsapiens.v75, ...) {
   # Get the locations of the genes we are interested in.
-  genes_ens <- as.data.frame(genes(edb, filter = ~ gene_name %in% genes, return.type = "DataFrame"))
+  genes_ens <- as.data.frame(ensembldb::genes(edb, filter = ~ gene_name %in% genes, return.type = "DataFrame"))
 
   # We will bin the genes by their midpoint.
   genes_ens <- genes_ens %>%
@@ -657,3 +1019,37 @@ AddGenesToPlot <- function(plot, genes, edb = EnsDb.Hsapiens.v75, ...) {
 
   return(plot)
 }
+
+
+#' Plot sample quality according to a specified metric.
+#'
+#' @param sample_quality_df The sample quality data-frame returned by GetSampleQualityDecision().
+#' @param metric The quality metric passed to GetSampleQualityDecision(). One of quanitle, or DecisionTree.
+#'
+#' @return A ggplot object of the quality plot.
+#' @export
+QualityPlot <- function(sample_quality_df, metric = "quantile") {
+
+  stopifnot(is.character(metric))
+
+  if (metric == "quantile") {
+    quality_plot <- ggplot2::ggplot(data = sample_quality_df, mapping = ggplot2::aes(x = seg_counts, y = median_sd, colour = decision)) +
+      ggplot2::geom_point() +
+      ggplot2::labs(x = "Segment count", y = "Median segment SD", title = "Sample quality via quantile") +
+      ggplot2::scale_colour_discrete(name = "Quality decision") +
+      ggplot2::geom_vline(xintercept = sample_quality_df$seg_cut[1], linetype = "dashed", colour = "red", size = 0.5) +
+      ggplot2::geom_hline(yintercept = sample_quality_df$med_cut[1], linetype = "dashed", colour = "red", size = 0.5) +
+      ggplot2::theme_bw()
+  }
+
+  else if (metric == "DecisionTree") {
+    quality_plot <- ggplot2::ggplot(data = sample_quality_df, mapping = ggplot2::aes(x = seg_counts, y = median_sd, colour = decision)) +
+      ggplot2::geom_point() +
+      ggplot2::labs(x = "Segment count", y = "Median segment SD", title = "Sample quality via decision tree") +
+      ggplot2::scale_colour_discrete(name = "Quality decision") +
+      ggplot2::theme_bw()
+  }
+
+  return(quality_plot)
+}
+

@@ -4,7 +4,7 @@
 \alias{AddGenesToPlot}
 \title{Label genes of interest on an absolute copy-number plot.}
 \usage{
-AddGenesToPlot(plot, genes, edb = EnsDb.Hsapiens.v75, ...)
+AddGenesToPlot(plot, genes, edb = EnsDb.Hsapiens.v75::EnsDb.Hsapiens.v75, ...)
 }
 \arguments{
 \item{plot}{A ggplot object, corresponding to the existing absolute copy-number plot.}
