@@ -54,7 +54,7 @@ CallSignatureExposures <- function (copy_numbers_input,
   datetoday <- Sys.Date()
 
   if (!is.null(relativeCN_data)) {
-    CN_features <- ExtractRelativeCopynumberFeatures(copy_numbers_input,
+    CN_features <- ExtractRelativeCopyNumberFeatures(copy_numbers_input,
                                                      genome = refgenome)
   } else {
     CN_features <- ExtractCopyNumberFeatures(copy_numbers_input,
@@ -83,7 +83,6 @@ CallSignatureExposures <- function (copy_numbers_input,
     NMF::aheatmap(sample_by_component,Rowv=NULL, main="Component x Sample matrix")
     dev.off()
   }
-
   if (!is.null(sigs_savepath)) {
     cname <- tools::file_path_sans_ext(basename(component_models))
     signame <- tools::file_path_sans_ext(basename(signatures))
@@ -94,7 +93,6 @@ CallSignatureExposures <- function (copy_numbers_input,
                                         cname, "_", signame, "_",
                                         datetoday, ".csv"))
   }
-
   return(sigex)
 }
 

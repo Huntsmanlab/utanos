@@ -131,7 +131,7 @@ GaussiansMixturePlot <- function(signatures, components,
   plotbreaks <- plotbreaks[xmax > plotbreaks]
 
   # Make the main plot
-  main_plot <- ggplot(data = data.frame(x = c(1,xmax)), aes(x)) +
+  main_plot <- ggplot2::ggplot(data = data.frame(x = c(1,xmax)), aes(x)) +
     ylab("") +
     xlab(paste0(component, " mixture components")) +
     ggplot2::theme_bw() +
@@ -170,7 +170,7 @@ GaussiansMixturePlot <- function(signatures, components,
     digits <- nchar(as.character(round(xmax/2)))
     plotbreaks <- c(10^(digits-1), (10^digits)/2, 10^digits)
     plotbreaks <- plotbreaks[xmax > plotbreaks]
-    inlay_plot <- ggplot(data = data.frame(x = c(1, xmax)), aes(x)) +
+    inlay_plot <- ggplot2::ggplot(data = data.frame(x = c(1, xmax)), aes(x)) +
                       ylab("") + xlab("") +
                       ggplot2::theme_bw() +
                       theme(axis.text = ggplot2::element_text(size = 8),
@@ -248,7 +248,7 @@ PoissonsMixturePlot <- function(signatures, components,
     xlabel <- 'breakpoints per chr arm'
   }
 
-  main_plot <- ggplot(data = data.frame(x = c(0,round(xmax))), aes(x = x)) +
+  main_plot <- ggplot2::ggplot(data = data.frame(x = c(0,round(xmax))), aes(x = x)) +
               labs(y = "", x = paste0("Number of ", xlabel)) +
               ggplot2::theme_bw() +
               theme(axis.text = ggplot2::element_text(size = 10),
