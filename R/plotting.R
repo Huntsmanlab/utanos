@@ -641,20 +641,20 @@ RCNDiversityPlot <- function(qdnaseq_obj, order_by = NULL, cluster = TRUE,
                                            '18', '19', '20', '21', '22',
                                            'X'))
 
-  p <- ggplot(long_segs, aes(start, sample_id, fill = segmented)) +
-          geom_tile() +
-          facet_grid(~ chromosome, scales = "free",
+  p <- ggplot2::ggplot(long_segs, ggplot2::aes(start, sample_id, fill = segmented)) +
+    ggplot2::geom_tile() +
+    ggplot2::facet_grid(~ chromosome, scales = "free",
                      space = "free", switch = "x") +
-          scale_x_continuous(expand = c(0, 0), breaks = NULL) +
-          theme(panel.spacing = unit(0.05, "lines")) +
-          scale_fill_gradientn(colours = c( "blue", "grey", "red"),
+    ggplot2::scale_x_continuous(expand = c(0, 0), breaks = NULL) +
+    ggplot2::theme(panel.spacing = grid::unit(0.05, "lines")) +
+    ggplot2::scale_fill_gradientn(colours = c( "blue", "grey", "red"),
                                breaks = breaks,
                                limits = limits) +
-          theme_bw() +
-          guides(fill = guide_legend(override.aes = list(size = 5))) +
-          labs(fill = "Relative Copy Number") +
-          xlab('chromosomes') +
-          ylab('samples')
+    ggplot2::theme_bw() +
+    ggplot2::guides(fill = ggplot2::guide_legend(override.aes = list(size = 5))) +
+    ggplot2::labs(fill = "Relative Copy Number") +
+    ggplot2::xlab('chromosomes') +
+    ggplot2::ylab('samples')
 
   return(p)
 }
@@ -937,6 +937,249 @@ RelativeCNSegmentsPlot <- function (x, main=NULL, includeReadCounts=TRUE,
   }
   options("QDNAseq::plotLogTransform"=logTransform)
   options("QDNAseq::plotScale"=scale)
+}
+
+
+#' Segment Copy Number Plot across the Genome
+#'
+#' Whole genome copy number plot for one sample with partitioning lines between chromosomes.
+#'
+#' The \code{copynumber} values passed into this function can be on the relative
+#' or absolute scales, or be log2 ratios. However, the same scale should be used
+#' consistently in each slot of \code{cnobj} (and the \code{copy_number_steps} dataframe as the case may be).
+#'
+#' @param cnobj A *QDNAseq* object contains \code{copynumber}, and \code{segmented} assay slots. \cr
+#' This function expects copy-number data that has been segmented. May contain multiple samples.
+#' @param sample A *character string* indicating the sample. \cr
+#' Required if the object passed to \code{cnobj} contains data for multiple samples. \cr
+#' Ex. \code{c('sample1')} \cr
+#' Must match one of the sample names exactly.
+#' @param copy_number_steps a data frame containing \code{absolute_copy_number}
+#' and \code{copy_number} columns.
+#' @param max_points_to_display maximum number of copy number points to display
+#' (downsampling may be carried out if there are more copy number values than
+#' this number).
+#' @param highlight_masks A *character string* indicating any feature data slots
+#' containing logical masks over the bins. Each slot will be given its own colour. \cr
+#' Keep in mind that NA values will be filtered out and should masks have overlap
+#' the last one will take precedence. \cr
+#' Ex. \code{c('comCNV.mask', 'centro.telo.mask')}
+#' @param min_copy_number The minimum \code{copy_number} to display.
+#' @param max_copy_number The maximum \code{copy_number} to display.
+#' @param copy_number_breaks Breaks at which grid lines will be displayed.
+#' @param def_point_colour A *character string* indicating the colour for the
+#' default copy number points.
+#' @param point_alpha The transparency of the copy number points.
+#' @param point_size The size of the copy number points.
+#' @param point_shape The point shape. See the ggplot2::geom_point() docs and
+#' the \code{shape} parameter for details.
+#' @param segment_colour The colour of the copy number segments.
+#' @param segment_alpha The transparency of the copy number segments.
+#' @param segment_line_size The size of the lines for copy number segments.
+#' @param copy_number_step_colour The colour of the copy number step lines.
+#' @param copy_number_step_alpha The transparency of the copy number step lines.
+#' @param copy_number_step_line_size The size of the lines for the copy number.
+#' steps.
+#' @param xlabel,ylabel x- and y-axis labels.
+#' @return A \code{ggplot} object.
+#' @examples
+#'
+#' @export
+CNSegmentsPlot <- function(cnobj,
+                           sample = NULL,
+                           copy_number_steps = NULL,
+                           max_points_to_display = Inf,
+                           highlight_masks = NULL,
+                           min_copy_number = NULL, max_copy_number = NULL,
+                           copy_number_breaks = NULL,
+                           def_point_colour = "black", point_alpha = 0.15,
+                           point_size = 0, point_shape = 16,
+                           segment_colour = "red", segment_alpha = 1,
+                           segment_line_size = 0.75,
+                           copy_number_step_colour = "blue", copy_number_step_alpha = 0.35,
+                           copy_number_step_line_size = 0.75,
+                           xlabel = "chromosome", ylabel = "copy number") {
+
+  stopifnot(is(cnobj, "QDNAseqCopyNumbers"))
+  stopifnot("chromosome" %in% names(cnobj@featureData@data))
+  stopifnot("start" %in% names(cnobj@featureData@data), is.numeric(cnobj@featureData@data$start))
+  stopifnot("end" %in% names(cnobj@featureData@data), is.numeric(cnobj@featureData@data$end))
+  stopifnot("copynumber" %in% names(cnobj@assayData), is.numeric(cnobj@assayData$copynumber))
+  stopifnot("segmented" %in% names(cnobj@assayData), is.numeric(cnobj@assayData$segmented))
+
+  # compute offsets and genome coordinates for each chromosome
+  chr_ord <- c(as.character(1:22), 'X', 'Y')
+  chromosome_lengths <- cnobj@featureData@data %>%
+    dplyr::group_by(chromosome) %>%
+    dplyr::summarise(length = max(end)) %>%
+    dplyr::mutate(chromosome = factor(chromosome,
+                                      levels = chr_ord)) %>%
+    dplyr::arrange(chromosome)
+  chromosomes <- chromosome_lengths %>%
+    dplyr::mutate(offset = dplyr::lag(cumsum(as.numeric(length)), default = 0)) %>%
+    dplyr::mutate(start = offset + 1, end = offset + length) %>%
+    dplyr::mutate(mid = offset + round(length / 2))
+  offsets <- dplyr::select(chromosomes, chromosome, offset)
+
+  # pull data out into data frames and filter
+  wide_cns <- ExportBinsQDNAObj(cnobj, type = "copynumber", filter = FALSE)
+  wide_cns$colouring <- 'normal.bins'
+  wide_cns <- wide_cns %>% dplyr::relocate(colouring, .after = feature)
+  if (!is.null(highlight_masks)) {
+    for (i in highlight_masks) {
+      wide_cns$colouring[!cnobj@featureData@data[[i]]] <- i
+    }
+  }
+  long_cns <- wide_cns %>% tidyr::gather(sample, copy_number,
+                                         6:dim(.)[2], factor_key=TRUE)
+  wide_segs <- ExportBinsQDNAObj(cnobj, type = "segments", filter = FALSE)
+  long_segs <- wide_segs %>% tidyr::gather(sample, segmented,
+                                           5:dim(.)[2], factor_key=TRUE)
+  if (!is.null(sample)) {
+    stopifnot("sample" %in% names(long_cns))
+    stopifnot("sample" %in% names(long_segs))
+    copy_number <- dplyr::filter(long_cns,
+                                 sample == !!sample, is.finite(copy_number))
+    segments <- dplyr::filter(long_segs,
+                              sample == !!sample, is.finite(segmented))
+  }
+
+  # collapse bin-wise segment values down to proper segments
+  segments <- CopyNumberSegments(segments) %>%
+    dplyr::select(sample, chromosome, start, end, copy_number)
+
+  # compute mid-point position for the copy number bins
+  copy_number <- dplyr::mutate(copy_number, position = (start + end) / 2)
+
+  # convert to genome coordinates
+  copy_number <- copy_number %>%
+    dplyr::left_join(offsets, by = "chromosome") %>%
+    dplyr::mutate(position = position + as.numeric(offset)) %>%
+    dplyr::select(-offset)
+
+  segments <- segments %>%
+    dplyr::left_join(offsets, by = "chromosome") %>%
+    dplyr::mutate(across(c(start, end), ~ . + as.numeric(offset))) %>%
+    dplyr::select(-offset)
+
+  # filter bins outside intended plotting range
+  if (is.null(min_copy_number)) {
+    min_copy_number <- min(copy_number$copy_number, segments$copy_number)
+  } else {
+    stopifnot(is.numeric(min_copy_number),
+              length(min_copy_number) == 1,
+              !is.na(min_copy_number))
+    copy_number <- dplyr::filter(copy_number, copy_number >= min_copy_number)
+    segments <- dplyr::filter(segments, copy_number >= min_copy_number)
+  }
+
+  if (is.null(max_copy_number)) {
+    max_copy_number <- max(copy_number$copy_number, segments$copy_number)
+  } else {
+    stopifnot(is.numeric(max_copy_number),
+              length(max_copy_number) == 1,
+              !is.na(max_copy_number))
+    copy_number <- dplyr::filter(copy_number, copy_number <= max_copy_number)
+    segments <- dplyr::filter(segments, copy_number <= max_copy_number)
+  }
+
+  # optional down-sampling of bins to improve speed
+  stopifnot(is.numeric(max_points_to_display),
+            length(max_points_to_display) == 1,
+            !is.na(max_points_to_display))
+  if (max_points_to_display < nrow(copy_number))
+    copy_number <- dplyr::sample_n(copy_number, max_points_to_display)
+
+  segment_lines <- segments %>%
+    dplyr::mutate(segment_number = dplyr::row_number()) %>%
+    dplyr::select(segment_number, start, end, copy_number) %>%
+    tidyr::pivot_longer(c(start, end), names_to = "type", values_to = "position") %>%
+    dplyr::arrange(segment_number)
+
+  xmin <- min(chromosomes$start)
+  xmax <- max(chromosomes$end)
+
+  # sort out point colouring if mask highlighting is requested
+  if (!is.null(highlight_masks)) {
+    viridis_colors <- viridis::viridis(length(highlight_masks), option = "turbo")
+    custom_colors <- c("normal.bins" = def_point_colour, viridis_colors)
+    names(custom_colors) <- c("normal.bins", highlight_masks)
+  } else {
+    custom_colors = c(def_point_colour)
+  }
+
+  plot <- ggplot2::ggplot(data = copy_number,
+                          mapping = ggplot2::aes(x = position, y = copy_number)) +
+    ggplot2::geom_vline(xintercept = chromosomes$end, colour = "grey90")
+
+  if (!is.null(copy_number_steps)) {
+    xmax <- xmin + (xmax - xmin) * 1.04
+
+    copy_number_steps <- copy_number_steps %>%
+      dplyr::filter(copy_number >= min_copy_number,
+                    copy_number <= max_copy_number) %>%
+      dplyr::arrange(dplyr::desc(absolute_copy_number))
+
+    if (nrow(copy_number_steps) > 0) {
+      plot <- plot +
+        ggplot2::geom_hline(yintercept = copy_number_steps$copy_number,
+                            colour = copy_number_step_colour,
+                            alpha = copy_number_step_alpha,
+                            size = copy_number_step_line_size) +
+        ggplot2::geom_label(data = copy_number_steps,
+                            mapping = ggplot2::aes(x = xmin + 0.98 * (xmax - xmin),
+                                                   y = copy_number,
+                                                   label = absolute_copy_number)) +
+        ggplot2::theme(panel.grid = ggplot2::element_blank())
+    }
+  }
+
+  if (is.null(copy_number_breaks)) { copy_number_breaks = ggplot2::waiver() }
+
+  plot <- plot +
+    ggplot2::geom_point(ggplot2::aes(colour = colouring),
+                        alpha = point_alpha,
+                        size = point_size,
+                        pch = point_shape) +
+    ggplot2::geom_line(data = segment_lines,
+                       mapping = ggplot2::aes(x = position,
+                                              y = copy_number,
+                                              group = segment_number),
+                       colour = segment_colour,
+                       alpha = segment_alpha,
+                       size = segment_line_size) +
+    ggplot2::scale_color_manual(values = custom_colors) +
+    ggplot2::scale_x_continuous(limits = c(xmin, xmax),
+                                expand = ggplot2::expansion(mult = 0),
+                                breaks = chromosomes$mid,
+                                labels = chromosomes$chromosome) +
+    ggplot2::scale_y_continuous(limits = c(min_copy_number,
+                                           max_copy_number),
+                                breaks = copy_number_breaks,
+                                expand = ggplot2::expansion(mult = 0)) +
+    ggplot2::labs(x = xlabel, y = ylabel) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.title = ggplot2::element_text(size = 12),
+      axis.text.x = ggplot2::element_text(size = 10),
+      axis.text.y = ggplot2::element_text(size = 11),
+      axis.ticks.x = ggplot2::element_blank(),
+      axis.ticks.y = ggplot2::element_line(size = 0.2),
+      panel.grid.major.x = ggplot2::element_blank(),
+      panel.grid.minor.x = ggplot2::element_blank(),
+      panel.grid.minor.y = ggplot2::element_blank()
+    )
+
+  if (is.null(highlight_masks)) {
+    plot <- plot + ggplot2::theme(legend.position = "none")
+  }
+
+  if (!is.null(copy_number_steps) && nrow(copy_number_steps) > 0) {
+    plot <- plot +
+      ggplot2::theme(panel.grid = ggplot2::element_blank())
+  }
+
+  return(plot)
 }
 
 

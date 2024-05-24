@@ -1,11 +1,57 @@
 ---
-title: "CN Sigs Utils Package Vignette: Evaluating the Sample Quality of the Copy Number Calls"
-output: github_document
+title: Sample Filtering and Quality Evaluation
+output: rmarkdown::html_vignette
+# output: html_document
+vignette: >
+  %\VignetteIndexEntry{Sample Filtering and Quality Evaluation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
 ```
+
+```{r setup}
+# library(utanos)
+```
+
+## Introduction
+
+The utanos package begins with relative copy-number (rCN) call genomic data. It expects rCN data output from tools such as `QDNASeq` or `WiseCondorX`. This data consists of calls (a numeric value) for each 'bin' in the genome. A bin is an artificially defined partitioning of the genome into pieces of sufficient size to reasonably estimate a relative copy-number. For shallow sequencing this is needed because there is not sufficient depth present for base-pair level resolution.  
+
+Tabular long-format example:
+```{r, eval = FALSE}
+chromosome   start     end sample    CN.call
+<chr>        <int>   <int> <chr>       <dbl>
+1           900001  950000 VOA14948A    1.00
+1           950001 1000000 VOA14948A    1.00
+1          1000001 1050000 VOA14948A    1.00
+1          1050001 1100000 VOA14948A    1.00
+1          1100001 1150000 VOA14948A    0.96
+1          1150001 1200000 VOA14948A    0.96
+```
+
+Relative CN-callers such as `QDNAseq` sometimes have built-in QC functionality for filtering out bins. Most commonly this is for low-mappability or blacklist regions (see paper for descriptions: https://doi.org/10.1101%2Fgr.175141.114). Often however, in order to focus on the CN-aberrations of most interest, researchers want to filter out more than just these regions. For example, there are regions of the genome that are commonly copy-number aberrant in the background population. utanos clarifies this filtration process.  
+
+Utanos comes with 2 tables of common variants (one for hg19 and the other hg38). They can be used to filter a dataset like so.
+
+```{r, eval = FALSE}
+rcn_obj_1 <- readRDS()
+rcn_obj <- FilterCNs(rcnobj = rcn_obj_1, 
+                     filter_by = hg38.comCNVs.P01S10KB, 
+                     remove = FALSE)
+
+```
+
+Database of Genomic Variants (DGV):
+http://dgv.tcag.ca/dgv/app/downloads?ref=
+Paper:
+https://pubmed.ncbi.nlm.nih.gov/24174537/
+
 
 The CN-signature calling pipeline involves copy-number calling at two stages: relative copy-calling (via tools such as `QDNASeq` and `WiseCondorX`) from which absolute copy numbers can be inferred through `rascal`. Naturally, the accuracy of the inferences that can be made from the signatures calls downstream depend heavily on the accuracy of the relative and absolute copy number calls inferred. The workflow used by `rascal` to evaluate copy number calls relies on the manual curation of samples. This is large;y done by manually inspecting the segment copy-number plots and density plots produced by `rascal` in their R Shiny app. The `rascal` Shiny app can be visualized using the following command:
 
@@ -37,14 +83,14 @@ The key idea for evaluating sample quality here would be considering both these 
 ### Sample 1: Good quality copy-number profile
 
 ```{r, out.width = '70%', echo = FALSE}
-knitr::include_graphics("../images/CC-CHM-1341_segs_plot.png")
+knitr::include_graphics(path = "../images/CC-CHM-1341_segs_plot.png")
 ```
 
 
 ### Sample 2: Poor quality copy number profile
 
 ```{r, out.width = '70%', echo = FALSE}
-knitr::include_graphics("../images/VS09-16339-B8_segs_plot copy.png")
+knitr::include_graphics(path = "../images/VS09-16339-B8_segs_plot.png")
 ```
 
 The key aspects that differ between the two profiles are: the number of segments, the length of segments, and the variance within each segment of the $log_2$ ratios, i.e we see the copy number ratios more tightly clustered around the orange line for sample 1 compared to sample 2. 
