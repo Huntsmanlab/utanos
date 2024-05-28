@@ -2,3 +2,4 @@
 ^renv\.lock$
 ^utanos\.Rproj$
 ^\.Rproj\.user$
+^data-raw$
