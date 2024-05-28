@@ -1,6 +1,8 @@
 ---
 title: Sample Filtering and Quality Evaluation
-output: rmarkdown::html_vignette
+output: 
+  rmarkdown::html_vignette:
+    toc: true
 # output: html_document
 vignette: >
   %\VignetteIndexEntry{Sample Filtering and Quality Evaluation}
@@ -13,10 +15,6 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-```
-
-```{r setup}
-# library(utanos)
 ```
 
 ## Introduction
@@ -35,70 +33,145 @@ chromosome   start     end sample    CN.call
 1          1150001 1200000 VOA14948A    0.96
 ```
 
-Relative CN-callers such as `QDNAseq` sometimes have built-in QC functionality for filtering out bins. Most commonly this is for low-mappability or blacklist regions (see paper for descriptions: https://doi.org/10.1101%2Fgr.175141.114). Often however, in order to focus on the CN-aberrations of most interest, researchers want to filter out more than just these regions. For example, there are regions of the genome that are commonly copy-number aberrant in the background population. utanos clarifies this filtration process.  
+Relative CN-callers such as `QDNAseq` sometimes have built-in QC functionality for filtering out bins. Most commonly this is for low-mappability or blacklist regions ([see the paper for descriptions](https://doi.org/10.1101%2Fgr.175141.114)). Other CN-callers also can have whole-sample QC evaluation options though the vast majority of these tend to be very manual. They require the researcher to examine every individual sample. This vignette will cover how utanos can be used to do filtering and QC evaluation on an individual or group level. 
 
-Utanos comes with 2 tables of common variants (one for hg19 and the other hg38). They can be used to filter a dataset like so.
+## I - Filtration
+
+Often, in order to focus on the CN-aberrations of most interest, it is convenient to filter out more than just blacklist regions. What about centromeres? Telomeres? There are regions of the genome that are commonly copy-number aberrant in the background human population. Perhaps it would be nice to mask these too. Utanos clarifies the filtration process.  
+
+Note: Utanos comes with 2 tables of common variants (one for hg19 and the other hg38). They can be used to filter a dataset like so.
 
 ```{r, eval = FALSE}
-rcn_obj_1 <- readRDS()
-rcn_obj <- FilterCNs(rcnobj = rcn_obj_1, 
-                     filter_by = hg38.comCNVs.P01S10KB, 
-                     remove = FALSE)
+rcn.obj <- readRDS("~/Path_to_your_data/a_data_object_aligned_to_hg38.rds")
+rcn.obj <- FilterCNs(cnobj = rcn.obj,
+                     genome = "hg38",
+                     minimum_overlap = 5000,
+                     removebins = FALSE,
+                     maskgaps = TRUE,
+                     maskcomCNVs = TRUE)
 
 ```
 
-Database of Genomic Variants (DGV):
-http://dgv.tcag.ca/dgv/app/downloads?ref=
-Paper:
-https://pubmed.ncbi.nlm.nih.gov/24174537/
+[Database of Genomic Variants (DGV)](http://dgv.tcag.ca/dgv/app/downloads?ref=)  
+[The associated paper](https://pubmed.ncbi.nlm.nih.gov/24174537/)  
 
 
-The CN-signature calling pipeline involves copy-number calling at two stages: relative copy-calling (via tools such as `QDNASeq` and `WiseCondorX`) from which absolute copy numbers can be inferred through `rascal`. Naturally, the accuracy of the inferences that can be made from the signatures calls downstream depend heavily on the accuracy of the relative and absolute copy number calls inferred. The workflow used by `rascal` to evaluate copy number calls relies on the manual curation of samples. This is large;y done by manually inspecting the segment copy-number plots and density plots produced by `rascal` in their R Shiny app. The `rascal` Shiny app can be visualized using the following command:
+But let's break down this filtration step using a real example dataset.
+An accompanying data package to utanos is *utanosmodellingdata* found [here](https://github.com/Huntsmanlab/utanosmodellingdata). Clone that repo to somewhere convenient such as a common 'repos' folder on your machine and read in the sample data. It is human endometrial carcinoma sWGS data aligned to hg19.  
 
 ```{r, eval = FALSE}
-rascal::start_shiny_app()
+> library(utanos)
+> library(magrittr)
+> rcn.obj <- readRDS("~/repos/utanosmodellingdata/sample_copynumber_data/sample_rcn_data.rds")
+> rcn.obj <- FilterCNs(cnobj = rcn.obj,
+                       genome = "hg19",
+                       minimum_overlap = 5000,
+                       removebins = FALSE,
+                       maskgaps = TRUE,
+                       maskcomCNVs = TRUE)
+> featureData(rcn.obj)@data %>% head(5)
+                chromosome  start    end     bases       gc mappability blacklist residual   use
+1:1-30000                1      1  30000  66.66667 55.48500    12.39630  3.263333      NaN FALSE
+1:30001-60000            1  30001  60000 100.00000 39.75667    28.22070  0.000000      NaN FALSE
+1:60001-90000            1  60001  90000 100.00000 36.13000    27.47780  0.000000      NaN FALSE
+1:90001-120000           1  90001 120000 100.00000 39.61667     9.05091  0.000000      NaN FALSE
+1:120001-150000          1 120001 150000 100.00000 46.52333     7.33796  0.000000      NaN FALSE
+                centro.telo.mask comCNV.mask
+1:1-30000                  FALSE       FALSE
+1:30001-60000               TRUE       FALSE
+1:60001-90000               TRUE       FALSE
+1:90001-120000              TRUE       FALSE
+1:120001-150000             TRUE       FALSE
 ```
 
-However, it is an extensive project to manually evaluate the quality of thousands of samples by hand. Additionally, there is no established workflow based on empirical metrics to evaluate the quality of these copy number calls. This is the niche that the CN-Sigs Utils package aims to fill. An outline of a workflow that could be followed to evaluate the sample quality of the copy number calls of `rascal` at the absolute copy number stage is described in this vignette. This workflow will include the implementation of functions to output metrics, which hopefully can detect aberrant copy-number calls and greatly reduce the number of samples that need to be manually curated. 
+This sample data had relative copy-numbers called by QDNAseq. The 'use' column in the S4 object indicates bins QDNAseq determines to be useable. The bins with 'FALSE' are not. For more details on QDNAseq and its methods see the bioconductor vignette [here](https://bioconductor.org/packages/release/bioc/html/QDNAseq.html). The `FilterCNs` utanos function adds another two columns to the featureData table because the `maskgaps` and `maskcomCNVs` parameters were set to TRUE. The `use`, `centro.telo.mask`, and `comCNV.mask` columns we will refer to as 'masks', as if you subset by these columns you essentially mask them from downstream analysis.  
+A final note on the `FilterCNs` function: using the `filter_by` parameter a user can provide their own regions by which to create a mask or filter the QDNAseq copy-number object. Just pass a dataframe with the locations, one location per row, to the `filter_by` parameter. Using the `maskname` parameter the user can set the name for the mask. The `maskname` parameter expects a character string.  
 
-The metrics and functions to be implemented in the package are described below: 
+Next, we can visualize the masks using the `CNSegmentsPlot` function.  
 
-## The copy-number profile abnormality score penalty
+```{r, eval = FALSE}
+> a <- CNSegmentsPlot(rcn.obj,
+                      sample = "CC-CHM-1341",
+                      highlight_masks = c('comCNV.mask'),
+                      point_size = 0.5,
+                      dolog2 = TRUE, 
+                      def_point_colour = 'grey')
+> a
+```
 
-This is a metric to distinguish abnormal from healthy copy number profiles. The score quantifies the deviation of segments from the normal diploid state at the sample-level. The copy-number profile abnormality score can be expressed as follows:
+```{r, out.width = '100%', echo = FALSE}
+knitr::include_graphics(path = "../images/sampleQC_vignette_01_CC-CHM-1341.png")
+```
+
+Clearly visible in the plot is that several of the regions that are commonly copy-number variant in humans coincide with a copy-number/segmentation change. Depending on the user's specific use case these regions may or may not be worth excluding.  
+Note: The `dolog2` parameter was set to TRUE in this call so we see the copy-number calls and segments log2 transformed and so centered about 0. See the documentation for that function for more details.  
+
+## II - Sample Quality Evaluation
+
+Shallowly sequenced whole genome data involves copy-number calling in two stages: relative copy-calling (via tools such as `QDNASeq` and `WiseCondorX`) and then absolute copy number calling which is run on the relative calls (via tools like `rascal`). Naturally, the accuracy of the inferences that can be made in downstream analysis depend heavily on the accuracy of the copy number calls inferred. However, for large projects it is an intensive demand to manually evaluate the quality of hundreds to thousands of samples. This is another the niche that Utanos fills.  
+ 
+Use the `GetSampleQualityDecision` function to get quality calls for each sample in your dataset. The `QualityPlot` function can then be used to visualize the samples that fall outside the thresholds.  
+
+```{r, eval = FALSE}
+> qc_decisions <- GetSampleQualityDecision(rcn.obj)
+> qc_plot <- QualityPlot(qc_decisions)
+> qc_decisions %>% head(5)
+       sample seg_counts  median_sd decision seg_cut    med_cut
+1 CC-CHM-1341        204 0.07696209     High   620.3 0.09096386
+2 CC-CHM-1347        695 0.07137276      Low   620.3 0.09096386
+3 CC-CHM-1353        235 0.06784682     High   620.3 0.09096386
+4 CC-CHM-1355        240 0.07509611     High   620.3 0.09096386
+5 CC-CHM-1361        529 0.07547814     High   620.3 0.09096386
+```
+
+```{r, eval = FALSE}
+> qc_plot
+```
+
+```{r, out.width = '60%', echo = FALSE}
+knitr::include_graphics(path = "../images/sampleQC_vignette_02_qcdecisions.png")
+```
+
+The default behaviour of this function is make a saemple-wise decision based on thresholds for the median segment standard deviation and the total segment count.
+
+### II.1 - About the metrics: Median segment variance and segment count
+
+The segment variance is calculated as the sample variance per segment, i.e the variance between the $log_2$ ratios of each bin in each segment. The observed median segment variance then is a sample-wise measure for noise, which is defined as the median of a set of variances. 
+
+The segment count is simply the number of distinct segments found in the sample. In poor quality samples over-segementation is a frequent indicator.  
+
+The strategy with this quality evaluation technique is to consider both of these metrics in tandem. To work through the intuition, consider the following two copy-number profiles:  
+
+#### Sample 1: Good quality copy-number profile
+
+```{r, out.width = '100%', echo = FALSE}
+knitr::include_graphics(path = "../images/sampleQC_vignette_03_CC-CHM-1341.png")
+```
+
+
+#### Sample 2: Poorer quality copy number profile
+
+```{r, out.width = '100%', echo = FALSE}
+knitr::include_graphics(path = "../images/sampleQC_vignette_04_VS09-16339-B8.png")
+```
+
+The key aspects that differ between the two profiles are: the number of segments, the length of segments, and the variance within each segment of the $log_2$ ratios, i.e we see the copy number ratios more tightly clustered around the orange line for sample 1 compared to sample 2.  
+
+<br><br><br>
+
+## III - Possible future additions and ideas: The copy-number profile abnormality score penalty
+
+This is a metric to distinguish abnormal from healthy copy number profiles. The score quantifies the deviation of segments from the normal diploid state at the sample-level. The copy-number profile abnormality score can be expressed as follows:  
+
 $$CPA \ = \ \frac{\Sigma^{n}_{i=1} (|Z_{segment_i}|* l_{segment_i})}{n}$$
-Here, $Z_{segment_i}$ represents the $Z$-score of the segment $i$. $l_{segment}$ represents the length of the segment and $n$ represents the number of segments. 
-The average segment length can be represented as follows: 
+
+Here, $Z_{segment_i}$ represents the $Z$-score of the segment $i$. $l_{segment}$ represents the length of the segment and $n$ represents the number of segments.  
+The average segment length can be represented as follows:  
 
 $$\frac{\Sigma^{n}_{i=1}l_{segment_i}}{n}$$
 
-This term functions as a penalty term for sample quality, as short segments are generally observed in bad quality or truly highly aberrant samples. Thus, calculating this penalty in addition to other metrics may be very informative of the copy number calling in a sample. 
+This term functions as a penalty term for sample quality, as short segments are generally observed in bad quality or truly highly aberrant samples. Thus, calculating this penalty in addition to other metrics could be very informative. A very important note is that alone this metric would be problematic. Copy-number aberrant is an expected state when the biology of the sample truly is chromosomal aberrations. This metric in tandem with others would seek to find aberration where none should be present.
 
-## Median segment variance
-
-The segment variance would be calculated as the sample variance per segment, i.e the variance between the $log_2$ ratios in each segment. The observed median segment variance, a sample-wise measure for noise, which is defined as the median of a set of variances, where each variance corresponds to the variance of a segment can then be calculated. 
-
-The key idea for evaluating sample quality here would be considering both these metrics as a combination. To work through the intuition, consider the copy number profiles of the following two samples. 
-
-### Sample 1: Good quality copy-number profile
-
-```{r, out.width = '70%', echo = FALSE}
-knitr::include_graphics(path = "../images/CC-CHM-1341_segs_plot.png")
-```
+Thus, a future workflow could be a classifier (which would be trained on our test set) with the features being the segment sizes, median segment variances, the Lilliefor normality statistic, read length, coverage etc.
 
 
-### Sample 2: Poor quality copy number profile
-
-```{r, out.width = '70%', echo = FALSE}
-knitr::include_graphics(path = "../images/VS09-16339-B8_segs_plot.png")
-```
-
-The key aspects that differ between the two profiles are: the number of segments, the length of segments, and the variance within each segment of the $log_2$ ratios, i.e we see the copy number ratios more tightly clustered around the orange line for sample 1 compared to sample 2. 
-
-Thus, a workflow that could be followed is as such: all the samples with a high number of segments can be flagged first. This can be done through a simple outlier criteria such as Tukey's IQR rule, or a value we define by empirically testing some samples. Then the values with the highest median segment variances in this subset (flagged through similar criteria) will likely be considered to be outliers. Naturally this could also be built into a classifier, which would be trained on our test set, with the features being the segment sizes, median segment variances, the Lillefor normality statistic, read length, coverage etc. Thus functions that the package would offer as part of a sample quality evaluation workflow are the following: 
-
-`evaluate_sample_quality` - A function that takes in the rascal MAD/VAF optimal solutions as the input and outputs a data-frame with the median segment variance and the average segment length/classifications of quality. Additional statistics may also help for better-quality filtering, such as the median Lillefor normality statistic. This function could also output a line plot of a metric such as the product of the average segment length and median segment variance. 
-
-`filter_quality` - A function that takes in the rascal MAD/VAF optimal solutions as the input and outputs a dataframe with the filtered "good-quality samples". It additionally outputs the "outlier" samples identified. 
-
-`PlotQualitySamples` - A function that takes in the rascal MAD/VAF optimal solutions and returns a facetted plot of 3 randomly selected outliers and 3 randomly selected "high-quality samples". This is a quick summary alternative to glancing at all the copy-number profiles individually.

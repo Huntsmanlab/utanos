@@ -1,35 +1,20 @@
-# This is a script containing plotting functions for shallow WGS analysis
-# January 18th, 2022
+# This is a script containing plotting functions (and helpers) for shallow WGS analysis
 
-#' Plot Absolute Copy-Number Segments
-#'
-#'
-#'
-#' @export
-ACNSegmentsPlot <- function(x, sample, sample_segments, sample_cns, output) {
-  ploidy <- as.numeric(x["ploidy"])
-  cellularity <- as.numeric(x["cellularity"])
-  chr_order <- c(as.character(1:22), 'X')
-  absolute_segments <- dplyr::mutate(sample_segments,
-                                     copy_number = relative_to_absolute_copy_number(copy_number, ploidy, cellularity))
-  absolute_copy_number <- dplyr::mutate(sample_cns, across(c(copy_number, segmented), relative_to_absolute_copy_number, ploidy, cellularity))
-  chromosomes <- chromosome_offsets(absolute_copy_number)
-  # chromosomes <- chromosomes %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
-  genomic_copy_number <- convert_to_genomic_coordinates(absolute_copy_number, "position", chromosomes)
-  # genomic_copy_number <- genomic_copy_number %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
-  genomic_segments <- convert_to_genomic_coordinates(absolute_segments, c("start", "end"), chromosomes)
-  # genomic_segments <- genomic_segments %>% mutate(chromosome = factor(chromosome, levels = chr_order)) %>% arrange(chromosome)
-  p <- genome_copy_number_plot(genomic_copy_number, genomic_segments, chromosomes,
-                               min_copy_number = 0, max_copy_number = 15,
-                               copy_number_breaks = 0:15,
-                               point_colour = "grey40",
-                               ylabel = "absolute copy number") +
-    ggplot2::ggtitle(paste0(sample, '  ploidy:', ploidy, '  cellularity:', cellularity)) +
-    ggplot2::theme(plot.title = element_text(size = 20))
-  ggsave(filename = paste0('~/Documents/projects/cn_signatures_shallowWGS/plotting/acn_rascal_plots/batch1-13_autosomes_30kb_rascal_plots/', sample, '.pl', ploidy, '.cel', cellularity, '.copynumberplot.png'),
-         p, device = 'png', width = 16, height = 8)
-}
-
+# List of functions:
+# PlotSignatureExposures
+# SwgsCnvHeatmaps
+# AddViralPresence <- does this still serve a purpose? Is it needed?
+# SortHeatmap
+# PlotCellularityAndMaxVaf <- too dataset specific, don't see a clear generalization, should likely be removed...
+# PlotBABAM <- too dataset specific, don't see a clear generalization, should likely be removed...
+# PlotMetadataHeatmaps <- too dataset specific, don't see a clear generalization, should likely be removed...
+# SelectMaxElement
+# SummaryCNPlot <- Should be converted to a ggplot whenever convenient
+# RCNDiversityPlot
+# RelativeCNSegmentsPlot <- made redundant? Can be removed soon, just test CNSegmentsPlot on WisecondorX output to make sure
+# CNSegmentsPlot
+# AddGenesToPlot
+# QualityPlot
 
 # Create Heatmap of Signature Exposures
 #####
@@ -991,11 +976,13 @@ CNSegmentsPlot <- function(cnobj,
                            max_points_to_display = Inf,
                            highlight_masks = NULL,
                            min_copy_number = NULL, max_copy_number = NULL,
+                           ylims = NULL,
                            copy_number_breaks = NULL,
-                           def_point_colour = "black", point_alpha = 0.15,
-                           point_size = 0, point_shape = 16,
+                           dolog2 = NULL,
+                           def_point_colour = "black", point_alpha = 0.6,
+                           point_size = 1, point_shape = 16,
                            segment_colour = "red", segment_alpha = 1,
-                           segment_line_size = 0.75,
+                           segment_line_size = 1.5,
                            copy_number_step_colour = "blue", copy_number_step_alpha = 0.35,
                            copy_number_step_line_size = 0.75,
                            xlabel = "chromosome", ylabel = "copy number") {
@@ -1035,6 +1022,14 @@ CNSegmentsPlot <- function(cnobj,
   wide_segs <- ExportBinsQDNAObj(cnobj, type = "segments", filter = FALSE)
   long_segs <- wide_segs %>% tidyr::gather(sample, segmented,
                                            5:dim(.)[2], factor_key=TRUE)
+
+  if(!is.null(dolog2)) {
+    long_segs$segmented[long_segs$segmented < 0] <- 0
+    long_segs$segmented <- log2(long_segs$segmented)
+    long_cns$copy_number[long_cns$copy_number < 0] <- 0
+    long_cns$copy_number <- log2(long_cns$copy_number)
+  }
+
   if (!is.null(sample)) {
     stopifnot("sample" %in% names(long_cns))
     stopifnot("sample" %in% names(long_segs))
@@ -1096,6 +1091,9 @@ CNSegmentsPlot <- function(cnobj,
     tidyr::pivot_longer(c(start, end), names_to = "type", values_to = "position") %>%
     dplyr::arrange(segment_number)
 
+  # Only plot the chromosomes needed (in case any have been filtered out/removed/excluded)
+  chromosomes <- chromosomes[chromosomes$chromosome %in%
+                               unique(copy_number$chromosome), ]
   xmin <- min(chromosomes$start)
   xmax <- max(chromosomes$end)
 
@@ -1108,6 +1106,7 @@ CNSegmentsPlot <- function(cnobj,
     custom_colors = c(def_point_colour)
   }
 
+  # Create the plots
   plot <- ggplot2::ggplot(data = copy_number,
                           mapping = ggplot2::aes(x = position, y = copy_number)) +
     ggplot2::geom_vline(xintercept = chromosomes$end, colour = "grey90")
@@ -1158,6 +1157,7 @@ CNSegmentsPlot <- function(cnobj,
                                 breaks = copy_number_breaks,
                                 expand = ggplot2::expansion(mult = 0)) +
     ggplot2::labs(x = xlabel, y = ylabel) +
+    ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size=3))) +
     ggplot2::theme_bw() +
     ggplot2::theme(
       axis.title = ggplot2::element_text(size = 12),
@@ -1169,6 +1169,10 @@ CNSegmentsPlot <- function(cnobj,
       panel.grid.minor.x = ggplot2::element_blank(),
       panel.grid.minor.y = ggplot2::element_blank()
     )
+
+  if (!is.null(ylims)) {
+    plot <- plot + ggplot2::ylim(ylims)
+  }
 
   if (is.null(highlight_masks)) {
     plot <- plot + ggplot2::theme(legend.position = "none")

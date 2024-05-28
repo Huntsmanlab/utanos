@@ -5,7 +5,8 @@ Authors@R:
     c(person("Maxwell", "Douglas", , "jmdougla@ualberta.ca", role = c("aut", "cre")), 
     person("Nirupama", "Tamvada", , "ntamvada@bccrc.ca", role = c("aut")),
     person("Sameer", "Shankar", , "sshankar@bccrc.ca", role = c("aut")), 
-    person("Branden", "Lynch", , "blynch@bccrc.ca", role = c("aut")))
+    person("Branden", "Lynch", , "blynch@bccrc.ca", role = c("aut")), 
+    person("Jacky", "Yiu", , "jyiu@bcgsc.ca", role = c("aut")))
 Description: A set of functions that assist in the analysis of shallow/low-pass 
     whole genome sequencing (WGS) and subsequent visualization. It includes 
     built-in options for evaluating sample quality, visualizing copy-number
