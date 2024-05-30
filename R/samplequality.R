@@ -213,6 +213,10 @@ FilterCNs <- function (cnobj,
       cnobj <- cnobj[setdiff(1:length(cnobj_ranges), unique(hits@from)),]
     } else {
       cnobj@featureData@data[[maskname]] <- !(1:length(cnobj_ranges) %in% unique(hits@from))
+      new_row <- data.frame(labelDescription = "A user-set mask.",
+                            stringsAsFactors = FALSE,
+                            row.names = maskname)
+      cnobj@featureData@varMetadata <- rbind(cnobj@featureData@varMetadata, new_row)
     }
   }
 
@@ -231,6 +235,10 @@ FilterCNs <- function (cnobj,
       cnobj <- cnobj[setdiff(1:length(cnobj_ranges), unique(hits@from)),]
     } else {
       cnobj@featureData@data[["centro.telo.mask"]] <- !(1:length(cnobj_ranges) %in% unique(hits@from))
+      new_row <- data.frame(labelDescription = "A mask for centromeres and telomeres.",
+                            stringsAsFactors = FALSE,
+                            row.names = "centro.telo.mask")
+      cnobj@featureData@varMetadata <- rbind(cnobj@featureData@varMetadata, new_row)
     }
   }
 
@@ -250,6 +258,10 @@ FilterCNs <- function (cnobj,
       cnobj <- cnobj[setdiff(1:length(cnobj_ranges), unique(hits@from)),]
     } else {
       cnobj@featureData@data[["comCNV.mask"]] <- !(1:length(cnobj_ranges) %in% unique(hits@from))
+      new_row <- data.frame(labelDescription = "A mask for regions commonly CN-aberrant in humans.",
+                            stringsAsFactors = FALSE,
+                            row.names = "comCNV.mask")
+      cnobj@featureData@varMetadata <- rbind(cnobj@featureData@varMetadata, new_row)
     }
   }
 
