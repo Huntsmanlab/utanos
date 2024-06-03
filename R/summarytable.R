@@ -36,6 +36,8 @@ CollapseTableToSegments <- function(df) {
       loss_probability = dplyr::first(loss.freq),
       gain_count = dplyr::first(gain.count),
       loss_count = dplyr::first(loss.count),
+      gain_proportion = dplyr::first(gain.prop),
+      loss_proportion = dplyr::first(loss.prop),
       gain_samples = dplyr::first(gain.samples),
       loss_samples = dplyr::first(loss.samples),
       bin_count = dplyr::n(),
@@ -55,9 +57,10 @@ CollapseTableToSegments <- function(df) {
 #' @param highT A whole number. A threshold above which there is copy number gain.
 #' @param pL A float. A probability threshold (between 0 and 1), to which loss frequency is compared.
 #' @param pG A float. A probability threshold (between 0 and 1), to which gain frequency is compared.
-#' @param prop A float. A proportion threshold (between 0 and 1), to which loss and gain occurences are compared (separately).
+#' @param prop A float. A proportion threshold (between 0 and 1), to which loss and gain occurrences are compared (separately).
 #' @param find_peaks Boolean. If TRUE, returns a table
 #' @param snames A vector. A vector of sample IDs that are of interest.
+#' @param ref_genome A string. The reference genome used for alignment.
 #' @param save_path A string. A path (directory) to where segment tables should be saved. ex. '~/Documents/test_project'.
 #' @returns Nothing.
 #'
@@ -68,7 +71,17 @@ MakeSummaryTable <- function(CNobj,
                              prop = 0.5,
                              find_peaks = FALSE,
                              snames = FALSE,
+                             ref_genome = "hg19",
                              save_path = FALSE) {
+
+  # Initial checks
+  if (!("EnsDb.Hsapiens.v75" %in% installed.packages()) &&
+      !("EnsDb.Hsapiens.v86" %in% installed.packages()) &&
+      !("EnsDb.Mmusculus.v79" %in% installed.packages())) {
+    stop(
+      "An annotation package must be installed to use this function. Ex. 'EnsDb.Hsapiens.v75'",
+      call. = FALSE)
+  }
 
   output <- list()
 
@@ -77,15 +90,14 @@ MakeSummaryTable <- function(CNobj,
     CNobj <- CNobj[,sampleNames(CNobj) %in% snames]
   }
 
-  df <- data.frame(chromosome = QDNAseq::chromosomes(CNobj),
+  df <- data.frame(chromosome = factor(QDNAseq::chromosomes(CNobj),
+                                       levels = unique(QDNAseq::chromosomes(CNobj))),
                    start = QDNAseq::bpstart(CNobj),
                    end = QDNAseq::bpend(CNobj))
 
   cns <- log2(CGHbase::segmented(CNobj))
   com_cns <- as.data.frame(cns) %>% dplyr::mutate(mean = rowMeans(dplyr::across(where(is.numeric))))
   df$mean.cn <- com_cns$mean
-
-  uni.chrom <- unique(df$chrom)
 
   # Add gain / loss metrics per bin to output table
   nclass <- 3
@@ -105,7 +117,9 @@ MakeSummaryTable <- function(CNobj,
   bin_cns_gain <- as.data.frame(cns > highT) %>% dplyr::mutate(total = rowSums(dplyr::across(where(is.logical))))
   df$loss.count <- bin_cns_loss$total
   df$gain.count <- bin_cns_gain$total
-  browser()
+  df$loss.prop <- bin_cns_loss$total/dim(cns)[2]
+  df$gain.prop <- bin_cns_gain$total/dim(cns)[2]
+
   # Add per-gain or loss sample names to output table
   mat <- as.data.frame(t(colnames(bin_cns_loss)[1:dim(cns)[2]])) %>% dplyr::slice(rep(1:dplyr::n(), each = dim(bin_cns_loss)[1]))
   mat <- as.matrix(mat)
@@ -127,6 +141,10 @@ MakeSummaryTable <- function(CNobj,
   # Find the 'peaks' in these proportions.
   # They can be interpreted as shortest overlap regions (SORs) for multiple samples.
   if (find_peaks != FALSE) {
+    if (!("gsignal" %in% installed.packages())) {
+      stop("The gsignal package must be installed to use the peaks option.",
+           call. = FALSE)
+    }
     gain_peaks <- gsignal::findpeaks(data = df$gain.freq,
                                      MinPeakDistance = 1, MinPeakHeight = pG)
     loss_peaks <- gsignal::findpeaks(data = df$loss.freq,
@@ -137,18 +155,29 @@ MakeSummaryTable <- function(CNobj,
 
   # Collapse the data frame to genomic segments
   df <- CollapseTableToSegments(df)
-  df <- df %>% dplyr::mutate(chromosome = as.character(chromosome))
-  df$chromosome[df$chromosome == 23] <- 'X'
-  df$coordinates <- paste0('chr', df$chromosome, ':',
-                           as.character(df$start), '-', as.character(df$end))
   df$segment <- NULL
 
-  mycoords.gr = df %>% dplyr::select(chromosome, start, end)
+  # Final data re-formatting and add annotations
+  if (ref_genome == "hg19") {
+    genome_annotation <- annotables::grch37
+    gr_genes <- GenomicFeatures::genes(EnsDb.Hsapiens.v75::EnsDb.Hsapiens.v75)
+  } else if (ref_genome == "hg38") {
+    genome_annotation <- annotables::grch38
+    gr_genes <- GenomicFeatures::genes(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86)
+  } else if (ref_genome == "mm10") {
+    genome_annotation <- annotables::grcm38
+    gr_genes <- GenomicFeatures::genes(EnsDb.Mmusculus.v79::EnsDb.Mmusculus.v79)
+  } else {
+    stop("Please provide an accepted reference genome.")
+  }
+  df <- df %>% dplyr::mutate(chromosome = as.character(chromosome))
+  df$coordinates <- paste0('chr', df$chromosome, ':',
+                           as.character(df$start), '-', as.character(df$end))
+  mycoords.gr <- df %>% dplyr::select(chromosome, start, end)
   mycoords.gr <- GenomicRanges::makeGRangesFromDataFrame(mycoords.gr)
-  gr_genes <- GenomicFeatures::genes(EnsDb.Hsapiens.v75::EnsDb.Hsapiens.v75)
   overlaps <- IRanges::findOverlaps(gr_genes, mycoords.gr)
   genes_table <- data.frame(ENSEMBL = gr_genes@ranges@NAMES[overlaps@from], entry = overlaps@to)
-  genes_table <- genes_table %>% dplyr::left_join(annotables::grch37,
+  genes_table <- genes_table %>% dplyr::left_join(genome_annotation,
                                                   by = c("ENSEMBL" = "ensgene")) %>%
                     dplyr::select(ENSEMBL, entry, symbol) %>%
                     dplyr::filter(!is.na(symbol)) %>%
@@ -159,7 +188,7 @@ MakeSummaryTable <- function(CNobj,
   df$entry <- NULL
   output[['summary_table']] <- df
 
-  # Save the output table
+  # Optionally, save the output table
   if (save_path != FALSE) {
     write.table(df, file = save_path, sep = '\t', col.names = TRUE, row.names = FALSE)
   }
