@@ -22,18 +22,18 @@ knitr::opts_chunk$set(
 
 ## I - Introduction
 
-Broadly, this vignette seeks to demonstrate how a user could answer the following two questions using utanos:
+Broadly, this vignette seeks to demonstrate how a user could answer the following two questions using __utanos__:
 
   * In my dataset, where do copy-number gains and losses co-occur? 
   * To what extent do these aberrations co-occur across individual samples?
 
-utanos provides two options by which to find answers to these questions. 1 - using plots/diagrams to visualize the differences, or 2 - by manually examining informative, well-formatted tables.
+__Utanos__ provides two options by which to find answers to these questions. 1 - using plots/diagrams to visualize the differences, or 2 - by manually examining informative, well-formatted tables.
 
 <br>
 **Exclusions:** This vignette does not cover data filtration in detail. It does not go over filtration or setting masks in the QDNAseq object. The vignette titled "Sample Filtering and Quality Evaluation" covers the filtration and QC steps. 
 <br><br>
 
-As an example dataset we will again use the samples found in the *utanosmodellingdata* repository found [here](https://github.com/Huntsmanlab/utanosmodellingdata). If not already done, clone that repo to somewhere convenient such as a common 'repos' folder on your machine and read in the sample data. It is human endometrial carcinoma sWGS data aligned to hg19.
+As an example dataset we will again use the samples found in the *utanosmodellingdata* repository found [here](https://github.com/Huntsmanlab/utanosmodellingdata). If not already done, clone that repo to somewhere convenient such as a common 'repos' folder on your machine and read in the sample data. It is human endometrial carcinoma sWGS data aligned to hg19. The associated publication (Jamieson, 2024) was published in CCR and can be found [here](https://doi.org/10.1158/1078-0432.CCR-23-3689).
 
 ```{r setup, eval = FALSE}
 > library(utanos)
@@ -81,7 +81,7 @@ Notes:
 
 ### III.1 - CN-Summary Plot
 
-The CGHbase R-package provides an excellent plot showing the gain and loss probability across multiple samples. Utanos contains a modified version of this plotting function and it can be generated like so...
+The CGHbase R-package provides an excellent plot showing the gain and loss probability across multiple samples. __Utanos__ contains a modified version of this plotting function and it can be generated like so...
 
 ```{r, eval = FALSE}
 > SummaryCNPlot(rcn.obj, maskaberr = 0.1, maskprob = 0.2)
@@ -114,10 +114,11 @@ knitr::include_graphics("../images/cndiversity_vignette_02.png")
 
 ## IV - Table Output
 
-The `MakeSummaryTable()` function can be used to generate tables of the copy-number gains and losses.  
+An alternative way to understand the data displayed in the plot for section III.1 is in tabular format. This allows for custom filtering, juxtaposing actual numbers, and creating dataset-specific plots. The `MakeSummaryTable()` function can be used to generate tables of the copy-number gains and losses.  
 If desired, the user can also generate a second table containing just the peaks by setting `find_peaks = TRUE`. The threshold parameters outlined in the below code section will apply to both the generated summary CN aberrations table and the peaks table. Peaks in the CN probability data are identified using the `gsignal::findpeaks` function. Peaks are simply defined as local maxima. This function itself is a port-over of its namesake function in the Octave package 'signal'.  
+Alongside the copy-number gains and losses reported in these table is a column for the genes contained in the region. This is a convenience for checking whether or not some gene-of-interest is contained within a copy-number aberration. Just the human and mouse reference genomes are supported at this point (Ex. 'mm10').  
 The `MakeSummaryTable()` function returns a list with either 1 or 2 tables (type: tibble).  
-
+<br>
 These tables can be easily saved as csvs, tsvs, or in your favourite tabular format for perusal in a different user-friendly application such as excel.
 
 ```{r, eval = FALSE}
@@ -145,17 +146,45 @@ These tables can be easily saved as csvs, tsvs, or in your favourite tabular for
                            proportion_threshold,
                            find_peaks = TRUE)
 > output$summary_table %>% head(5)
-# A tibble: 5 × 14
-  chromosome   start    end mean_copy_number gain_probability loss_probability gain_count loss_count
-  <chr>        <int>  <int>            <dbl>            <dbl>            <dbl>      <dbl>      <dbl>
-1 1           840001 1.02e6            0.150            0.301           0.0076          3          0
-2 1          1020001 1.95e6            0.101            0.213           0.0076          3          0
-3 1          1950001 2.16e6            0.146            0.213           0.0076          3          0
-4 1          2160001 2.22e6            0.116            0.211           0.054           3          1
-5 1          8880001 9.06e6            0.157            0.247           0.006           5          0
-# ℹ 6 more variables: gain_samples <chr>, loss_samples <chr>, bin_count <int>,
-#   sum_of_bin_lengths <dbl>, coordinates <chr>, features_in_region <chr>
+# A tibble: 5 × 16
+  chromosome   start     end mean_copy_number gain_probability loss_probability gain_count
+  <chr>        <int>   <int>            <dbl>            <dbl>            <dbl>      <dbl>
+1 1           840001 1020000            0.150            0.301           0.0076          3
+2 1          1020001 1950000            0.101            0.213           0.0076          3
+3 1          1950001 2160000            0.146            0.213           0.0076          3
+4 1          2160001 2220000            0.116            0.211           0.054           3
+5 1          8880001 9060000            0.157            0.247           0.006           5
+# ℹ 9 more variables: loss_count <dbl>, gain_proportion <dbl>, loss_proportion <dbl>,
+#   gain_samples <chr>, loss_samples <chr>, bin_count <int>, sum_of_bin_lengths <dbl>,
+#   coordinates <chr>, features_in_region <chr>
 ```
+
+
+## V - Scaling to the Absolute Copy-Number Space
+
+The Relative CNs space can be useful for identifying trends of relative gains and losses across samples in an experiment. However, absolute copy-numbers (aCNs) can be even more useful as they indicate ploidy and place real numbers on genomic features such as high-amplification events. __Utanos__ makes use of the [rascal](https://github.com/crukci-bioinformatics/rascal) package to scale from the relative to absolute space.  
+Here, we will briefly detail the options and workflow, but for a more thorough discussion we recommend the user read through the rascal vignette. 
+
+There are three major options for scaling depending on the data available:
+
+ 1. __*mad/rmsd*__: Without any other data/metadata, just the copy-numbers, this is the best option. Different ploidy/cellularity combinations are assumed, the relative CNs are scaled to absolute, and then the difference of each value to the nearest whole-number is calculated. The difference is quantified as either the mean absolute deviation (mad) or root mean squared error (rmsq). Finally, a grid search is performed to determine the local minima and these are reported as the solution(s). If several 'solutions' are nearly equivalent then rascal returns several, otherwise a single cellularity-ploidy-mad/rmsq distance combo is returned. Many more options for tuning are available in the package and will not be discussed here.
+ 2. __*maxvaf*__: In the case of having variant allele frequencies for each sample, these can be used to identify the nearest ploidy-cellularity combination (as described in 1.). This option will assume the maximum discovered VAF for the sample is an appropriate representation for the tumour fraction. Below is a equation describing the relationship used to select the optimal solution from the grid search. For more details see the vignette in the [rascal github repo](https://github.com/crukci-bioinformatics/rascal).
+ 
+ $$tumour fraction_i \ = \ \frac{a_i c}{a_i c + 2(1-c)}$$
+ 
+ $$ c = cellularity \text{, } a_i = \text{copy-number at locus i}$$
+ 
+ 3. __*Known ploidies*__: In the case of knowing the sample ploidies via some other method (ex. FISH), this option will simply scale the relative copy-numbers for each sample to absolute given those ploidies.
+ 
+For each of these options, please consult the __utanos__ function documentation for specifics on expected formatting. 
+
+
+
+
+
+
+
+
 
 
 
