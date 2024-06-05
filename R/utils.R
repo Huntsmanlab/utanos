@@ -81,33 +81,45 @@
 #'
 #' @export
 
-CalculateACNs <- function (relative_segs, acnmethod, rascal_sols = FALSE,
-                           variants = FALSE, relative_cns = FALSE,
-                           addplots = FALSE, acn_save_path = FALSE,
-                           return_sols = FALSE) {
+CalculateACNs <- function (cnobj, acnmethod,
+                           rascal_sols = NULL,
+                           variants = NULL,
+                           addplots = FALSE,
+                           acn_save_path = FALSE,
+                           return_sols = FALSE,
+                           return_S4 = FALSE) {
 
-  relative_segs <- read.table(file = relative_segs, header = TRUE, sep = '\t')
-  relative_segs <- relative_segs %>% tidyr::gather(sample, segmented,
-                                                   5:dim(.)[2], factor_key=TRUE)    # Convert segs to long
-  segments <- CopyNumberSegments(relative_segs)                                     # Collapse segs to continuous segments
+  output <- list()
+  stopifnot(dim(cnobj) > 0)
+  stopifnot(inherits(cnobj, c("QDNAseqCopyNumbers", "QDNAseqReadCounts")))
 
-  if (rascal_sols != FALSE) {
-    rascal_sols <- read.table(file = rascal_sols,
-                              sep = ',', header = TRUE)
-    rascal_sols$sample <- stringr::str_replace_all(rascal_sols$sample, "-", ".")
+  # If needed, read-in rascal solutions
+  if (!is.null(rascal_sols)) {
+    if (inherits(rascal_sols, 'character')) {
+      rascal_sols <- read.table(file = rascal_sols, sep = ',', header = TRUE)
+    } else if (inherits(rascal_sols, 'data.frame')) {
+      NULL
+    } else {
+      stop("Invalid value passed to the 'rascal_sols' parameter. \n
+           Please supply either a path or dataframe.")
+    }
   }
 
-  if (addplots == TRUE) {
-    relative_cns <- read.table(file = relative_cns, header = TRUE, sep = '\t')
-    relative_cns <- relative_cns %>% tidyr::gather(sample,
-                                                   copy_number,
-                                                   5:dim(.)[2], factor_key=TRUE)    # Convert cns to long
-    relative_cns <- relative_cns %>%
-      dplyr::mutate(segmented = relative_segs$segmented)          # Create combined dataframe
-  }
+  # Pull out cns to dataframes, both bin-wise and segmented
+  wide_segs <- ExportBinsQDNAObj(cnobj, type = "segments", filter = FALSE)
+  long_segs <- wide_segs %>% tidyr::gather(sample, segmented,
+                                           5:dim(.)[2], factor_key=TRUE)
+  segments <- CopyNumberSegments(long_segs)
+  wide_cns <- ExportBinsQDNAObj(cnobj, type = "copynumber", filter = FALSE)
+  long_cns <- wide_cns %>% tidyr::gather(sample, copy_number,
+                                         5:dim(.)[2], factor_key=TRUE)
+  long_cns <- long_cns %>%
+    dplyr::mutate(segmented = long_segs$segmented)          # Create combined data.frame
 
-  if (variants != FALSE) {
-    if ('data.frame' %in% class(variants)) {                                     # do nothing
+  # If needed, read-in variants
+  if (!is.null(variants)) {
+    if ('data.frame' %in% class(variants)) {
+      NULL
     } else if (class(variants)[1] == 'character') {
       variants <- data.table::fread(file = variants, header = TRUE,
                                     sep = ",", fill = TRUE)
@@ -115,7 +127,6 @@ CalculateACNs <- function (relative_segs, acnmethod, rascal_sols = FALSE,
       stop("Invalid value passed to the 'variants' parameter. \n
            Please supply either a path or dataframe.")
     }
-
     variants <- variants %>%
       dplyr::select(chromosome, start, end, sample_id, gene_name,
                     starts_with('ref.'), starts_with('alt.'),
@@ -126,18 +137,16 @@ CalculateACNs <- function (relative_segs, acnmethod, rascal_sols = FALSE,
       dplyr::summarise(sample_id = dplyr::first(sample_id),
                        gene_name = dplyr::first(gene_name),
                        vaf = max(vaf))
-    variants$sample_id <- stringr::str_replace_all(variants$sample_id, "-", ".")
   }
 
-  if ((length(acnmethod) == 1) && (acnmethod == 'maxvaf')) {                    # Which abs copy-number calling method?
-    variants <- variants %>% dplyr::group_by(sample_id) %>%
-      dplyr::filter(vaf == max(vaf))
+  # Control-flow for acn scaling method
+  if ((length(acnmethod) == 1) && (acnmethod == 'maxvaf')) {
+    variants <- variants %>%
+      dplyr::group_by(sample_id) %>% dplyr::filter(vaf == max(vaf))
     variants <- variants[!duplicated(variants$sample_id),]
-    if (addplots == TRUE) {
-      output <- GenVafAcns(segments, rascal_sols, variants, return_sols, cns = relative_cns)
-    } else {
-      output <- GenVafAcns(segments, rascal_sols, variants, return_sols)
-    }
+    output <- GenVafAcns(segments, rascal_sols, variants,
+                         return_sols, long_cns, return_S4)
+
   } else if ('data.frame' %in% class(acnmethod)) {
     if (any(!(acnmethod$sample_id %in% unique(relative_segs$sample))) == TRUE) {
       if (sum(!(acnmethod$sample_id %in% unique(relative_segs$sample))) == dim(acnmethod)[1]) {
@@ -146,30 +155,30 @@ CalculateACNs <- function (relative_segs, acnmethod, rascal_sols = FALSE,
         warning("There appear to be ploidy sample IDs for which there are no segment tables.")
       }
     }
-    if (addplots == TRUE) {
-      output <- GenKploidyAcns(segments, acnmethod, cns = relative_cns)
-    } else {
-      output <- GenKploidyAcns(segments, acnmethod)
-    }
+    output <- GenKploidyAcns(segments, acnmethod, )
+
   } else if (length(acnmethod) > 1) {
     variants <- variants %>% dplyr::group_by(sample_id) %>%
       dplyr::filter(gene_name %in% acnmethod | vaf == max(vaf, na.rm = TRUE)) %>%
       dplyr::filter(gene_name == c(intersect(acnmethod, gene_name),
                                    setdiff(gene_name, acnmethod))[1])
-    if (addplots == TRUE) {
-      output <- GenVafAcns(segments, rascal_sols, variants, return_sols, cns = relative_cns)
-    } else {
-      output <- GenVafAcns(segments, rascal_sols, variants, return_sols)
-    }
+    output <- GenVafAcns(segments, rascal_sols, variants,
+                         return_sols, long_cns, return_S4)
+
   } else if (acnmethod == 'mad') {
-    if (addplots == TRUE) {
-      output <- GenMadAcns(segments, rascal_sols, return_sols, cns = relative_cns)
-    } else {
-      output <- GenMadAcns(segments, rascal_sols, return_sols)
-    }
+      output <- GenMadAcns(segments, rascal_sols, return_sols,
+                           long_cns, return_S4)
+
   } else {
     stop("Invalid value passed to the 'acnmethod' parameter. \n
          Please supply an accepted option.")
+  }
+
+  if (return_S4) {
+    cnobj <- ReplaceQDNAseqAssaySlots(cnobj, output[["acns"]], output[["acns_segs"]])
+    output[['acn.obj']] <- cnobj
+    output[["acns"]] <- NULL
+    output[["acns_segs"]] <- NULL
   }
 
   if (acn_save_path != FALSE) {
@@ -180,18 +189,27 @@ CalculateACNs <- function (relative_segs, acnmethod, rascal_sols = FALSE,
 
 
 # Function that calculates absolute copy numbers using the rascal package and vafs.
-GenVafAcns <- function (segments, rascal_batch_solutions, variants,
-                        return_sols = FALSE, cns = FALSE) {
+GenVafAcns <- function (segments,
+                        rascal_batch_solutions,
+                        variants,
+                        return_sols = FALSE,
+                        cns = FALSE,
+                        return_S4 = FALSE) {
 
+  # Initialize variables
+  output <- list()
   chosenSegmentTablesList <- list()
   j <- 1
-  plots <- list()
+  acns <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
+  acns_segs <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
   sols <- data.frame(sample_id = character(),
                      ploidy = double(),
                      cellularity = double(),
-                     vaf_optimal = logical(),
+                     tumour_fraction = double(),
+                     vaf = double(),
                      stringsAsFactors = FALSE)
 
+  # Loop through samples
   for (i in unique(rascal_batch_solutions$sample)) {
     sample_segments <- dplyr::filter(segments, sample == i)
     solutions <- rascal_batch_solutions %>% dplyr::filter(sample == i)
@@ -216,11 +234,14 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants,
                                                                                solution_set[sol_idx,]$ploidy,
                                                                                solution_set[sol_idx,]$cellularity))
     sols <- rbind(sols, c(i,
-                  solution_set[sol_idx,]$ploidy,
-                  solution_set[sol_idx,]$cellularity,
-                  TRUE))
-    if (!is.logical(cns)) {                                                     # If cns AND segments passed in, make plots!
-      chr_ord <- c(as.character(1:22), 'X')
+                  as.numeric(solution_set[sol_idx,]$ploidy),
+                  as.numeric(solution_set[sol_idx,]$cellularity),
+                  round(as.numeric(solution_set[sol_idx,]$tumour_fraction),
+                        digits = 3),
+                  as.numeric(vafs$vaf)))
+
+    # Optionally, grab needed values to create an S4 QDNAseq object
+    if (return_S4) {
       absolute_cns <- dplyr::filter(cns, sample == i)
       absolute_cns$copy_number <- rascal::relative_to_absolute_copy_number(absolute_cns$copy_number,
                                                                            solution_set[sol_idx,]$ploidy,
@@ -228,20 +249,8 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants,
       absolute_cns$segmented <- rascal::relative_to_absolute_copy_number(absolute_cns$segmented,
                                                                            solution_set[sol_idx,]$ploidy,
                                                                            solution_set[sol_idx,]$cellularity)
-      absolute_cns$chromosome <- factor(absolute_cns$chromosome, levels = chr_ord)
-      absolute_segments$chromosome <- factor(absolute_segments$chromosome, levels = chr_ord)
-      plots[[i]] <- rascal::genome_copy_number_plot(absolute_cns, absolute_segments,
-                              min_copy_number = 0, max_copy_number = 12,
-                              copy_number_breaks = 0:12,
-                              ylabel = "Absolute Copy Number",
-                              xlabel = "Chromosome") +
-                ggplot2::theme(panel.grid.major.y =
-                                 ggplot2::element_line(colour = "grey60"),
-                               plot.title = ggplot2::element_text(size = 20)) +
-                ggplot2::ggtitle(paste0(i, ' - est. ploidy:',
-                                        solution_set[sol_idx,]$ploidy,
-                                        ' - est. cellularity:',
-                                        solution_set[sol_idx,]$cellularity))
+      acns <- cbind(acns, absolute_cns$copy_number)
+      acns_segs <- cbind(acns_segs, absolute_cns$segmented)
     }
     absolute_segments <- absolute_segments %>% dplyr::select(chromosome=chromosome,
                                                              start=start,
@@ -250,14 +259,23 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants,
     chosenSegmentTablesList[[i]] <- as.data.frame(absolute_segments)
     j <- j+1
   }
-  if (!is.logical(cns)) {
-    output <- list(segment_tables = chosenSegmentTablesList, plots = plots)
-  } else{
-    output <- list(segment_tables = chosenSegmentTablesList)
+
+  # Return collapsed acn segments list or an S4 object if wanted
+  if (return_S4) {
+    colnames(acns) <- unique(rascal_batch_solutions$sample)
+    colnames(acns_segs) <- unique(unique(rascal_batch_solutions$sample))
+    rownames(acns) <- cns$feature[1:dim(acns)[1]]
+    rownames(acns_segs) <- cns$feature[1:dim(acns)[1]]
+    output[["acns"]] <- acns
+    output[["acns_segs"]] <- acns_segs
+  } else {
+    output[["acn_segment_tables"]] <- chosenSegmentTablesList
   }
+
+  # Return selected ploidy/cellularity/vaf combos if wanted
   if (return_sols) {
-    # output <- c(output, rascal_solutions = sols)
-    colnames(sols) <- c('sample_id', 'ploidy', 'cellularity', 'vaf_optimal')
+    colnames(sols) <- c('sample_id', 'ploidy', 'cellularity',
+                        'tumour_fraction', 'vaf')
     output[['rascal_solutions']] <- as.data.frame(sols)
   }
   return(output)
@@ -265,26 +283,31 @@ GenVafAcns <- function (segments, rascal_batch_solutions, variants,
 
 
 # Function that calculates absolute copy numbers using the rascal package and a DF of known ploidies.
-GenKploidyAcns <- function (segments, ploidies,
-                            return_sols = FALSE, cns = FALSE) {
+GenKploidyAcns <- function (segments,
+                            ploidies,
+                            return_sols = FALSE,
+                            cns = FALSE,
+                            return_S4 = FALSE) {
 
   chosenSegmentTablesList <- list()
   j <- 1
   plots <- list()
+  output <- list()
   cellularity <- 1.0
+  acns <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
+  acns_segs <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
   ploidies$ploidy <- as.numeric(ploidies$ploidy)
 
   for (i in unique(ploidies$sample_id)) {
     sample_segments <- dplyr::filter(segments, sample == i)
-    ploidy <-  dplyr::filter(ploidies, sample_id == i)
+    ploidy <- dplyr::filter(ploidies, sample_id == i)
     rcn_obj <- sample_segments
     absolute_segments <- dplyr::mutate(sample_segments,
                                        copy_number = rascal::relative_to_absolute_copy_number(copy_number,
                                                                                               ploidy$ploidy,
                                                                                               cellularity))
-
-    if (!is.logical(cns)) {                                                     # If cns AND segments passed in, make plots!
-      chr_ord <- c(as.character(1:22), 'X')
+    # Optionally, grab needed values to create an S4 QDNAseq object
+    if (return_S4) {
       absolute_cns <- dplyr::filter(cns, sample == i)
       absolute_cns$copy_number <- rascal::relative_to_absolute_copy_number(absolute_cns$copy_number,
                                                                            ploidy$ploidy,
@@ -292,20 +315,8 @@ GenKploidyAcns <- function (segments, ploidies,
       absolute_cns$segmented <- rascal::relative_to_absolute_copy_number(absolute_cns$segmented,
                                                                          ploidy$ploidy,
                                                                          cellularity)
-      absolute_cns$chromosome <- factor(absolute_cns$chromosome, levels = chr_ord)
-      absolute_segments$chromosome <- factor(absolute_segments$chromosome, levels = chr_ord)
-      plots[[i]] <- rascal::genome_copy_number_plot(absolute_cns, absolute_segments,
-                                                    min_copy_number = 0, max_copy_number = 12,
-                                                    copy_number_breaks = 0:12,
-                                                    ylabel = "Absolute Copy Number",
-                                                    xlabel = "Chromosome") +
-        ggplot2::theme(panel.grid.major.y =
-                         ggplot2::element_line(colour = "grey60"),
-                       plot.title = ggplot2::element_text(size = 20)) +
-        ggplot2::ggtitle(paste0(i, ' - declared ploidy:',
-                                ploidy$ploidy,
-                                ' - assumed cellularity:',
-                                cellularity))
+      acns <- cbind(acns, absolute_cns$copy_number)
+      acns_segs <- cbind(acns_segs, absolute_cns$segmented)
     }
     absolute_segments <- absolute_segments %>% dplyr::select(chromosome=chromosome,
                                                              start=start,
@@ -315,10 +326,16 @@ GenKploidyAcns <- function (segments, ploidies,
     j <- j+1
   }
 
-  if (!is.logical(cns)) {
-    output <- list(segment_tables = chosenSegmentTablesList, plots = plots)
+  # Return collapsed acn segments list or an S4 object if wanted
+  if (return_S4) {
+    colnames(acns) <- unique(rascal_batch_solutions$sample)
+    colnames(acns_segs) <- unique(unique(rascal_batch_solutions$sample))
+    rownames(acns) <- cns$feature[1:dim(acns)[1]]
+    rownames(acns_segs) <- cns$feature[1:dim(acns)[1]]
+    output[["acns"]] <- acns
+    output[["acns_segs"]] <- acns_segs
   } else{
-    output <- list(segment_tables = chosenSegmentTablesList)
+    output[["acn_segment_tables"]] <- chosenSegmentTablesList
   }
   return(output)
 }
@@ -329,12 +346,18 @@ GenKploidyAcns <- function (segments, ploidies,
 # Corollary to calculate_vaf_acns function.
 # input_file: input path
 #' @export
-GenMadAcns <- function (segments, rascal_batch_solutions,
-                        return_sols = FALSE, cns = FALSE) {
+GenMadAcns <- function (segments,
+                        rascal_batch_solutions,
+                        return_sols = FALSE,
+                        cns = FALSE,
+                        return_S4 = FALSE) {
 
   chosenSegmentTablesList <- list()
   j <- 1
   plots <- list()
+  output <- list()
+  acns <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
+  acns_segs <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
 
   for (i in unique(rascal_batch_solutions$sample)) {
     sample_segments <- dplyr::filter(segments, sample == i)
@@ -345,9 +368,8 @@ GenMadAcns <- function (segments, rascal_batch_solutions,
                                        copy_number = rascal::relative_to_absolute_copy_number(copy_number,
                                                                                               solutions$ploidy,
                                                                                               solutions$cellularity))
-
-    if (!is.logical(cns)) {                                                     # If cns AND segments passed in, make plots!
-      chr_ord <- c(as.character(1:22), 'X')
+    # Optionally, grab needed values to create an S4 QDNAseq object
+    if (return_S4) {
       absolute_cns <- dplyr::filter(cns, sample == i)
       absolute_cns$copy_number <- rascal::relative_to_absolute_copy_number(absolute_cns$copy_number,
                                                                            solutions$ploidy,
@@ -355,20 +377,8 @@ GenMadAcns <- function (segments, rascal_batch_solutions,
       absolute_cns$segmented <- rascal::relative_to_absolute_copy_number(absolute_cns$segmented,
                                                                          solutions$ploidy,
                                                                          solutions$cellularity)
-      absolute_cns$chromosome <- factor(absolute_cns$chromosome, levels = chr_ord)
-      absolute_segments$chromosome <- factor(absolute_segments$chromosome, levels = chr_ord)
-      plots[[i]] <- rascal::genome_copy_number_plot(absolute_cns, absolute_segments,
-                                                    min_copy_number = 0, max_copy_number = 12,
-                                                    copy_number_breaks = 0:12,
-                                                    ylabel = "Absolute Copy Number",
-                                                    xlabel = "Chromosome") +
-        ggplot2::theme(panel.grid.major.y =
-                         ggplot2::element_line(colour = "grey60"),
-                       plot.title = ggplot2::element_text(size = 20)) +
-        ggplot2::ggtitle(paste0(i, ' - ploidy:',
-                                solutions$ploidy,
-                                ' - cellularity:',
-                                solutions$cellularity))
+      acns <- cbind(acns, absolute_cns$copy_number)
+      acns_segs <- cbind(acns_segs, absolute_cns$segmented)
     }
     absolute_segments <- absolute_segments %>% dplyr::select(chromosome=chromosome,
                                                              start=start,
@@ -378,10 +388,16 @@ GenMadAcns <- function (segments, rascal_batch_solutions,
     j <- j+1
   }
 
-  if (!is.logical(cns)) {
-    output <- list(segment_tables = chosenSegmentTablesList, plots = plots)
+  # Return collapsed acn segments list or an S4 object if wanted
+  if (return_S4) {
+    colnames(acns) <- unique(rascal_batch_solutions$sample)
+    colnames(acns_segs) <- unique(unique(rascal_batch_solutions$sample))
+    rownames(acns) <- cns$feature[1:dim(acns)[1]]
+    rownames(acns_segs) <- cns$feature[1:dim(acns)[1]]
+    output[["acns"]] <- acns
+    output[["acns_segs"]] <- acns_segs
   } else{
-    output <- list(segment_tables = chosenSegmentTablesList)
+    output[["acn_segment_tables"]] <- chosenSegmentTablesList
   }
   return(output)
 }
@@ -403,6 +419,33 @@ GetSegmentedRcnForGene <- function (rcn_obj, gene) {
     idx <- S4Vectors::queryHits(hits)[which.max(percentOverlap)]
     return(rcn_obj$copy_number[idx])
   }
+}
+
+ReplaceQDNAseqAssaySlots <- function(cnobj, new_cns, new_segs) {
+
+  # In case some samples need to be dropped, set a mask
+  missing_samples <- cnobj@phenoData@data$name %in% colnames(new_cns)
+
+  if (any(!missing_samples)) {
+    warning("Not all samples had ACN solutions.
+    These samples are excluded from the returned acn object.
+    The probability of loss/gain values in the returned acn object were calculated using the relative CNs object.")
+  }
+
+  # Assemble a new QDNAseq object
+  new.cnobj <- new('QDNAseqCopyNumbers',
+                    bins = cnobj@featureData@data,
+                    copynumber = new_cns,
+                    phenodata = cnobj@phenoData@data[missing_samples,])
+  Biobase::assayDataElement(new.cnobj, "segmented") <- new_segs
+  Biobase::assayDataElement(new.cnobj, "calls") <- cnobj@assayData[["calls"]][,missing_samples]
+  Biobase::assayDataElement(new.cnobj, "probnorm") <- cnobj@assayData[["probnorm"]][,missing_samples]
+  Biobase::assayDataElement(new.cnobj, "probgain") <- cnobj@assayData[["probgain"]][,missing_samples]
+  Biobase::assayDataElement(new.cnobj, "probdloss") <- cnobj@assayData[["probdloss"]][,missing_samples]
+  Biobase::assayDataElement(new.cnobj, "probamp") <- cnobj@assayData[["probamp"]][,missing_samples]
+  Biobase::assayDataElement(new.cnobj, "probloss") <- cnobj@assayData[["probloss"]][,missing_samples]
+
+  return(new.cnobj)
 }
 
 SumDelimitedElements <- function (element, delimiter) {
