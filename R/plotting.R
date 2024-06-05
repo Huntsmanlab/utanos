@@ -100,18 +100,19 @@ PlotSignatureExposures <- function (signatures, save_path = FALSE,
 # Return: list of ggplot and the ordering of the heatmap in sample names.
 ###
 #' @export
-SwgsCnvHeatmaps <- function(reads = data.frame(), save_path = FALSE,
-                              obj_name = "gyne_cancer_obj",
-                              order = FALSE, ret_order = FALSE) {
+ACNDiversityPlot <- function(long_segments = data.frame(),
+                            save_path = FALSE,
+                            obj_name = "gyne_cancer_obj",
+                            order = FALSE, ret_order = FALSE) {
 
-  if(nrow(reads) == 0) { stop("No reads data provided.") }                      # If reads DF is empty, return
-  reads = RemoveBlacklist(reads)                                                # remove blacklist regions from hg19
+  if(nrow(long_segments) == 0) { stop("No reads data provided.") }              # If reads DF is empty, return
+  long_segments = RemoveBlacklist(long_segments)                                # remove blacklist regions from hg19
 
-  reads <- reads[, c("chromosome", "start", "sample_id", "state")]
+  long_segments <- long_segments[, c("chromosome", "start", "sample_id", "state")]
 
   # Generate standard CNV heatmap data
-  reads$state[reads$state < 0] <- 0
-  slice <- SortHeatmap(reads)
+  long_segments$state[long_segments$state < 0] <- 0
+  slice <- SortHeatmap(long_segments)
   slice$state <- round(slice$state)
   slice$state[slice$state >= 15] <- 15
   slice$state <- as.character(slice$state)
@@ -147,7 +148,8 @@ SwgsCnvHeatmaps <- function(reads = data.frame(), save_path = FALSE,
 
   if (save_path != FALSE) {
     # ggplot2::ggsave(paste0(save_path, "/cnv_diversity_heatmap_", obj_name,".png"), plot = g, width = 24, height = 24)
-    png(paste0(save_path, "/cnv_diversity_heatmap_", obj_name,".png"), width=20, height=20, units = 'in', res = 400, type = 'cairo-png')
+    png(paste0(save_path, "/cnv_diversity_heatmap_", obj_name,".png"),
+        width=20, height=20, units = 'in', res = 400, type = 'cairo-png')
     print(g)
     dev.off()
   }
