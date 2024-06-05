@@ -13,13 +13,14 @@ CNSegmentsPlot(
   min_copy_number = NULL,
   max_copy_number = NULL,
   copy_number_breaks = NULL,
+  dolog2 = NULL,
   def_point_colour = "black",
-  point_alpha = 0.15,
-  point_size = 0,
+  point_alpha = 0.6,
+  point_size = 1,
   point_shape = 16,
   segment_colour = "red",
   segment_alpha = 1,
-  segment_line_size = 0.75,
+  segment_line_size = 1.5,
   copy_number_step_colour = "blue",
   copy_number_step_alpha = 0.35,
   copy_number_step_line_size = 0.75,
@@ -49,16 +50,17 @@ Keep in mind that NA values will be filtered out and should masks have overlap
 the last one will take precedence. \cr
 Ex. \code{c('comCNV.mask', 'centro.telo.mask')}}
 
-\item{min_copy_number}{The minimum \code{copy_number} to display.}
+\item{min_copy_number}{Numeric. The minimum \code{copy_number} to display. Effectively controls Y-axis limits.}
 
-\item{max_copy_number}{The maximum \code{copy_number} to display.}
+\item{max_copy_number}{Numeric. The maximum \code{copy_number} to display. Effectively controls Y-axis limits.}
 
-\item{copy_number_breaks}{Breaks at which grid lines will be displayed.}
+\item{copy_number_breaks}{Vector of integers. Breaks at which grid lines will be displayed. \cr
+ex. c(1:12)}
 
 \item{def_point_colour}{A \emph{character string} indicating the colour for the
 default copy number points.}
 
-\item{point_alpha}{The transparency of the copy number points.}
+\item{point_alpha}{Numeric. The transparency of the copy number points.}
 
 \item{point_size}{The size of the copy number points.}
 

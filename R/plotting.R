@@ -1,9 +1,8 @@
 # This is a script containing plotting functions (and helpers) for shallow WGS analysis
 
 # List of functions:
-# PlotSignatureExposures
-# SwgsCnvHeatmaps
-# AddViralPresence <- does this still serve a purpose? Is it needed?
+# SignatureExposuresPlot
+# ACNDiversityPlot
 # SortHeatmap
 # PlotCellularityAndMaxVaf <- too dataset specific, don't see a clear generalization, should likely be removed...
 # PlotBABAM <- too dataset specific, don't see a clear generalization, should likely be removed...
@@ -16,24 +15,33 @@
 # AddGenesToPlot
 # QualityPlot
 
-# Create Heatmap of Signature Exposures
-#####
-# Converts signature-per-sample data to a heatmap, saves it as a png, and returns the ggplot.
-# Samples are sorted for display based on copy number similarities in the state column.
-# Supports addition of alternative state number for comparison purposes.
-# Parameters:
-#   (DF)      signatures:           csv file where columns are samples and rows are normalized signature exposures
-#																		Must have at least 2 samples and 2 signatures
-#   (char)    save_file:            Path where to save the plot. Otherwise 'FALSE' to not save.
-#   (Boolean) order:
-#   (Boolean) transpose:
-#
-# Return: ggplot
-###
+
+#' Create Heatmap of Signature Exposures
+#'
+#' Converts signature-per-sample data to a heatmap, optionally saves it as a png, and returns the ggplot.
+#' Samples are sorted for display based on their maximum signature exposure.
+#' Heatmap is plotted in the viridis colour-scheme.
+#'
+#' @param signatures Dataframe. Expects a dataframe of signature exposures (rows) by samples (columns).
+#' @param order (optional) Character vector. Defines the order in which samples will be plotted. \cr
+#' This is particularly useful when plotting more than 1 heatmap next to one another. \cr
+#' Allows samples to line-up horizontally. \cr
+#' Example: \cr
+#' `c("CC-CHM-1341", "CC-CHM-1347", "CC-CHM-1355", CC-CHM-1361", "CC-HAM-0369", "CC-HAM-0374", "CC-HAM-0379", "CC-HAM-0383", "CC-HAM-0385")`
+#' @param transpose (optional) Logical. If set to TRUE the function returns the order in which samples were plotted.
+#' @param save_path (optional) String. Expects a path to a directory where the plot should be saved. (png)
+#' @param obj_name (optional) String. Adds a tag to the end of the filename if saving the image. \cr
+#' Only used if the save_path parameter is also set.
+#' @return A list of a ggplot2 object and vector of the ordered sample names.
+#'
 #' @export
-PlotSignatureExposures <- function (signatures, save_path = FALSE,
-                                      obj_name = 'sig_exposures_obj',
-                                      order = FALSE, transpose = FALSE) {
+SignatureExposuresPlot <- function (signatures,
+                                    order = FALSE,
+                                    transpose = FALSE,
+                                    save_path = FALSE,
+                                    obj_name = 'sig_exposures_obj') {
+
+  # Convert data to long format and add column for max. sig. exposure
   nsigs <- nrow(signatures)
   long_data <- tidyr::gather(signatures)
   long_data$max_sig <- rep(apply(signatures, 2, function(x) which.max(x)),
@@ -48,6 +56,7 @@ PlotSignatureExposures <- function (signatures, save_path = FALSE,
     long_data$X <- factor(long_data$X, levels = order)
   }
 
+  # Build Plot
   g <- ggplot2::ggplot(long_data, ggplot2::aes(X, Y, fill=Z)) +
     ggplot2::geom_tile() +
     viridis::scale_fill_viridis(discrete=FALSE) +
@@ -79,33 +88,41 @@ PlotSignatureExposures <- function (signatures, save_path = FALSE,
       ggplot2::ggsave(paste0(save_path, "/signatures_heatmap_", obj_name,".png"), plot = g, width = 15, height = 10)
     }
   }
-
   output <- list(plot = g, ordering = levels(long_data$X))
 
   return(output)
 }
 
 
-# Create Heatmaps of CNV calls
-#####
-# Converts provided sample data to a Copy Number heatmap and saves it as a png. Samples are sorted for display based on copy number similarities in the state column.
-# Supports addition of alternative state number for comparison purposes.
-# Parameters:
-#   (DF)      reads:                Reads data frame with an additional column for experimental condition
-#																		Required fields: (chr, start, cell_id, state)
-#   (String)  save_path:            Path where the PNG file will be saved (Default: cnv_heatmap.png)
-#   (Boolean) low_map_mask:         Specify whether or not to filter regions with low mappability from the heatmap
-#		(FALSE or char vector)	order:	If false used the sorted ordering of the heatmap, if true use new ordering.
-#
-# Return: list of ggplot and the ordering of the heatmap in sample names.
-###
+#' Absolute Copy-Number Diversity Heatmap
+#'
+#' A whole genome heatmap of copy-number changes. It expects absolute copy-numbers.
+#' Default behaviour is to perform hierarchical clustering of the samples and plot the heatmap in that order.
+#' Setting the `order` parameter overrules this behaviour.
+#'
+#' @param long_segments A dataframe. This should be in long format with the same number of rows (bins) for each sample. \cr
+#' If using the output from the `CalculateACNs` function then first run `SegmentsToCopyNumber` to convert to long. \cr
+#' Expects the following columns: \cr
+#' c("chromosome", "start", "end", "state", "sample_id")
+#' @param order (optional) Character vector. Defines the order in which samples will be plotted. \cr
+#' This is particularly useful when plotting more than 1 heatmap next to one another. \cr
+#' Allows samples to line-up horizontally.
+#' Example: \cr
+#' `c("CC-CHM-1341", "CC-CHM-1347", "CC-CHM-1355", CC-CHM-1361", "CC-HAM-0369", "CC-HAM-0374", "CC-HAM-0379", "CC-HAM-0383", "CC-HAM-0385")`
+#' @param ret_order (optional) Logical. If set to TRUE the function returns the order in which samples were plotted.
+#' @param save_path (optional) String. Expects a path to a directory where the plot should be saved. (png)
+#' @param obj_name (optional) String. Adds a tag to the end of the filename if saving the image. \cr
+#' Only used if the save_path parameter is also set.
+#' @return A ggplot2 object or a list of a ggplot2 object and vector of the ordered sample names.
+#'
 #' @export
 ACNDiversityPlot <- function(long_segments = data.frame(),
-                            save_path = FALSE,
-                            obj_name = "gyne_cancer_obj",
-                            order = FALSE, ret_order = FALSE) {
+                             order = FALSE,
+                             ret_order = FALSE,
+                             save_path = FALSE,
+                             obj_name = "version1") {
 
-  if(nrow(long_segments) == 0) { stop("No reads data provided.") }              # If reads DF is empty, return
+  if (nrow(long_segments) == 0) { stop("No copy-number data provided.") }
   long_segments = RemoveBlacklist(long_segments)                                # remove blacklist regions from hg19
 
   long_segments <- long_segments[, c("chromosome", "start", "sample_id", "state")]
@@ -117,14 +134,14 @@ ACNDiversityPlot <- function(long_segments = data.frame(),
   slice$state[slice$state >= 15] <- 15
   slice$state <- as.character(slice$state)
   slice$state[slice$state == '15'] <- '15+'                                     # Assign all copy-numbers greater than 15 to the same value
-  slice <- slice %>% dplyr::mutate(state = factor(state,
-                                           levels = c(0:14, "15+"))) %>%
-                     dplyr::arrange(chromosome)
+  slice <- slice %>%
+    dplyr::mutate(state = factor(state, levels = c(0:14, "15+"))) %>%
+    dplyr::arrange(chromosome)
 
   # Set colours for the heatmap
   cols <- c("#3182BD", "#9ECAE1", "#CCCCCC", "#FDD49E", "#FE9F4F", "#EA8251",
             "#E1571A", "#B33015", "#972913", "#621408", "#430227", "#730343",
-            "#A61568", "#CE4191", "#CE8FB4", "#F5B1D9")                            # #FFDBF0
+            "#A61568", "#CE4191", "#CE8FB4", "#F5B1D9")                         # #FFDBF0
   names(cols) <- c(0:14, "15+")
 
   if (!isFALSE(order)) {
@@ -147,7 +164,6 @@ ACNDiversityPlot <- function(long_segments = data.frame(),
   output <- g
 
   if (save_path != FALSE) {
-    # ggplot2::ggsave(paste0(save_path, "/cnv_diversity_heatmap_", obj_name,".png"), plot = g, width = 24, height = 24)
     png(paste0(save_path, "/cnv_diversity_heatmap_", obj_name,".png"),
         width=20, height=20, units = 'in', res = 400, type = 'cairo-png')
     print(g)
@@ -160,44 +176,11 @@ ACNDiversityPlot <- function(long_segments = data.frame(),
   return(output)
 }
 
-###
-# Custom palette scale colour function to go with ggplot2
-# scm = function(palette=cols) {
-#   scale_color_manual(values=palette, na.value="#000000")
-# }
-#
-# ggplot(mydata, aes(x, y)) + geom_line() + scm()
-
-
-
-
-### Add viral presence pseudo-chromosome to CNV matrix
-# Adds an extra chromosome that represents the binary presence of a viral insert
-# Parameters:
-#   data: Dataframe containing observations describing DLP data
-#   viral_presence:
-# Return: data parameter modified to include a viral presence indicator
-AddViralPresence <- function(data, viral_presence) {
-  viral_range <- seq(1,50000001, 500000)
-  viral_presence <- viral_presence[viral_presence$cell_id %in% unique(data$cell_id), ]
-  l <- length(viral_range)
-  w <- dim(viral_presence)[1]
-  viral_state <- data.frame(chr = rep('V', l*w),
-                            start = rep(viral_range, w),
-                            cell_id = rep(viral_presence$cell_id, 1, each = l),
-                            state = rep('TP53', l*w))
-  data <- rbind(viral_state, data)
-  return(data)
-}
-
 
 ### Sort the CN Heatmap using simple hierarchical clustering
-# DESCRIPTION
-# Parameters:
-#
 #' @export
 SortHeatmap <- function(slice) {
-  slice$chromosome <- factor(slice$chromosome, levels = c("V", 1:22, "X", "Y"))
+  slice$chromosome <- factor(slice$chromosome, levels = c(1:22, "X", "Y"))
   slice <- dplyr::mutate(slice, pos = paste0(chromosome, ":", start))
   wide <- tidyr::spread(slice[, c("sample_id", "pos", "state")], pos, state)
   wide_ <- wide[,-which(colnames(wide) == "sample_id")]
@@ -951,12 +934,13 @@ RelativeCNSegmentsPlot <- function (x, main=NULL, includeReadCounts=TRUE,
 #' Keep in mind that NA values will be filtered out and should masks have overlap
 #' the last one will take precedence. \cr
 #' Ex. \code{c('comCNV.mask', 'centro.telo.mask')}
-#' @param min_copy_number The minimum \code{copy_number} to display.
-#' @param max_copy_number The maximum \code{copy_number} to display.
-#' @param copy_number_breaks Breaks at which grid lines will be displayed.
+#' @param min_copy_number Numeric. The minimum \code{copy_number} to display. Effectively controls Y-axis limits.
+#' @param max_copy_number Numeric. The maximum \code{copy_number} to display. Effectively controls Y-axis limits.
+#' @param copy_number_breaks Vector of integers. Breaks at which grid lines will be displayed. \cr
+#' ex. c(1:12)
 #' @param def_point_colour A *character string* indicating the colour for the
 #' default copy number points.
-#' @param point_alpha The transparency of the copy number points.
+#' @param point_alpha Numeric. The transparency of the copy number points.
 #' @param point_size The size of the copy number points.
 #' @param point_shape The point shape. See the ggplot2::geom_point() docs and
 #' the \code{shape} parameter for details.
@@ -969,7 +953,6 @@ RelativeCNSegmentsPlot <- function (x, main=NULL, includeReadCounts=TRUE,
 #' steps.
 #' @param xlabel,ylabel x- and y-axis labels.
 #' @return A \code{ggplot} object.
-#' @examples
 #'
 #' @export
 CNSegmentsPlot <- function(cnobj,
@@ -978,7 +961,6 @@ CNSegmentsPlot <- function(cnobj,
                            max_points_to_display = Inf,
                            highlight_masks = NULL,
                            min_copy_number = NULL, max_copy_number = NULL,
-                           ylims = NULL,
                            copy_number_breaks = NULL,
                            dolog2 = NULL,
                            def_point_colour = "black", point_alpha = 0.6,
@@ -1171,10 +1153,6 @@ CNSegmentsPlot <- function(cnobj,
       panel.grid.minor.x = ggplot2::element_blank(),
       panel.grid.minor.y = ggplot2::element_blank()
     )
-
-  if (!is.null(ylims)) {
-    plot <- plot + ggplot2::ylim(ylims)
-  }
 
   if (is.null(highlight_masks)) {
     plot <- plot + ggplot2::theme(legend.position = "none")

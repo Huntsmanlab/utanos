@@ -29,15 +29,15 @@
 #'
 #' @description
 #'
-#' CalculateACNs() calculates the absolute copy numbers (ACNs) from the relative copy number profiles of one or more samples.
+#' CalculateACNs() calculates absolute copy numbers (ACNs) from the relative copy number profiles of one or more samples.
 #' There are several included options by which to do this.
 #' Note: If not providing a table of variant allele frequencies (VAFs) then 'mad' is the only method available. \cr
 #'
 #' This function makes use of the rascal package in R and instructions can be found in the vignette: \cr
 #' https://github.com/crukci-bioinformatics/rascal/blob/master/vignettes/rascal.Rmd  \cr
 #'
-#' @param relative_segs A tsv of the relative segmented copy-numbers.
-#' @param rascal_sols A tsv of the calculated rascal solutions.
+#' @param cnobj An S4 object of type QDNAseqCopyNumbers. This object must contain a copynumber slot and a segmented slot.
+#' @param rascal_sols A tsv or dataframe of the calculated rascal solutions.
 #' @param acnmethod The method by which to calculate ACNs. Can be one of: \cr
 #' "maxvaf" - Calculate ACNs assuming the maximum discovered VAF for the sample is an appropriate representation for the tumour fraction. \cr
 #' char vector - Same as above but rather than using the max vaf provide a character vector of the genes from which to pull VAFs.
@@ -50,33 +50,39 @@
 #' - Each variant must have an associated variant allele frequency. \cr
 #' - Each row must also be associated with a specific sample. \cr
 #' A dataframe of known ploidies per sample - Calculate ACNs at each bin given we already know the ploidy of the samples. \cr
-#' @param variants A dataframe of the variants including variant allele frequencies per gene and per sample.
-#' @param relative_cns A tsv of the relative copy-numbers. Required if 'addplots' param is set to true.
-#' @param addplots (optional) Logical. Indicates whether or not plots should be returned alongside the ACNs.
+#' @param variants (optional) Dataframe or string. A table of variants containing variant allele frequencies per gene and per sample.
 #' @param acn_save_path (optional) String. The output path (absolute path recommended) where to save the result.
 #' @param return_sols (optional) Logical. Return the selected rascal solution.
-#' @returns A list of dataframes. One DF for each sample where an Absolute Copy Number profile was successfully found. \cr
-#' Optionally a second list of plot objects (ggplot); one for each sample where a profile was found.
+#' @param return_S4 (optional) Logical.
+#' @returns A list containing: \cr
+#' 1. A list of dataframes (one for each sample) OR a QDNAseq S4 object. \cr
+#' 2. Optionally, a dataframe of the rascal solutions. \cr
+#' This function returns ACNs when a rascal solution is found, if one isn't, the sample is skipped.
 #' @details
 #' ```
 #' solutions <- "~/Documents/.../rascal_solutions.csv"
-#' rcn_segs <- "~/Documents/.../rCN_segs.tsv"
+#' rcn.obj <- "~/repos/utanosmodellingdata/sample_copy_number_data/sample_filtered_cn_data.rds"
 #' variants <- "~/Documents/.../allvariants.clinvar.cosmic.exons.csv"
 #' save_path <- "~/Documents/.../rascal_ACN_segments.rds"
 #' variants <- data.table::fread(file = variants, sep = ',')
 #' variants <- variants %>% dplyr::rename(chromosome = chr,
 #'                                        gene_name = genecode_gene_name)
-#' variants$sample_id <- stringr::str_replace_all(variants$sample_id, "-", ".")
-#' output <- CalculateACNs(relative_segs = rcn_segs,
-#'                         rascal_sols = solutions,
-#'                         variants = variants,
-#'                         acnmethod = 'maxvaf')
-#' output <- CalculateACNs(relative_segs = rcn_segs,
+#' outputs <- CalculateACNs(rcn.obj,
+#'                          acn.method = 'maxvaf',
+#'                          rascal_sols = solutions,
+#'                          variants = variants,
+#'                          return_sols = TRUE,
+#'                          return_S4 = TRUE)
+#' output <- CalculateACNs(rcn.obj,
 #'                         rascal_sols = solutions,
 #'                         variants = variants,
 #'                         acnmethod = c('TP53', 'KRAS', 'BRCA1',
 #'                                       'BRCA2', 'PIK3CA', 'PTEN'),
 #'                         acn_save_path = save_path)
+#' output <- CalculateACNs(rcn.obj,
+#'                         rascal_sols = solutions,
+#'                         acnmethod = 'mad')
+#'
 #' ```
 #'
 #' @export
@@ -84,7 +90,6 @@
 CalculateACNs <- function (cnobj, acnmethod,
                            rascal_sols = NULL,
                            variants = NULL,
-                           addplots = FALSE,
                            acn_save_path = FALSE,
                            return_sols = FALSE,
                            return_S4 = FALSE) {
@@ -438,13 +443,13 @@ ReplaceQDNAseqAssaySlots <- function(cnobj, new_cns, new_segs) {
                     copynumber = new_cns,
                     phenodata = cnobj@phenoData@data[missing_samples,])
   Biobase::assayDataElement(new.cnobj, "segmented") <- new_segs
-  Biobase::assayDataElement(new.cnobj, "calls") <- cnobj@assayData[["calls"]][,missing_samples]
-  Biobase::assayDataElement(new.cnobj, "probnorm") <- cnobj@assayData[["probnorm"]][,missing_samples]
-  Biobase::assayDataElement(new.cnobj, "probgain") <- cnobj@assayData[["probgain"]][,missing_samples]
-  Biobase::assayDataElement(new.cnobj, "probdloss") <- cnobj@assayData[["probdloss"]][,missing_samples]
-  Biobase::assayDataElement(new.cnobj, "probamp") <- cnobj@assayData[["probamp"]][,missing_samples]
-  Biobase::assayDataElement(new.cnobj, "probloss") <- cnobj@assayData[["probloss"]][,missing_samples]
 
+  if (length(assayData(cnobj)) > 2) {
+    slotstoadd <- names(assayData(cnobj))
+    slotstoadd <- slotstoadd[!slotstoadd %in% c("segmented", "copynumber")]
+    for (i in slotstoadd)
+    Biobase::assayDataElement(new.cnobj, i) <- cnobj@assayData[[i]][,missing_samples]
+  }
   return(new.cnobj)
 }
 
@@ -684,162 +689,6 @@ RemoveBlacklist <- function(data) {
   return(data)
 }
 
-
-#' Generate Human Readable Relative Copy-Number Profiles
-#'
-#' @description
-#'
-#' This function takes as input a QDNAseq or CGHcall copy-number object and gives back a long-format table with several useful columns.
-#' These columns include; 'sample', 'chromosome', 'start', 'end', 'gain_probability',
-#' 'loss_probability', 'relative_copy_number', 'bin_count', 'sum_of_bin_lengths',
-#' 'cytobands', 'coordinates', and 'size'
-#'
-#' @param object S4 copy-number object - QDNAseq or CGHcall object
-#' @param binsize The binsize used in the copy number object. ex. '30kb', '100kb'
-#' @param ref_genome One of the common reference genomes: ex. 'hg19', 'mm10', or 'hg38'
-#' @param save_dir (optional) The directory where the tables should be saved. ex. '~/Documents/test_project'
-#' @returns Segment tables in long format (by sample id) ready to be written out to a table file (ex. tsv, csv).
-#'
-#' @export
-GenHumanReadableRcnProfile <- function(object, binsize,
-                                       ref_genome, save_dir = FALSE) {
-
-  # Create collapsed segments table
-  # Add Chromosome cytoband, coordinates (in bp), length of region, and gain or loss tag to each entry
-  connection <- RMySQL::dbConnect(RMySQL::MySQL(), user="genome", host="genome-mysql.cse.ucsc.edu", dbname=ref_genome)
-  cytobands <- DBI::dbGetQuery(conn=connection, statement="SELECT chrom, chromStart, chromEnd, name FROM cytoBand")
-  cyto_ranges <- GenomicRanges::makeGRangesFromDataFrame(cytobands)
-
-  segmented <- tidyr::gather(as.data.frame(CGHbase::segmented(object)), sample, segmented)
-  if (class(object)[1] == 'cghCall') {
-    segmented$gainP <- tidyr::gather(as.data.frame(CGHbase::probgain(object)), sample, probgain)$probgain
-    segmented$ampP <- tidyr::gather(as.data.frame(CGHbase::probamp(object)), sample, probamp)$probamp
-    segmented$lossP <- tidyr::gather(as.data.frame(CGHbase::probloss(object)), sample, probloss)$probloss
-    segmented$dlossP <- tidyr::gather(as.data.frame(CGHbase::probdloss(object)), sample, probdloss)$probdloss
-    segmented$chromosome <- rep(object@featureData@data[["Chromosome"]], dim(object)[2])
-    segmented$start <- rep(object@featureData@data[["Start"]], dim(object)[2])
-    segmented$end <- rep(object@featureData@data[["End"]], dim(object)[2])
-  } else {
-    segmented$chromosome <- rep(object@featureData@data[["chromosome"]], dim(object)[2])
-    segmented$start <- rep(object@featureData@data[["start"]], dim(object)[2])
-    segmented$end <- rep(object@featureData@data[["end"]], dim(object)[2])
-    if ('probgain' %in% names(object@assayData)) {
-      segmented$gainP <- tidyr::gather(as.data.frame(CGHbase::probgain(object)), sample, probgain)$probgain
-      segmented$ampP <- tidyr::gather(as.data.frame(CGHbase::probamp(object)), sample, probamp)$probamp
-      segmented$lossP <- tidyr::gather(as.data.frame(CGHbase::probloss(object)), sample, probloss)$probloss
-      segmented$dlossP <- tidyr::gather(as.data.frame(CGHbase::probdloss(object)), sample, probdloss)$probdloss
-    }
-  }
-
-  # collapse copy numbers down to segments
-  collapsed_segs <- CopyNumberSegments(segmented)
-  collapsed_segs$weight <- NULL
-
-  collapsed_segs <- collapsed_segs %>% transform(chromosome = as.character(chromosome))
-  collapsed_segs$chromosome[collapsed_segs$chromosome == 23] <- 'X'
-  ranges <- GenomicRanges::makeGRangesFromDataFrame(collapsed_segs)
-  GenomeInfoDb::seqlevelsStyle(ranges) <-'UCSC'
-  hits <- GenomicRanges::findOverlaps(ranges, cyto_ranges)
-  temp <- data.frame(ranges = hits@from, cyto_ranges = hits@to, cytobands = cytobands$name[hits@to])
-  temp <- temp[,c('ranges','cytobands')]
-
-  # collapse cytobands to a single cell
-  temp <- temp %>%
-    dplyr::group_by(ranges) %>%
-    dplyr::summarise(cytobands = paste(cytobands, collapse = ",")) %>%
-    dplyr::ungroup()
-  for (i in c(1:dim(temp)[1])) {
-    entry <- stringr::str_split(temp$cytobands[i], pattern = ',')[[1]]
-    if ( length(entry) > 1 ) {
-      temp$cytobands[i] <- paste0(entry[1], '-', entry[length(entry)])
-    }
-  }
-  collapsed_segs$cytobands <- temp$cytobands
-  collapsed_segs$coordinates <- paste0(GenomicRanges::seqnames(ranges), ':', GenomicRanges::ranges(ranges))
-  collapsed_segs <- collapsed_segs %>% dplyr::mutate(size = end - start + 1)
-  collapsed_segs$segment <- NULL
-  colnames(collapsed_segs) <- c('sample', 'chromosome', 'start', 'end', 'gain_probability',
-                                'loss_probability', 'relative_copy_number', 'bin_count',
-                                'sum_of_bin_lengths', 'cytobands', 'coordinates', 'size')
-  # save segment tables
-  if ( save_dir != FALSE ) {
-    dir.create(file.path(save_dir, binsize))
-    for (i in unique(collapsed_segs$sample)) {
-      temp <- collapsed_segs[collapsed_segs$sample == i, ]
-      file_name <- paste0(save_dir, '/', binsize, '/', i, '_', binsize, '_RsegsCytobandsTable.tsv')
-      write.table(temp, file = file_name, sep = '\t', col.names = TRUE, row.names = FALSE)
-    }
-  }
-
-  DBI::dbDisconnect(connection)
-  return(collapsed_segs)
-}
-
-
-#' Generate Human Readable Absolute Copy-Number Profiles
-#'
-#' @description
-#'
-#' This function takes as input a QDNAseq or CGHcall copy-number object and gives back Cytoband .tsv tables from absolute copy-number calls (in a human readable format).
-#'
-#' @param object S4 copy-number object - QDNAseq or CGHcall object
-#' @param save_path A string. A path (directory) to where segment tables should be saved. ex. '~/Documents/test_project'
-#' @returns A table. Collapsed Segment tables in long format (by sample id) ready to be written out to a table file (ex. tsv, csv).
-#'
-#' @export
-GenHumanReadableAcnProfile <- function(object, save_path) {
-
-  # Get Chromosome cytobands, coordinates (in bp), and lengths of regions
-  connection <- dbConnect(MySQL(), user="genome", host="genome-mysql.cse.ucsc.edu", dbname="hg19")
-  cytobands <- dbGetQuery(conn=connection, statement="SELECT chrom, chromStart, chromEnd, name FROM cytoBand")
-  cyto_ranges <- GenomicRanges::makeGRangesFromDataFrame(cytobands)
-
-  # Add cytobands
-  collapsed_segs <- plyr::ldply(object, data.frame, .id = 'sample')
-  collapsed_segs <- collapsed_segs %>% transform(chromosome = as.character(chromosome))
-  collapsed_segs$chromosome[collapsed_segs$chromosome == 23] <- 'X'
-  ranges <- GenomicRanges::makeGRangesFromDataFrame(collapsed_segs)
-  seqlevelsStyle(ranges) <-'UCSC'
-  hits <- findOverlaps(ranges, cyto_ranges)
-  temp <- data.frame(ranges = hits@from, cyto_ranges = hits@to, cytobands = cytobands$name[hits@to])
-  temp <- temp[,c('ranges','cytobands')]
-
-  # collapse cytobands
-  temp <- temp %>%
-    dplyr::group_by(ranges) %>%
-    dplyr::summarise(cytobands = paste(cytobands, collapse = ",")) %>%
-    dplyr::ungroup()
-  for (i in c(1:dim(temp)[1])) {
-    entry <- str_split(temp$cytobands[i], pattern = ',')[[1]]
-    if ( length(entry) > 1 ) {
-      temp$cytobands[i] <- paste0(entry[1], '-', entry[length(entry)])
-    }
-  }
-
-  # Re-format for output
-  collapsed_segs$cytobands <- temp$cytobands
-  collapsed_segs$coordinates <- paste0(seqnames(ranges), ':', ranges(ranges))
-  collapsed_segs <- collapsed_segs %>% mutate(size = end - start + 1)
-  collapsed_segs$segment <- NULL
-  colnames(collapsed_segs) <- c('sample', 'chromosome', 'start', 'end',
-                                'absolute_copy_number', 'cytobands',
-                                'coordinates', 'size')
-  collapsed_segs <- collapsed_segs %>% mutate(chromosome = replace(chromosome,
-                                                                   chromosome=="X", '23')) %>%
-    dplyr::group_by(sample) %>%
-    dplyr::arrange(as.integer(chromosome), .by_group = TRUE) %>%
-    mutate(chromosome = replace(as.character(chromosome),
-                                chromosome=='23', 'X'))
-  # save segment tables
-  dir.create(save_path)
-  for (i in unique(collapsed_segs$sample)) {
-    temp <- collapsed_segs[collapsed_segs$sample == i, ]
-    write.table(temp, file = paste0(save_path, i, '_segsCytobandsTable.tsv'),
-                sep = '\t', col.names = TRUE, row.names = FALSE)
-  }
-  dbDisconnect(connection)
-  return(collapsed_segs)
-}
 
 #' Collapses relative copy-number calls to segment tables
 #'

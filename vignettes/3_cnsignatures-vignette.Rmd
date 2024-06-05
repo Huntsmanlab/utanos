@@ -1,8 +1,8 @@
 ---
-title: "How to Create New Copy-Number Signatures"
+title: "3. Investigating and Creating Copy-Number Signatures"
 output: rmarkdown::html_document
 vignette: >
-  %\VignetteIndexEntry{create-new-cn-signatures}
+  %\VignetteIndexEntry{3. Investigating and Creating Copy-Number Signatures}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

@@ -5,18 +5,17 @@
 \title{Calculate Absolute Copy Numbers}
 \usage{
 CalculateACNs(
-  relative_segs,
+  cnobj,
   acnmethod,
-  rascal_sols = FALSE,
-  variants = FALSE,
-  relative_cns = FALSE,
-  addplots = FALSE,
+  rascal_sols = NULL,
+  variants = NULL,
   acn_save_path = FALSE,
-  return_sols = FALSE
+  return_sols = FALSE,
+  return_S4 = FALSE
 )
 }
 \arguments{
-\item{relative_segs}{A tsv of the relative segmented copy-numbers.}
+\item{cnobj}{An S4 object of type QDNAseqCopyNumbers. This object must contain a copynumber slot and a segmented slot.}
 
 \item{acnmethod}{The method by which to calculate ACNs. Can be one of: \cr
 "maxvaf" - Calculate ACNs assuming the maximum discovered VAF for the sample is an appropriate representation for the tumour fraction. \cr
@@ -33,24 +32,26 @@ If using variant allele frequencies from targeted panel sequencing or some other
 A dataframe of known ploidies per sample - Calculate ACNs at each bin given we already know the ploidy of the samples. \cr
 }}
 
-\item{rascal_sols}{A tsv of the calculated rascal solutions.}
+\item{rascal_sols}{A tsv or dataframe of the calculated rascal solutions.}
 
-\item{variants}{A dataframe of the variants including variant allele frequencies per gene and per sample.}
-
-\item{relative_cns}{A tsv of the relative copy-numbers. Required if 'addplots' param is set to true.}
-
-\item{addplots}{(optional) Logical. Indicates whether or not plots should be returned alongside the ACNs.}
+\item{variants}{(optional) Dataframe or string. A table of variants containing variant allele frequencies per gene and per sample.}
 
 \item{acn_save_path}{(optional) String. The output path (absolute path recommended) where to save the result.}
 
 \item{return_sols}{(optional) Logical. Return the selected rascal solution.}
+
+\item{return_S4}{(optional) Logical.}
 }
 \value{
-A list of dataframes. One DF for each sample where an Absolute Copy Number profile was successfully found. \cr
-Optionally a second list of plot objects (ggplot); one for each sample where a profile was found.
+A list containing: \cr
+\enumerate{
+\item A list of dataframes (one for each sample) OR a QDNAseq S4 object. \cr
+\item Optionally, a dataframe of the rascal solutions. \cr
+This function returns ACNs when a rascal solution is found, if one isn't, the sample is skipped.
+}
 }
 \description{
-CalculateACNs() calculates the absolute copy numbers (ACNs) from the relative copy number profiles of one or more samples.
+CalculateACNs() calculates absolute copy numbers (ACNs) from the relative copy number profiles of one or more samples.
 There are several included options by which to do this.
 Note: If not providing a table of variant allele frequencies (VAFs) then 'mad' is the only method available. \cr
 
@@ -59,22 +60,27 @@ https://github.com/crukci-bioinformatics/rascal/blob/master/vignettes/rascal.Rmd
 }
 \details{
 \if{html}{\out{<div class="sourceCode">}}\preformatted{solutions <- "~/Documents/.../rascal_solutions.csv"
-rcn_segs <- "~/Documents/.../rCN_segs.tsv"
+rcn.obj <- "~/repos/utanosmodellingdata/sample_copy_number_data/sample_filtered_cn_data.rds"
 variants <- "~/Documents/.../allvariants.clinvar.cosmic.exons.csv"
 save_path <- "~/Documents/.../rascal_ACN_segments.rds"
 variants <- data.table::fread(file = variants, sep = ',')
 variants <- variants \%>\% dplyr::rename(chromosome = chr,
                                        gene_name = genecode_gene_name)
-variants$sample_id <- stringr::str_replace_all(variants$sample_id, "-", ".")
-output <- CalculateACNs(relative_segs = rcn_segs,
-                        rascal_sols = solutions,
-                        variants = variants,
-                        acnmethod = 'maxvaf')
-output <- CalculateACNs(relative_segs = rcn_segs,
+outputs <- CalculateACNs(rcn.obj,
+                         acn.method = 'maxvaf',
+                         rascal_sols = solutions,
+                         variants = variants,
+                         return_sols = TRUE,
+                         return_S4 = TRUE)
+output <- CalculateACNs(rcn.obj,
                         rascal_sols = solutions,
                         variants = variants,
                         acnmethod = c('TP53', 'KRAS', 'BRCA1',
                                       'BRCA2', 'PIK3CA', 'PTEN'),
                         acn_save_path = save_path)
+output <- CalculateACNs(rcn.obj,
+                        rascal_sols = solutions,
+                        acnmethod = 'mad')
+
 }\if{html}{\out{</div>}}
 }
