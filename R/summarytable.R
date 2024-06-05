@@ -1,5 +1,7 @@
-# This script is used to combine CN profiles from a QDNAseq or CGHcall object.
-# Then convert this table into a useable/helpful output format for wetlab researchers.
+# Summary Table Functions
+# Functions used to :
+# 1. Build output tables that summarize gain/loss events
+# 2. Build output tables in useable/helpful output formats for non-programmatic purposes.
 
 #' Collapses down table to segmented copy numbers
 #'
@@ -45,24 +47,30 @@ CollapseTableToSegments <- function(df) {
     )
 }
 
-#' Makes summary tables
+#' Makes Relative Copy-Number Gain/Loss Summary Tables
 #'
 #' @description
 #'
-#' MakeSummaryTable takes in a Copy Number object and writes a TSV table containing all the summaries.
-#' It is the function that does the work.
+#' MakeSummaryTable takes in a QDNAseq CN-object and returns tables containing agglomerated RCN gain/loss information across the provided samples. \cr
+#' Prior to summarizing the gains/losses, the function applies a log2 transformation to center the data at 0. \cr
+#' Optionally it also writes out a TSV table containing the summary.
 #'
-#' @param CNobj An object. A a ballgown object containing Copy Number data.
-#' @param lowT A whole number. A threshold below which there is copy number loss.
-#' @param highT A whole number. A threshold above which there is copy number gain.
-#' @param pL A float. A probability threshold (between 0 and 1), to which loss frequency is compared.
-#' @param pG A float. A probability threshold (between 0 and 1), to which gain frequency is compared.
-#' @param prop A float. A proportion threshold (between 0 and 1), to which loss and gain occurrences are compared (separately).
-#' @param find_peaks Boolean. If TRUE, returns a table
-#' @param snames A vector. A vector of sample IDs that are of interest.
-#' @param ref_genome A string. The reference genome used for alignment.
-#' @param save_path A string. A path (directory) to where segment tables should be saved. ex. '~/Documents/test_project'.
-#' @returns Nothing.
+#' @param CNobj An S4 object of type QDNAseqCopyNumbers. This object must contain slots for: \cr
+#' copynumber, segmented (standard CN slots) \cr
+#' probgain, probdloss, probamp, probnorm, calls, probloss (from running CGHcall)
+#' @param lowT Numeric (negative). Ignore gains/losses between this value and 0. ex. -0.1 \cr
+#' This parameter helps filter out noise.
+#' @param highT Numeric (positive). Ignore gains/losses between this value and 0. ex. 0.1 \cr
+#' This parameter helps filter out noise.
+#' @param pL (optional) Numeric. A probability threshold (between 0 and 1). Mask loss events where the probability does not rise to this threshold.
+#' @param pG (optional) Numeric. A probability threshold (between 0 and 1). Mask gain events where the probability does not rise to this threshold.
+#' @param prop (optional) Numeric. A proportion threshold (between 0 and 1). Exclude gain/loss events that occur in less than this proportion of samples.
+#' @param find_peaks (optional) Logical. If TRUE, returns a table of peaks found in the summarized data.
+#' @param snames (optional) Character vector. A vector of sample IDs that are of interest.
+#' @param ref_genome (optional) String. The reference genome used for alignment. \cr
+#' Options: 'hg19', 'hg38', and 'mm10'
+#' @param save_path (optional) String. A path (directory) to where segment tables should be saved. ex. '~/Documents/test_project'.
+#' @returns A list of data frames. Always the summary_table, optionally a peaks data frame.
 #'
 #' @export
 MakeSummaryTable <- function(CNobj,
@@ -193,5 +201,162 @@ MakeSummaryTable <- function(CNobj,
     write.table(df, file = save_path, sep = '\t', col.names = TRUE, row.names = FALSE)
   }
   return(output)
+}
+
+
+#' Generate Human Readable Relative Copy-Number Profiles
+#'
+#' @description
+#'
+#' This function takes as input a QDNAseq or CGHcall copy-number object and gives back a long-format table with several useful columns.
+#' These columns include; 'sample', 'chromosome', 'start', 'end', 'gain_probability',
+#' 'loss_probability', 'relative_copy_number', 'bin_count', 'sum_of_bin_lengths',
+#' 'cytobands', 'coordinates', and 'size'
+#'
+#' @param object S4 copy-number object - QDNAseq or CGHcall object
+#' @param binsize The binsize used in the copy number object. ex. '30kb', '100kb'
+#' @param ref_genome One of the common reference genomes: ex. 'hg19', 'mm10', or 'hg38'
+#' @param save_dir (optional) The directory where the tables should be saved. ex. '~/Documents/test_project'
+#' @returns Segment tables in long format (by sample id) ready to be written out to a table file (ex. tsv, csv).
+#'
+#' @export
+GenHumanReadableRcnProfile <- function(object, binsize,
+                                       ref_genome, save_dir = FALSE) {
+
+  # Create collapsed segments table
+  # Add Chromosome cytoband, coordinates (in bp), length of region, and gain or loss tag to each entry
+  connection <- RMySQL::dbConnect(RMySQL::MySQL(), user="genome", host="genome-mysql.cse.ucsc.edu", dbname=ref_genome)
+  cytobands <- DBI::dbGetQuery(conn=connection, statement="SELECT chrom, chromStart, chromEnd, name FROM cytoBand")
+  cyto_ranges <- GenomicRanges::makeGRangesFromDataFrame(cytobands)
+
+  segmented <- tidyr::gather(as.data.frame(CGHbase::segmented(object)), sample, segmented)
+  if (class(object)[1] == 'cghCall') {
+    segmented$gainP <- tidyr::gather(as.data.frame(CGHbase::probgain(object)), sample, probgain)$probgain
+    segmented$ampP <- tidyr::gather(as.data.frame(CGHbase::probamp(object)), sample, probamp)$probamp
+    segmented$lossP <- tidyr::gather(as.data.frame(CGHbase::probloss(object)), sample, probloss)$probloss
+    segmented$dlossP <- tidyr::gather(as.data.frame(CGHbase::probdloss(object)), sample, probdloss)$probdloss
+    segmented$chromosome <- rep(object@featureData@data[["Chromosome"]], dim(object)[2])
+    segmented$start <- rep(object@featureData@data[["Start"]], dim(object)[2])
+    segmented$end <- rep(object@featureData@data[["End"]], dim(object)[2])
+  } else {
+    segmented$chromosome <- rep(object@featureData@data[["chromosome"]], dim(object)[2])
+    segmented$start <- rep(object@featureData@data[["start"]], dim(object)[2])
+    segmented$end <- rep(object@featureData@data[["end"]], dim(object)[2])
+    if ('probgain' %in% names(object@assayData)) {
+      segmented$gainP <- tidyr::gather(as.data.frame(CGHbase::probgain(object)), sample, probgain)$probgain
+      segmented$ampP <- tidyr::gather(as.data.frame(CGHbase::probamp(object)), sample, probamp)$probamp
+      segmented$lossP <- tidyr::gather(as.data.frame(CGHbase::probloss(object)), sample, probloss)$probloss
+      segmented$dlossP <- tidyr::gather(as.data.frame(CGHbase::probdloss(object)), sample, probdloss)$probdloss
+    }
+  }
+
+  # collapse copy numbers down to segments
+  collapsed_segs <- CopyNumberSegments(segmented)
+  collapsed_segs$weight <- NULL
+
+  collapsed_segs <- collapsed_segs %>% transform(chromosome = as.character(chromosome))
+  collapsed_segs$chromosome[collapsed_segs$chromosome == 23] <- 'X'
+  ranges <- GenomicRanges::makeGRangesFromDataFrame(collapsed_segs)
+  GenomeInfoDb::seqlevelsStyle(ranges) <-'UCSC'
+  hits <- GenomicRanges::findOverlaps(ranges, cyto_ranges)
+  temp <- data.frame(ranges = hits@from, cyto_ranges = hits@to, cytobands = cytobands$name[hits@to])
+  temp <- temp[,c('ranges','cytobands')]
+
+  # collapse cytobands to a single cell
+  temp <- temp %>%
+    dplyr::group_by(ranges) %>%
+    dplyr::summarise(cytobands = paste(cytobands, collapse = ",")) %>%
+    dplyr::ungroup()
+  for (i in c(1:dim(temp)[1])) {
+    entry <- stringr::str_split(temp$cytobands[i], pattern = ',')[[1]]
+    if ( length(entry) > 1 ) {
+      temp$cytobands[i] <- paste0(entry[1], '-', entry[length(entry)])
+    }
+  }
+  collapsed_segs$cytobands <- temp$cytobands
+  collapsed_segs$coordinates <- paste0(GenomicRanges::seqnames(ranges), ':', GenomicRanges::ranges(ranges))
+  collapsed_segs <- collapsed_segs %>% dplyr::mutate(size = end - start + 1)
+  collapsed_segs$segment <- NULL
+  colnames(collapsed_segs) <- c('sample', 'chromosome', 'start', 'end', 'gain_probability',
+                                'loss_probability', 'relative_copy_number', 'bin_count',
+                                'sum_of_bin_lengths', 'cytobands', 'coordinates', 'size')
+  # save segment tables
+  if ( save_dir != FALSE ) {
+    dir.create(file.path(save_dir, binsize))
+    for (i in unique(collapsed_segs$sample)) {
+      temp <- collapsed_segs[collapsed_segs$sample == i, ]
+      file_name <- paste0(save_dir, '/', binsize, '/', i, '_', binsize, '_RsegsCytobandsTable.tsv')
+      write.table(temp, file = file_name, sep = '\t', col.names = TRUE, row.names = FALSE)
+    }
+  }
+
+  DBI::dbDisconnect(connection)
+  return(collapsed_segs)
+}
+
+
+#' Generate Human Readable Absolute Copy-Number Profiles
+#'
+#' @description
+#'
+#' This function takes as input a QDNAseq or CGHcall copy-number object and gives back Cytoband .tsv tables from absolute copy-number calls (in a human readable format).
+#'
+#' @param object S4 copy-number object - QDNAseq or CGHcall object
+#' @param save_path A string. A path (directory) to where segment tables should be saved. ex. '~/Documents/test_project'
+#' @returns A table. Collapsed Segment tables in long format (by sample id) ready to be written out to a table file (ex. tsv, csv).
+#'
+#' @export
+GenHumanReadableAcnProfile <- function(object, save_path) {
+
+  # Get Chromosome cytobands, coordinates (in bp), and lengths of regions
+  connection <- dbConnect(MySQL(), user="genome", host="genome-mysql.cse.ucsc.edu", dbname="hg19")
+  cytobands <- dbGetQuery(conn=connection, statement="SELECT chrom, chromStart, chromEnd, name FROM cytoBand")
+  cyto_ranges <- GenomicRanges::makeGRangesFromDataFrame(cytobands)
+
+  # Add cytobands
+  collapsed_segs <- plyr::ldply(object, data.frame, .id = 'sample')
+  collapsed_segs <- collapsed_segs %>% transform(chromosome = as.character(chromosome))
+  collapsed_segs$chromosome[collapsed_segs$chromosome == 23] <- 'X'
+  ranges <- GenomicRanges::makeGRangesFromDataFrame(collapsed_segs)
+  seqlevelsStyle(ranges) <-'UCSC'
+  hits <- findOverlaps(ranges, cyto_ranges)
+  temp <- data.frame(ranges = hits@from, cyto_ranges = hits@to, cytobands = cytobands$name[hits@to])
+  temp <- temp[,c('ranges','cytobands')]
+
+  # collapse cytobands
+  temp <- temp %>%
+    dplyr::group_by(ranges) %>%
+    dplyr::summarise(cytobands = paste(cytobands, collapse = ",")) %>%
+    dplyr::ungroup()
+  for (i in c(1:dim(temp)[1])) {
+    entry <- str_split(temp$cytobands[i], pattern = ',')[[1]]
+    if ( length(entry) > 1 ) {
+      temp$cytobands[i] <- paste0(entry[1], '-', entry[length(entry)])
+    }
+  }
+
+  # Re-format for output
+  collapsed_segs$cytobands <- temp$cytobands
+  collapsed_segs$coordinates <- paste0(seqnames(ranges), ':', ranges(ranges))
+  collapsed_segs <- collapsed_segs %>% mutate(size = end - start + 1)
+  collapsed_segs$segment <- NULL
+  colnames(collapsed_segs) <- c('sample', 'chromosome', 'start', 'end',
+                                'absolute_copy_number', 'cytobands',
+                                'coordinates', 'size')
+  collapsed_segs <- collapsed_segs %>% mutate(chromosome = replace(chromosome,
+                                                                   chromosome=="X", '23')) %>%
+    dplyr::group_by(sample) %>%
+    dplyr::arrange(as.integer(chromosome), .by_group = TRUE) %>%
+    mutate(chromosome = replace(as.character(chromosome),
+                                chromosome=='23', 'X'))
+  # save segment tables
+  dir.create(save_path)
+  for (i in unique(collapsed_segs$sample)) {
+    temp <- collapsed_segs[collapsed_segs$sample == i, ]
+    write.table(temp, file = paste0(save_path, i, '_segsCytobandsTable.tsv'),
+                sep = '\t', col.names = TRUE, row.names = FALSE)
+  }
+  dbDisconnect(connection)
+  return(collapsed_segs)
 }
 

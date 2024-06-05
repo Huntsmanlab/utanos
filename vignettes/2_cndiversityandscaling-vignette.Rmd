@@ -22,18 +22,20 @@ knitr::opts_chunk$set(
 
 ## I - Introduction
 
-Broadly, this vignette seeks to demonstrate how a user could answer the following two questions using __utanos__:
+Broadly, this vignette seeks to demonstrate how a user could answer the following three questions using __utanos__:
 
-  * In my dataset, where do copy-number gains and losses co-occur? 
+  * In my dataset, where do copy-number (CN) gains and losses co-occur? 
   * To what extent do these aberrations co-occur across individual samples?
+  * How can this be done at the relative-CN vs absolute-CN scales?
 
-__Utanos__ provides two options by which to find answers to these questions. 1 - using plots/diagrams to visualize the differences, or 2 - by manually examining informative, well-formatted tables.
+__Utanos__ provides two options by which to find answers to these questions.  
+1 - using plots/diagrams to visualize the differences, or 2 - by manually examining informative, well-formatted tables.
 
 <br>
-**Exclusions:** This vignette does not cover data filtration in detail. It does not go over filtration or setting masks in the QDNAseq object. The vignette titled "Sample Filtering and Quality Evaluation" covers the filtration and QC steps. 
+**Exclusions:** This vignette does not cover data filtration or setting masks in the QDNAseq object in any detail. The vignette titled "Sample Filtering and Quality Evaluation" covers the filtration and QC steps. 
 <br><br>
 
-As an example dataset we will again use the samples found in the *utanosmodellingdata* repository found [here](https://github.com/Huntsmanlab/utanosmodellingdata). If not already done, clone that repo to somewhere convenient such as a common 'repos' folder on your machine and read in the sample data. It is human endometrial carcinoma sWGS data aligned to hg19. The associated publication (Jamieson, 2024) was published in CCR and can be found [here](https://doi.org/10.1158/1078-0432.CCR-23-3689).
+As an example dataset we will again use the samples found in the *utanosmodellingdata* repository found [here](https://github.com/Huntsmanlab/utanosmodellingdata). If not already done, clone that repo to somewhere convenient such as a common 'repos' folder on your machine and read in the example data. It is human endometrial carcinoma sWGS data aligned to hg19. The associated publication (Jamieson, 2024) was published in CCR and can be found [here](https://doi.org/10.1158/1078-0432.CCR-23-3689).
 
 ```{r setup, eval = FALSE}
 > library(utanos)
@@ -66,10 +68,11 @@ Annotation:
 The callBins function from the QDNAseq package can be run on segmented copy number data to determine chromosomal aberrations. This function adds gain/loss probability slots to the input S4 object. Under the hood it makes use of the CGHcall R package.
 Please refer to those packages for further algorithmic details.
 
-Here is an example using our sample data.
+Here is an example after first filtering as outlined in the previous vignette.
 
 ```{r, eval = FALSE}
-> rcn.obj <- FilterCNs(cnobj = rcn.obj, genome = "hg19", maskcomCNVs = TRUE)
+> rcn.obj <- FilterCNs(cnobj = rcn.obj, genome = "hg19", 
+                       maskcomCNVs = TRUE, removebins = TRUE)
 > rcn.obj <- callBins(rcn.obj)
 ```
 
@@ -141,19 +144,19 @@ These tables can be easily saved as csvs, tsvs, or in your favourite tabular for
 
 # Run command
 > output <- MakeSummaryTable(rcn.obj, 
-                           low_threshold, high_threshold, 
-                           prob_loss, prob_gain, 
-                           proportion_threshold,
-                           find_peaks = TRUE)
+                             low_threshold, high_threshold, 
+                             prob_loss, prob_gain, 
+                             proportion_threshold,
+                             find_peaks = TRUE)
 > output$summary_table %>% head(5)
 # A tibble: 5 × 16
-  chromosome   start     end mean_copy_number gain_probability loss_probability gain_count
-  <chr>        <int>   <int>            <dbl>            <dbl>            <dbl>      <dbl>
-1 1           840001 1020000            0.150            0.301           0.0076          3
-2 1          1020001 1950000            0.101            0.213           0.0076          3
-3 1          1950001 2160000            0.146            0.213           0.0076          3
-4 1          2160001 2220000            0.116            0.211           0.054           3
-5 1          8880001 9060000            0.157            0.247           0.006           5
+  chromosome    start      end mean_copy_number gain_probability loss_probability gain_count
+  <chr>         <int>    <int>            <dbl>            <dbl>            <dbl>      <dbl>
+1 1           8910001  9060000            0.157            0.244           0.0049          5
+2 1           9600001 10230000            0.139            0.252           0.0038          6
+3 1          10620001 10740000            0.119            0.222           0.0062          5
+4 1          15420001 15630000            0.148            0.292           0.106           3
+5 1          15960001 16080000            0.155            0.302           0.106           3
 # ℹ 9 more variables: loss_count <dbl>, gain_proportion <dbl>, loss_proportion <dbl>,
 #   gain_samples <chr>, loss_samples <chr>, bin_count <int>, sum_of_bin_lengths <dbl>,
 #   coordinates <chr>, features_in_region <chr>
@@ -307,6 +310,8 @@ In ReplaceQDNAseqAssaySlots(cnobj, output[["acns"]], output[["acns_segs"]]) :
     These samples are excluded from the returned acn object.
     The probability of loss/gain values in the returned acn object were calculated using the relative CNs object.
 ```
+
+Note: The warning message for C provides a useful message to users in case an ACN solution for some samples was not found by rascal. 
 
 ### V.2 - Plotting
 
