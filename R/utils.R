@@ -982,7 +982,7 @@ ExportBinsQDNAObj <- function(object,
 
   if (inherits(object, "QDNAseqSignals")) {
     if (filter) {
-      object <- object[binsToUse(object), ]
+      object <- object[QDNAseq:::binsToUse(object), ]
     }
     feature <- featureNames(object)
     chromosome <- fData(object)$chromosome
@@ -1048,3 +1048,86 @@ ExportBinsQDNAObj <- function(object,
   return(out)
 }
 
+#'  Find best fitting solutions for each sample
+#'
+#' @description
+#' findRascalSolutions() finds the best ploidy and cellularity pairs from the relative copy number profiles of each sample.
+#' Makes use of the find_best_fit_solutions() function from rascal.
+#' 
+#' @param cnobj An S4 object of type QDNAseqCopyNumbers.
+#' @param min_ploidy,max_ploidy the range of ploidies.
+#' @param ploidy_step the stepwise increment of ploidies along the grid.
+#' @param min_cellularity,max_cellularity the range of cellularities.
+#' @param cellularity_step the stepwise increment of cellularities along the
+#' grid.
+#' @param distance_function the distance function to use, either "MAD" for the
+#' mean absolute difference or "RMSD" for the root mean square difference, where
+#' differences are between the fitted absolute copy number values and the
+#' nearest whole number.
+#' @param distance_filter_scale_factor the distance threshold above which
+#' solutions will be discarded as a multiple of the solution with the smallest
+#' distance.
+#' @param max_proportion_zero the maximum proportion of fitted absolute copy
+#' number values in the zero copy number state.
+#' @param min_proportion_close_to_whole_number the minimum proportion of fitted
+#' absolute copy number values sufficiently close to a whole number.
+#' @param max_distance_from_whole_number the maximum distance from a whole
+#' number that a fitted absolute copy number can be to be considered
+#' sufficiently close.
+#' @param solution_proximity_threshold how close two solutions can be before one
+#' will be filtered; reduces the number of best fit solutions where there are
+#' many minima in close proximity.
+#' @param keep_all set to \code{TRUE} to return all solutions but with
+#' additional \code{best_fit} column to indicate which are the local minima that
+#' are acceptable solutions (may be useful to avoid computing the distance grid
+#' twice)
+#' 
+#' @return a dataframe containing the calculated solutions. Each solution includes:
+#' sample, ploidy, celluarity, and distance.
+#'
+#' @export
+FindRascalSolutions <- function(cnobj,
+                                min_ploidy = 1.5, max_ploidy = 5.5, ploidy_step = 0.01,
+                                min_cellularity = 0.2, max_cellularity = 1.0, cellularity_step = 0.01,
+                                distance_function = c("MAD", "RMSD"),
+                                distance_filter_scale_factor = 1.25,
+                                max_proportion_zero = 0.05,
+                                min_proportion_close_to_whole_number = 0.5,
+                                max_distance_from_whole_number = 0.15,
+                                solution_proximity_threshold = 5,
+                                keep_all = FALSE) {
+  # convert obj to dataframe
+  rcn = ExportBinsQDNAObj(cnobj, type = "segments") %>%
+    subset(select = -1)
+  row.names(rcn) <- NULL
+  
+  pivoted <- tidyr::pivot_longer(rcn, 
+                                 cols = !(chromosome:end),
+                                 names_to = "sample",
+                                 values_to = "segmented", 
+                                 values_drop_na = TRUE) %>%
+    dplyr::select(sample, tidyr::everything())
+  
+  # centering
+  relative_bin_and_segments_centered <- pivoted %>%
+    dplyr::group_by(sample) %>%
+    dplyr::mutate(dplyr::across(c(segmented), ~ . / stats::median(segmented, na.rm = TRUE))) %>%
+    dplyr::ungroup()
+  
+  # collapse bins
+  segments <- CopyNumberSegments(relative_bin_and_segments_centered)
+  
+  # find best fit soln
+  solutions <- segments %>% dplyr::group_by(sample) %>% 
+    dplyr::group_modify(~ FindBestFitSolutions(
+      .x$copy_number, .x$weight, 
+      min_ploidy = min_ploidy, max_ploidy = max_ploidy, ploidy_step = ploidy_step, 
+      min_cellularity = min_cellularity, max_cellularity = max_cellularity, cellularity_step = cellularity_step, 
+      max_proportion_zero = max_proportion_zero, distance_function = distance_function, 
+      solution_proximity_threshold = solution_proximity_threshold,
+      min_proportion_close_to_whole_number = min_proportion_close_to_whole_number, 
+      keep_all = keep_all
+    ))
+  
+  return(solutions)
+}
