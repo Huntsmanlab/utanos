@@ -34,68 +34,64 @@ FitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",min_prio
 
 CalculateSumOfPosteriors <- function(CN_feature, components,name,
                                      rowIter = 1000, cores = 1) {
-    if (cores > 1) {
-        require(foreach)
-        require(doMC)
+  if (cores > 1) {
+    require(foreach)
+    require(doMC)
 
-        len = dim(CN_feature)[1]
-        iters = floor( len / rowIter )
-        lastiter = iters[length(iters)]
+    len = dim(CN_feature)[1]
+    iters = floor( len / rowIter )
+    lastiter = iters[length(iters)]
 
-        registerDoMC(cores)
-        curr_posterior = foreach(i=0:iters, .combine=rbind) %dopar% {
-            start = i*rowIter+1
-            if (i != lastiter) { end = (i+1)*rowIter } else { end = len }
-                flexmix::posterior(components, data.frame(dat=as.numeric(CN_feature[start:end,2])))
-        }
-    } else {
-        curr_posterior <- flexmix::posterior(components, data.frame(dat=as.numeric(CN_feature[,2])))
+    registerDoMC(cores)
+    curr_posterior = foreach(i=0:iters, .combine=rbind) %dopar% {
+      start = i*rowIter+1
+      if (i != lastiter) { end = (i+1)*rowIter } else { end = len }
+      flexmix::posterior(components, data.frame(dat=as.numeric(CN_feature[start:end,2])))
     }
-    mat <- cbind(CN_feature,curr_posterior)
-    posterior_sum <- c()
+  } else {
+    curr_posterior <- flexmix::posterior(components, data.frame(dat=as.numeric(CN_feature[,2])))
+  }
+  mat <- cbind(CN_feature,curr_posterior)
+  posterior_sum <- c()
 
-    # note - foreach and parallelization doesn't make the following code faster.
-    for (i in unique(mat$ID)) {
-        posterior_sum <- rbind(posterior_sum,colSums(mat[mat$ID==i,c(-1,-2)]))
-    }
-    params <- flexmix::parameters(components)
+  # note - foreach and parallelization doesn't make the following code faster.
+  for (i in unique(mat$ID)) {
+      posterior_sum <- rbind(posterior_sum,colSums(mat[mat$ID==i,c(-1,-2)]))
+  }
+  params <- flexmix::parameters(components)
 
-    if (!is.null(nrow(params))) {
-        posterior_sum <- posterior_sum[, order(params[1,])]
-    } else {
-        posterior_sum <- posterior_sum[, order(params)]
-    }
+  if (!is.null(nrow(params))) {
+      posterior_sum <- posterior_sum[, order(params[1,])]
+  } else {
+      posterior_sum <- posterior_sum[, order(params)]
+  }
 
-    colnames(posterior_sum) <- paste0(name, 1:ncol(posterior_sum))
-    rownames(posterior_sum) <- rownames(unique(mat$ID))
-    posterior_sum
+  colnames(posterior_sum) <- paste0(name, 1:ncol(posterior_sum))
+  rownames(posterior_sum) <- rownames(unique(mat$ID))
+  posterior_sum
 }
 
-GetSegSize<-function(abs_profiles)
-{
-    out<-c()
-    samps<-GetSampNames(abs_profiles)
-    for(i in samps)
-    {
-        if(class(abs_profiles)=="QDNAseqCopyNumbers")
-        {
-            segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
+GetSegSize <- function(abs_profiles) {
+    out <- c()
+    samps <- GetSampNames(abs_profiles)
+    for (i in samps) {
+        if (class(abs_profiles) == "QDNAseqCopyNumbers") {
+            segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
+        } else {
+            segTab <- abs_profiles[[i]]
+            colnames(segTab)[4] <- "segVal"
         }
-        else
-        {
-            segTab<-abs_profiles[[i]]
-            colnames(segTab)[4]<-"segVal"
-        }
-        segTab$segVal[as.numeric(segTab$segVal)<0]<-0
-        seglen<-(as.numeric(segTab$end)-as.numeric(segTab$start))
-        seglen<-seglen[seglen>0]
-        out<-rbind(out,cbind(ID=rep(i,length(seglen)),value=seglen))
+        segTab$segVal[as.numeric(segTab$segVal) < 0] <- 0
+        seglen <- (as.numeric(segTab$end) - as.numeric(segTab$start))
+        seglen <- seglen[seglen > 0]
+        out <- rbind(out, cbind(ID = rep(i, length(seglen)),
+                                value = seglen))
     }
-    rownames(out)<-NULL
-    data.frame(out,stringsAsFactors = F)
+    rownames(out) <- NULL
+    data.frame(out, stringsAsFactors = F)
 }
 
-GetBPNum<-function(abs_profiles,chrlen) {
+GetBPNum <- function(abs_profiles, chrlen) {
     out <- c()
     samps <- GetSampNames(abs_profiles)
     for (i in samps) {
@@ -109,14 +105,18 @@ GetBPNum<-function(abs_profiles,chrlen) {
         allBPnum <- c()
         for (c in chrs) {
             currseg <- segTab[segTab$chromosome == c,]
-            intervals<-seq(1,chrlen[chrlen[,1]==paste0("chr",c),2]+10000000,10000000)
-            res <- hist(as.numeric(currseg$end[-nrow(currseg)]),breaks=intervals,plot=FALSE)$counts
-            allBPnum<-c(allBPnum,res)
+            intervals <- seq(1,
+                             chrlen[chrlen[,1] == paste0("chr", c), 2] + 10000000,
+                             10000000)
+            res <- hist(as.numeric(currseg$end[-nrow(currseg)]),
+                        breaks = intervals, plot = FALSE)$counts
+            allBPnum <- c(allBPnum, res)
         }
-        out<-rbind(out,cbind(ID=rep(i,length(allBPnum)),value=allBPnum))
+        out <- rbind(out, cbind(ID = rep(i, length(allBPnum)),
+                                value = allBPnum))
     }
-    rownames(out)<-NULL
-    data.frame(out,stringsAsFactors = F)
+    rownames(out) <- NULL
+    data.frame(out, stringsAsFactors = F)
 }
 
 GetOscilation <- function(abs_profiles, chrlen) {

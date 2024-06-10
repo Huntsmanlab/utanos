@@ -2,7 +2,7 @@
 % Please edit documentation in R/signaturegeneration.R
 \name{CallSignatureExposures}
 \alias{CallSignatureExposures}
-\title{Call/Determine Signature Exposures for a set of Samples}
+\title{Wrapper to find Signature Exposures for a set of samples}
 \usage{
 CallSignatureExposures(
   copy_numbers_input,
