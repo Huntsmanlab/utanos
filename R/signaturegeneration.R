@@ -8,7 +8,7 @@
 ###
 
 
-#' Call/Determine Signature Exposures for a set of Samples
+#' Wrapper to find Signature Exposures for a set of samples
 #'
 #' @description
 #'
@@ -50,7 +50,7 @@ CallSignatureExposures <- function (copy_numbers_input,
 
   stopifnot(!is.null(component_models))                                         # We want the user to explicitly declare the components they intend to use
   stopifnot(!is.null(signatures))                                               # We want the user to explicitly declare the signatures they intend to use
-  # stopifnot(!is.null(data_path))                                                # We want the user to explicitly declare the signatures they intend to use
+  # stopifnot(!is.null(data_path))                                              # We want the user to explicitly declare the signatures they intend to use
   datetoday <- Sys.Date()
 
   if (!is.null(relativeCN_data)) {
