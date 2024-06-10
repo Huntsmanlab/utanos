@@ -14,6 +14,7 @@
 # FindBestFitSolutions
 # AbsoluteCopyNumberScalingFactor
 # RelativeToAbsoluteCopyNumber
+# TumourFraction
 
 
 #' Compute distance function for fitting relative copy numbers to absolute
@@ -360,4 +361,29 @@ RelativeToAbsoluteCopyNumber <- function(relative_copy_numbers, ploidy, cellular
   stopifnot(is.numeric(cellularity))
   
   ploidy + AbsoluteCopyNumberScalingFactor(ploidy, cellularity) * (relative_copy_numbers - 1)
+}
+
+#' Compute tumour DNA fraction for the given absolute copy number and
+#' cellularity
+#'
+#' Compute the tumour DNA fraction for the given absolute copy number(s) in the
+#' tumour and the cellularity, i.e. the fraction of all cells that are tumour
+#' cells.
+#' Copied from rascal.
+#'
+#' @param absolute_copy_number the absolute copy number(s) (a numeric value).
+#' @param cellularity the cellularity, i.e. the fraction of cells that are from
+#' the tumour.
+#' @return the fraction of DNA that originates from tumour cells.
+#' @examples
+#' tumour_fraction(3, 0.82)
+#' @export
+TumourFraction <- function(absolute_copy_number, cellularity) {
+
+  stopifnot(is.numeric(absolute_copy_number))
+  stopifnot(is.numeric(cellularity))
+
+  tumour <- absolute_copy_number * cellularity
+  normal <- 2 * (1 - cellularity)
+  tumour / (tumour + normal)
 }

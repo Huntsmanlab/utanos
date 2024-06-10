@@ -229,13 +229,13 @@ GenVafAcns <- function (segments,
                                                sep = ' ')); next}               # If there isn't a CN for the VAF skip finding an ACN
     solution_set <- solutions %>%                                               # Get from running find best fit solution
       dplyr::select(ploidy, cellularity) %>%
-      dplyr::mutate(absolute_copy_number = rascal::relative_to_absolute_copy_number(vaf_gene_rcn, ploidy, cellularity)) %>%
-      dplyr::mutate(tumour_fraction = rascal::tumour_fraction(absolute_copy_number, cellularity))
+      dplyr::mutate(absolute_copy_number = RelativeToAbsoluteCopyNumber(vaf_gene_rcn, ploidy, cellularity)) %>%
+      dplyr::mutate(tumour_fraction = TumourFraction(absolute_copy_number, cellularity))
 
     sol_idx <- which.min(abs(as.double(vafs$vaf) - (solution_set$tumour_fraction*100)))
     solution_set <- solution_set[,]
     absolute_segments <- dplyr::mutate(sample_segments,
-                                copy_number = rascal::relative_to_absolute_copy_number(copy_number,
+                                copy_number = RelativeToAbsoluteCopyNumber(copy_number,
                                                                                solution_set[sol_idx,]$ploidy,
                                                                                solution_set[sol_idx,]$cellularity))
     sols <- rbind(sols, c(i,
@@ -248,10 +248,10 @@ GenVafAcns <- function (segments,
     # Optionally, grab needed values to create an S4 QDNAseq object
     if (return_S4) {
       absolute_cns <- dplyr::filter(cns, sample == i)
-      absolute_cns$copy_number <- rascal::relative_to_absolute_copy_number(absolute_cns$copy_number,
+      absolute_cns$copy_number <- RelativeToAbsoluteCopyNumber(absolute_cns$copy_number,
                                                                            solution_set[sol_idx,]$ploidy,
                                                                            solution_set[sol_idx,]$cellularity)
-      absolute_cns$segmented <- rascal::relative_to_absolute_copy_number(absolute_cns$segmented,
+      absolute_cns$segmented <- RelativeToAbsoluteCopyNumber(absolute_cns$segmented,
                                                                            solution_set[sol_idx,]$ploidy,
                                                                            solution_set[sol_idx,]$cellularity)
       acns <- cbind(acns, absolute_cns$copy_number)
@@ -308,16 +308,16 @@ GenKploidyAcns <- function (segments,
     ploidy <- dplyr::filter(ploidies, sample_id == i)
     rcn_obj <- sample_segments
     absolute_segments <- dplyr::mutate(sample_segments,
-                                       copy_number = rascal::relative_to_absolute_copy_number(copy_number,
-                                                                                              ploidy$ploidy,
-                                                                                              cellularity))
+                                       copy_number = RelativeToAbsoluteCopyNumber(copy_number,
+                                                                                  ploidy$ploidy,
+                                                                                  cellularity))
     # Optionally, grab needed values to create an S4 QDNAseq object
     if (return_S4) {
       absolute_cns <- dplyr::filter(cns, sample == i)
-      absolute_cns$copy_number <- rascal::relative_to_absolute_copy_number(absolute_cns$copy_number,
+      absolute_cns$copy_number <- RelativeToAbsoluteCopyNumber(absolute_cns$copy_number,
                                                                            ploidy$ploidy,
                                                                            cellularity)
-      absolute_cns$segmented <- rascal::relative_to_absolute_copy_number(absolute_cns$segmented,
+      absolute_cns$segmented <- RelativeToAbsoluteCopyNumber(absolute_cns$segmented,
                                                                          ploidy$ploidy,
                                                                          cellularity)
       acns <- cbind(acns, absolute_cns$copy_number)
@@ -370,16 +370,16 @@ GenMadAcns <- function (segments,
                       dplyr::filter(distance == min(distance)) %>%
                       dplyr::filter(cellularity == max(cellularity))
     absolute_segments <- dplyr::mutate(sample_segments,
-                                       copy_number = rascal::relative_to_absolute_copy_number(copy_number,
-                                                                                              solutions$ploidy,
-                                                                                              solutions$cellularity))
+                                       copy_number = RelativeToAbsoluteCopyNumber(copy_number,
+                                                                                  solutions$ploidy,
+                                                                                  solutions$cellularity))
     # Optionally, grab needed values to create an S4 QDNAseq object
     if (return_S4) {
       absolute_cns <- dplyr::filter(cns, sample == i)
-      absolute_cns$copy_number <- rascal::relative_to_absolute_copy_number(absolute_cns$copy_number,
+      absolute_cns$copy_number <- RelativeToAbsoluteCopyNumber(absolute_cns$copy_number, 
                                                                            solutions$ploidy,
                                                                            solutions$cellularity)
-      absolute_cns$segmented <- rascal::relative_to_absolute_copy_number(absolute_cns$segmented,
+      absolute_cns$segmented <- RelativeToAbsoluteCopyNumber(absolute_cns$segmented,
                                                                          solutions$ploidy,
                                                                          solutions$cellularity)
       acns <- cbind(acns, absolute_cns$copy_number)
