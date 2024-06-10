@@ -977,74 +977,74 @@ ExportBinsQDNAObj <- function(object,
                               type=c("copynumber", "segments", "calls"),
                               filter=TRUE, digits=3,
                               chromosomeReplacements=c("23"="X", "24"="Y", "25"="MT"), ...) {
-
+  
   type <- match.arg(type)
-
+  
   if (inherits(object, "QDNAseqSignals")) {
     if (filter) {
       object <- object[QDNAseq:::binsToUse(object), ]
     }
-    feature <- featureNames(object)
-    chromosome <- fData(object)$chromosome
-    start <- fData(object)$start
-    end <- fData(object)$end
+    feature <- Biobase::featureNames(object)
+    chromosome <- Biobase::fData(object)$chromosome
+    start <- Biobase::fData(object)$start
+    end <- Biobase::fData(object)$end
     if (inherits(object, "QDNAseqReadCounts")) {
       if (type != "copynumber")
         warning("Ignoring argument 'type' and returning read counts.")
-      dat <- assayDataElement(object, "counts")
+      dat <- Biobase::assayDataElement(object, "counts")
       type <- "read counts"
     } else {
       if (type == "copynumber") {
-        dat <- assayDataElement(object, "copynumber")
+        dat <- Biobase::assayDataElement(object, "copynumber")
       } else if (type == "segments") {
-        if (!"segmented" %in% assayDataElementNames(object))
+        if (!"segmented" %in% Biobase::assayDataElementNames(object))
           stop("Segments not found, please run segmentBins() first.")
-        dat <- assayDataElement(object, "segmented")
+        dat <- Biobase::assayDataElement(object, "segmented")
       } else if (type == "calls") {
-        if (!"calls" %in% assayDataElementNames(object))
+        if (!"calls" %in% Biobase::assayDataElementNames(object))
           stop("Calls not found, please run callBins() first.")
-        dat <- assayDataElement(object, "calls")
+        dat <- Biobase::assayDataElement(object, "calls")
       }
     }
   } else if (inherits(object, c("cghRaw", "cghSeg", "cghCall",
                                 "cghRegions"))) {
-
-    feature <- featureNames(object)
-    chromosome <- as.character(chromosomes(object))
+    
+    feature <- Biobase::featureNames(object)
+    chromosome <- as.character(QDNAseq::chromosomes(object))
     for (chromosomeReplacement in names(chromosomeReplacements)) {
       chromosome[chromosome == chromosomeReplacement] <-
         chromosomeReplacements[chromosomeReplacement]
     }
-    start <- bpstart(object)
-    end <- bpend(object)
+    start <- CGHbase::bpstart(object)
+    end <- CGHbase::bpend(object)
     if (inherits(object, c("cghRaw", "cghSeg", "cghCall"))) {
       if (type == "copynumber") {
-        dat <- copynumber(object)
+        dat <- CGHbase::copynumber(object)
       } else if (type == "segments") {
-        if (!"segmented" %in% assayDataElementNames(object))
+        if (!"segmented" %in% Biobase::assayDataElementNames(object))
           stop("Segments not found, please run segmentData() first.")
-        dat <- segmented(object)
+        dat <- CGHbase::segmented(object)
       } else if (type == "calls") {
-        if (!"calls" %in% assayDataElementNames(object))
+        if (!"calls" %in% Biobase::assayDataElementNames(object))
           stop("Calls not found, please run CGHcall() first.")
-        dat <- calls(object)
+        dat <- CGHbase::calls(object)
       }
     } else if (inherits(object, "cghRegions")) {
       if (type != "calls")
         warning("Ignoring argument 'type' and returning calls.")
-      dat <- regions(object)
+      dat <- CGHbase::regions(object)
     }
   }
-
+  
   if (is.numeric(digits)) {
     dat <- round(dat, digits=digits)
   }
   oopts2 <- options(scipen=15)
   on.exit(options(oopts2))
-
+  
   out <- data.frame(feature=feature, chromosome=chromosome, start=start,
                     end=end, dat, check.names=FALSE, stringsAsFactors=FALSE)
-
+  
   return(out)
 }
 
