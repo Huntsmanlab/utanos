@@ -105,8 +105,9 @@ FindRascalSolutions <- function(cnobj,
       solution_proximity_threshold = solution_proximity_threshold,
       min_proportion_close_to_whole_number = min_proportion_close_to_whole_number, 
       keep_all = keep_all
-    ))
-  
+    )) %>% 
+    dplyr::ungroup()
+
   return(solutions)
 }
 
@@ -246,7 +247,7 @@ CalculateACNs <- function (cnobj, acnmethod,
         warning("There appear to be ploidy sample IDs for which there are no segment tables.")
       }
     }
-    output <- GenKploidyAcns(segments, rascal_sols, return_sols, long_cns, return_S4)
+    output <- GenKploidyAcns(segments, acnmethod, return_sols, long_cns, return_S4)
 
   } else if (length(acnmethod) > 1) {
     variants <- variants %>% dplyr::group_by(sample_id) %>%
@@ -428,6 +429,12 @@ GenKploidyAcns <- function (segments,
   } else{
     output[["acn_segment_tables"]] <- chosenSegmentTablesList
   }
+
+  # return the known ploidies
+  if (return_sols) {
+    output[["ploidies"]] <- ploidies
+  }
+
   return(output)
 }
 
@@ -450,11 +457,14 @@ GenMadAcns <- function (segments,
   acns <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
   acns_segs <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
 
+  sols <- data.frame()
+
   for (i in unique(rascal_batch_solutions$sample)) {
     sample_segments <- dplyr::filter(segments, sample == i)
     solutions <- rascal_batch_solutions %>% dplyr::filter(sample == i) %>%
                       dplyr::filter(distance == min(distance)) %>%
                       dplyr::filter(cellularity == max(cellularity))
+    sols <- rbind(sols, solutions)
     absolute_segments <- dplyr::mutate(sample_segments,
                                        copy_number = RelativeToAbsoluteCopyNumber(copy_number,
                                                                                   solutions$ploidy,
@@ -490,6 +500,12 @@ GenMadAcns <- function (segments,
   } else {
     output[["acn_segment_tables"]] <- chosenSegmentTablesList
   }
+
+  # Return the selected ploidies and cellularities
+  if (return_sols) {
+    output[["rascal_solutions"]] <- sols
+  }
+
   return(output)
 }
 
