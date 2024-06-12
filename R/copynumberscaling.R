@@ -106,7 +106,8 @@ FindRascalSolutions <- function(cnobj,
       min_proportion_close_to_whole_number = min_proportion_close_to_whole_number, 
       keep_all = keep_all
     )) %>% 
-    dplyr::ungroup()
+    dplyr::ungroup() %>%
+    as.data.frame()
 
   return(solutions)
 }
@@ -141,6 +142,9 @@ FindRascalSolutions <- function(cnobj,
 #' @param acn_save_path (optional) String. The output path (absolute path recommended) where to save the result.
 #' @param return_sols (optional) Logical. Return the selected rascal solution.
 #' @param return_S4 (optional) Logical.
+#' @param distance_decimal_places number of decimal places to compare to when finding
+#' the minimum distance.
+#' 
 #' @returns A list containing: \cr
 #' 1. A list of dataframes (one for each sample) OR a QDNAseq S4 object. \cr
 #' 2. Optionally, a dataframe of the rascal solutions. \cr
@@ -179,7 +183,8 @@ CalculateACNs <- function (cnobj, acnmethod,
                            variants = NULL,
                            acn_save_path = FALSE,
                            return_sols = FALSE,
-                           return_S4 = FALSE) {
+                           return_S4 = FALSE,
+                           distance_decimal_places = 7) {
 
   output <- list()
   stopifnot(dim(cnobj) > 0)
@@ -259,7 +264,7 @@ CalculateACNs <- function (cnobj, acnmethod,
 
   } else if (acnmethod == 'mad') {
     output <- GenMadAcns(segments, rascal_sols, return_sols,
-                         long_cns, return_S4)
+                         long_cns, return_S4, distance_decimal_places)
 
   } else {
     stop("Invalid value passed to the 'acnmethod' parameter. \n
@@ -448,7 +453,8 @@ GenMadAcns <- function (segments,
                         rascal_batch_solutions,
                         return_sols = FALSE,
                         cns = FALSE,
-                        return_S4 = FALSE) {
+                        return_S4 = FALSE,
+                        distance_decimal_places) {
 
   chosenSegmentTablesList <- list()
   j <- 1
@@ -461,7 +467,10 @@ GenMadAcns <- function (segments,
 
   for (i in unique(rascal_batch_solutions$sample)) {
     sample_segments <- dplyr::filter(segments, sample == i)
+    # the distance is rounded just before filtering for min distance. This is to ensure distances that only differ 
+    # due to floating-point error are treated as equal, and subsequently decided based on max cellularity.
     solutions <- rascal_batch_solutions %>% dplyr::filter(sample == i) %>%
+                      dplyr::mutate(distance = round(distance, distance_decimal_places)) %>%
                       dplyr::filter(distance == min(distance)) %>%
                       dplyr::filter(cellularity == max(cellularity))
     sols <- rbind(sols, solutions)
