@@ -76,7 +76,7 @@ FindRascalSolutions <- function(cnobj,
                                 keep_all = FALSE) {
   # convert obj to dataframe
   rcn = ExportBinsQDNAObj(cnobj, type = "segments") %>%
-    subset(select = -1)
+    subset(select = -feature)
   row.names(rcn) <- NULL
   
   pivoted <- tidyr::pivot_longer(rcn, 
