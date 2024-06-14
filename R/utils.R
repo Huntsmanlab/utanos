@@ -605,3 +605,37 @@ ExportBinsQDNAObj <- function(object,
   
   return(out)
 }
+
+
+# Converts a wide dataframe with bin and segment copynumber into a QDNAseq object
+DfToQDNAseq <- function(df) {
+  # Create bins
+  bins <- Biobase::AnnotatedDataFrame(data.frame(
+    chromosome = df$chromosome,
+    start = df$start,
+    end = df$end,
+    row.names = paste(df$chromosome, df$start, df$end, sep = ':')
+  ))
+
+  # Extract copynumber and segmented
+  rcn_matrix <- as.matrix(df[, grep("_copynumber$", colnames(df))])
+  rownames(rcn_matrix) <- rownames(bins)
+  colnames(rcn_matrix) <- stringr::str_replace(colnames(rcn_matrix), "_copynumber", "")
+  segs_matrix <- as.matrix(df[, grep("_segmented$", colnames(df))])
+  rownames(segs_matrix) <- rownames(bins)
+  colnames(segs_matrix) <- stringr::str_replace(colnames(segs_matrix), "_segmented", "")
+
+  # Create QDNASeqCopyNumbers Object
+  copyNumbers <- new('QDNAseqCopyNumbers',
+                      bins = bins,
+                      copynumber = rcn_matrix,
+                      phenodata = Biobase::AnnotatedDataFrame(data.frame(
+                        sampleNames = colnames(rcn_matrix),
+                        row.names = colnames(rcn_matrix)
+                    ))
+  )
+
+  Biobase::assayDataElement(copyNumbers, "segmented") <- segs_matrix
+
+  return(copyNumbers)
+}
