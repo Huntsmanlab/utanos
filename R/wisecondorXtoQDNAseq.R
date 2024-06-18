@@ -52,9 +52,9 @@ BuildWxQdnaObject <- function (input_path, genome_used = 'hg19',
   segs <- segs %>%
     purrr::map(~dplyr::mutate_at(.x, ggplot2::vars("segVal"), function(x) {exp(x)}))
   stats <- plyr::ldply(seq_along(stats_files), function(x) {
-    df <- data.table::fread(stats_files[[x]], sep = '\t', nrows = 23)
+    extras <- readLines(stats_files[[x]])
     read_count <- as.integer(sub("Number of reads: ", "",
-                                 readLines(stats_files[[x]])[26]))
+                                 extras[which(grepl("Number of reads: ", extras))]))
     df <- data.frame(name = samples[x],
                      total_reads = read_count,
                      stringsAsFactors=FALSE)
