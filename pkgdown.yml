@@ -1,0 +1,14 @@
+pandoc: 3.1.11
+pkgdown: 2.0.9
+pkgdown_sha: ~
+articles:
+  0_quickstart-vignette: 0_quickstart-vignette.html
+  1_samplequality-vignette: 1_samplequality-vignette.html
+  2_cndiversityandscaling-vignette: 2_cndiversityandscaling-vignette.html
+  3_cnsignatures-vignette: 3_cnsignatures-vignette.html
+  utanos: utanos.html
+last_built: 2024-06-18T18:18Z
+urls:
+  reference: https://huntsmanlab.github.io/utanos/reference
+  article: https://huntsmanlab.github.io/utanos/articles
+
