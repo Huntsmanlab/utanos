@@ -1,0 +1,55 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# utanos <img src="man/figures/logo.png" align="right" height="138" alt="" />
+
+<!-- badges: start -->
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+<!-- badges: end -->
+
+### Package Goal: 
+To be a swiss army knife in analyzing shallow/low-pass WGS data.
+
+### Package Description/Details: 
+*U*tilities for *T*he *AN*alysis *O*f *S*hallow WGS in R (UTANOS or utanos). Includes functions for plotting, quality evaluation, data re-structuring, copy-number aberration exploration, copy-number signature inference, and HRD identification. 
+Additionally, there are tools that export analyses/datasets in formats useful for human examination. (i.e. for non-computational purposes).   
+
+## Installation:
+
+Install R (version > 4.2)  
+[Cran would be the place to find the right R](https://cran.r-project.org/index.html)  
+
+Ensure the following basic packages are installed.
+```R
+install.packages("librarian")
+BiocManager::install("Biobase")
+```
+
+Install the bulk of this package's dependencies making use of librarian:
+```R
+librarian::shelf(caret, CGHcall, data.table, DBI, DescTools, devtools, doMC, dplyr, EnsDb.Hsapiens.v75, flexmix, GenomicRanges, ggalt, ggplot2, ggpubr, ggrepel, gridExtra, hrbrthemes, ks, magrittr, NMF, pheatmap, plyr, purrr, QDNAseq, readr, RMySQL, stringr, tidyr, viridis, YAPSA)
+```
+
+Install annotables from github:
+```R
+devtools::install_github("stephenturner/annotables")
+```
+
+Finally, install utanos:
+```R
+install_github("Huntsmanlab/utanos")
+```
+
+

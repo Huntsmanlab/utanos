@@ -6,21 +6,17 @@
 \usage{
 ChooseNumberSignatures(
   sample_by_component,
-  save_path = FALSE,
-  outfile = "numSigs.pdf",
   min_sig = 3,
   max_sig = 12,
   iter = 100,
-  cores = 4
+  cores = 4,
+  nmfalg = "brunet",
+  seed = 77777
 )
 }
 \arguments{
 \item{sample_by_component}{Matrix. Expects a sum-of-posteriors probability matrix.
 Likely the output from \code{GenerateSampleByComponentMatrix()}.}
-
-\item{save_path}{Character string. Path where to save the generated figure.}
-
-\item{outfile}{Character string. Filename.}
 
 \item{min_sig}{Integer. Minimum number of signatures to consider.}
 

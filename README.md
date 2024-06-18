@@ -1,50 +1,54 @@
-# utanos
 
-### Package Goal: 
-To be a swiss army knife in analyzing shallow/low-pass WGS data
+<!-- README.md is generated from README.Rmd. Please edit that file -->
 
-### Package Description/Details: 
-Includes functions for plotting, quality evaluation, data re-structuring, and copy-number signature inference. 
-Additionally there are tools that export analyses/datsets in formats useful for human examination. (i.e. for non-computational purposes).  
+# utanos <img src="man/figures/logo.png" align="right" height="138" alt="" />
 
-### Installation Instructions:
-Install R (version > 4.2)  
-[Cran would be the place to find the right R](https://cran.r-project.org/index.html)  
+<!-- badges: start -->
+
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+<!-- badges: end -->
+
+### Package Goal:
+
+To be a swiss army knife in analyzing shallow/low-pass WGS data.
+
+### Package Description/Details:
+
+*U*tilities for *T*he *AN*alysis *O*f *S*hallow WGS in R (UTANOS or
+utanos). Includes functions for plotting, quality evaluation, data
+re-structuring, copy-number aberration exploration, copy-number
+signature inference, and HRD identification. Additionally, there are
+tools that export analyses/datasets in formats useful for human
+examination. (i.e. for non-computational purposes).
+
+## Installation:
+
+Install R (version \> 4.2)  
+[Cran would be the place to find the right
+R](https://cran.r-project.org/index.html)
 
 Ensure the following basic packages are installed.
-```R
+
+``` r
 install.packages("librarian")
 BiocManager::install("Biobase")
 ```
 
-Install the bulk of this package's dependencies making use of librarian:
-```R
+Install the bulk of this package’s dependencies making use of librarian:
+
+``` r
 librarian::shelf(caret, CGHcall, data.table, DBI, DescTools, devtools, doMC, dplyr, EnsDb.Hsapiens.v75, flexmix, GenomicRanges, ggalt, ggplot2, ggpubr, ggrepel, gridExtra, hrbrthemes, ks, magrittr, NMF, pheatmap, plyr, purrr, QDNAseq, readr, RMySQL, stringr, tidyr, viridis, YAPSA)
 ```
 
 Install annotables from github:
-```R
+
+``` r
 devtools::install_github("stephenturner/annotables")
 ```
 
 Finally, install utanos:
-```R
+
+``` r
 install_github("Huntsmanlab/utanos")
 ```
-
-
-_____________________________________________________________________________________________________________________________________
-
-
-### File list:
-* __utils.R__ - General purpose utility functions for anything related to the package.
-* __plotting.R__ - General purpose functions for anything related to plotting data analyzed using the package.
-* __samplequality.R__ - Functions related to evaluating the quality of each sample being analyzed.
-* __main_functions.R__ - Central logic functions used in the calling of copy-number signatures. Needs to be re-named.
-* __helper_functions.R__ - Functions assisting in the calling of copy-number signatures.  Needs to be re-named.
-* __makeFilteredCNSummaryTable.R__ - Contains functions for taking a Relative Copy Number (CN) QDNAseq object and writing out a TSV table summarizing the observed CN changes.
-* __signaturegeneration.R__ - Code to calculate copy-number signature exposures for a list of samples given their segmented copy-number profiles.
-* __wisecondorXtoQDNAseq.R__ - Code to build a QDNAseq object from rCN WisecondorX output files.
-
-
-

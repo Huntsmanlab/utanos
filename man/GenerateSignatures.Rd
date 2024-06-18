@@ -9,6 +9,7 @@ GenerateSignatures(
   nsig,
   seed = 77777,
   nmfalg = "brunet",
+  nruns = 1000,
   cores = 4
 )
 }

@@ -91,7 +91,7 @@ The CGHbase R-package provides an excellent plot showing the gain and loss proba
 ```
 
 ```{r, out.width = '100%', echo = FALSE}
-knitr::include_graphics("../images/cndiversity_vignette_01.png")
+knitr::include_graphics("images/cndiversity_vignette_01.png")
 ```
 
 Notes:  
@@ -111,7 +111,7 @@ Alternatively, the relative copy-number changes can be visualized sample-by-samp
 ```
 
 ```{r, out.width = '100%', echo = FALSE}
-knitr::include_graphics("../images/cndiversity_vignette_02.png")
+knitr::include_graphics("images/cndiversity_vignette_02.png")
 ```
 
 
@@ -337,7 +337,7 @@ These scaled copy-numbers, absolute copy-numbers (aCNs), can be visualized using
 ```
 
 ```{r, out.width = '100%', echo = FALSE}
-knitr::include_graphics("../images/cndiversity_vignette_03.png")
+knitr::include_graphics("images/cndiversity_vignette_03.png")
 ```
 
 ```{r, eval = FALSE}
@@ -349,7 +349,7 @@ knitr::include_graphics("../images/cndiversity_vignette_03.png")
 ```
 
 ```{r, out.width = '100%', echo = FALSE}
-knitr::include_graphics("../images/cndiversity_vignette_04.png")
+knitr::include_graphics("images/cndiversity_vignette_04.png")
 ```
 
 The scaling using the 'mad' set the sample ploidy to around 4 whereas the 'maxvaf' option instead preferred a ploidy of 2.  
@@ -376,7 +376,7 @@ If the user is interested in finding tiny amplification events, filtering and ex
 ```
 
 ```{r, out.width = '100%', echo = FALSE}
-knitr::include_graphics("../images/cndiversity_vignette_05.png")
+knitr::include_graphics("images/cndiversity_vignette_05.png")
 ```
 
 

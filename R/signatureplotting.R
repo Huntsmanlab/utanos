@@ -132,26 +132,27 @@ GaussiansMixturePlot <- function(signatures, components,
   plotbreaks <- plotbreaks[xmax > plotbreaks]
 
   # Make the main plot
-  main_plot <- ggplot2::ggplot(data = data.frame(x = c(1,xmax)), aes(x)) +
-    ylab("") +
-    xlab(paste0(component, " mixture components")) +
+  main_plot <- ggplot2::ggplot(data = data.frame(x = c(1,xmax)),
+                               ggplot2::aes(x)) +
+    ggplot2::ylab("") +
+    ggplot2::xlab(paste0(component, " mixture components")) +
     ggplot2::theme_bw() +
-    theme(axis.text = ggplot2::element_text(size = 10),
-          axis.title = ggplot2::element_text(size = 12),
-          panel.grid.minor = ggplot2::element_blank(),
-          panel.grid.major = ggplot2::element_blank()) +
-    scale_x_continuous(breaks = plotbreaks)
+    ggplot2::theme(axis.text = ggplot2::element_text(size = 10),
+                   axis.title = ggplot2::element_text(size = 12),
+                   panel.grid.minor = ggplot2::element_blank(),
+                   panel.grid.major = ggplot2::element_blank()) +
+    ggplot2::scale_x_continuous(breaks = plotbreaks)
 
   for (i in 1:ncol(plotparam)) {
     main_plot <- main_plot +
-                    geom_area(stat = "function",
-                              fun = dnorm,
-                              args = list(mean = plotparam[1,i],
-                                          sd = plotparam[2,i]),
-                              color = "black",
-                              size = 0.05,
-                              fill = segpalette[i],
-                              alpha = shading[i])
+                      ggplot2::geom_area(stat = "function",
+                                         fun = dnorm,
+                                         args = list(mean = plotparam[1,i],
+                                                     sd = plotparam[2,i]),
+                                         color = "black",
+                                         size = 0.05,
+                                         fill = segpalette[i],
+                                         alpha = shading[i])
   }
   final_plot <- main_plot
 
@@ -171,24 +172,26 @@ GaussiansMixturePlot <- function(signatures, components,
     digits <- nchar(as.character(round(xmax/2)))
     plotbreaks <- c(10^(digits-1), (10^digits)/2, 10^digits)
     plotbreaks <- plotbreaks[xmax > plotbreaks]
-    inlay_plot <- ggplot2::ggplot(data = data.frame(x = c(1, xmax)), aes(x)) +
-                      ylab("") + xlab("") +
-                      ggplot2::theme_bw() +
-                      theme(axis.text = ggplot2::element_text(size = 8),
-                            axis.title = ggplot2::element_text(size = 8),
-                            panel.grid.minor = ggplot2::element_blank(),
-                            panel.grid.major = ggplot2::element_blank()) +
-                      scale_x_continuous(breaks = plotbreaks)
+    inlay_plot <- ggplot2::ggplot(data = data.frame(x = c(1, xmax)),
+                                  ggplot2::aes(x)) +
+                    ggplot2::ylab("") + ggplot2::xlab("") +
+                    ggplot2::theme_bw() +
+                    ggplot2::theme(axis.text = ggplot2::element_text(size = 8),
+                                   axis.title = ggplot2::element_text(size = 8),
+                                   panel.grid.minor = ggplot2::element_blank(),
+                                   panel.grid.major = ggplot2::element_blank()) +
+                    ggplot2::scale_x_continuous(breaks = plotbreaks)
 
     for (i in 1:ncol(plotparam2)) {
-      inlay_plot <- inlay_plot + geom_area(stat = "function",
-                                           fun = dnorm,
-                                           args = list(mean = plotparam2[1,i],
-                                                       sd = plotparam2[2,i]),
-                                           color = "black",
-                                           size = 0.05,
-                                           fill = segpalette[i],
-                                           alpha = shading2[i])
+      inlay_plot <- inlay_plot +
+                      ggplot2::geom_area(stat = "function",
+                                         fun = dnorm,
+                                         args = list(mean = plotparam2[1,i],
+                                                     sd = plotparam2[2,i]),
+                                         color = "black",
+                                         size = 0.05,
+                                         fill = segpalette[i],
+                                         alpha = shading2[i])
     }
     # Overwrite earlier final plot with inset plot version
     final_plot <-
@@ -249,16 +252,17 @@ PoissonsMixturePlot <- function(signatures, components,
     xlabel <- 'breakpoints per chr arm'
   }
 
-  main_plot <- ggplot2::ggplot(data = data.frame(x = c(0,round(xmax))), aes(x = x)) +
-              labs(y = "", x = paste0("Number of ", xlabel)) +
+  main_plot <- ggplot2::ggplot(data = data.frame(x = c(0,round(xmax))),
+                               ggplot2::aes(x = x)) +
+              ggplot2::labs(y = "", x = paste0("Number of ", xlabel)) +
               ggplot2::theme_bw() +
-              theme(axis.text = ggplot2::element_text(size = 10),
-                    axis.title = ggplot2::element_text(size = 12),
-                    panel.grid.minor = ggplot2::element_blank(),
-                    panel.grid.major = ggplot2::element_blank())
+              ggplot2::theme(axis.text = ggplot2::element_text(size = 10),
+                             axis.title = ggplot2::element_text(size = 12),
+                             panel.grid.minor = ggplot2::element_blank(),
+                             panel.grid.major = ggplot2::element_blank())
   for (i in 1:length(plotparam)) {
     main_plot <- main_plot +
-                    stat_function(geom = "area", n = round(xmax) + 1,
+           ggplot2::stat_function(geom = "area", n = round(xmax) + 1,
                                   fun = dpois, args = list(lambda = plotparam[i]),
                                   color = "black", size = 0.05,
                                   fill = cbPalette[i], alpha = shading[i])
@@ -291,8 +295,10 @@ WassDistancePlot <- function(cm_a, cm_b, component) {
   y <- flexmix::parameters(cm_b[[component]])
 
   # Calculate Wasserstein distances
-  if (cm_a[[component]]@call$model == "flexmix::FLXMCnorm1()" &&
-      cm_b[[component]]@call$model == "flexmix::FLXMCnorm1()") {
+  if (grepl("FLXMCnorm1", as.character(cm_a[[component]]@call$model),
+            fixed = TRUE) &&
+      grepl("FLXMCnorm1", as.character(cm_b[[component]]@call$model),
+            fixed = TRUE)) {
 
     x <- as.data.frame(x)
     x <- x[, order(apply(x, 2, function(a) a[1]))]
@@ -308,8 +314,10 @@ WassDistancePlot <- function(cm_a, cm_b, component) {
     }
     dist_df <- expand.grid(x = 1:dim(x)[2], y = 1:dim(y)[2])
 
-  } else if (cm_a[[component]]@call$model == "flexmix::FLXMCmvpois()" &&
-             cm_b[[component]]@call$model == "flexmix::FLXMCmvpois()") {
+  } else if (grepl("FLXMCmvpois", as.character(cm_a[[component]]@call$model),
+                   fixed = TRUE) &&
+             grepl("FLXMCmvpois", as.character(cm_b[[component]]@call$model),
+                   fixed = TRUE)) {
 
     x <- as.data.frame(t(x))
     x <- x[, order(apply(x, 2, function(a) a[1]))]
@@ -352,4 +360,61 @@ WassDistancePlot <- function(cm_a, cm_b, component) {
 
   return(list(plot = p1,
               matrix = dist_matrix))
+}
+
+
+#' Make an Alluvial Plot based on maximum signature exposure
+#'
+#' @description
+#'
+#' SEAlluvialPlot builds a ggplot using the easyalluvial R package.
+#' For two sets of exposures on the same set of samples it visualizes how the maximum exposure for one set of signatures is related to the other.
+#'
+#' @param exposA A matrix of signature exposures. Signatures in rows, samples in columns. Likely the output from `CallSignatureExposures()`.
+#' @param exposB A matrix of signature exposures. Signatures in rows, samples in columns.
+#' @param orderA (Optional) A character vector of signature names that will enforce an order. \cr
+#' Signature set A is assigned names S.A1 -> S.A#, and B S.B1 -> S.B# \cr
+#' ex. c('S.B2', 'S.B5', 'S.B3', 'S.B4', 'S.B1', 'S.B6')
+#' @param orderB (Optional) A character vector of signature names that will enforce an order. \cr
+#' Signature set A is assigned names S.A1 -> S.A#, and B S.B1 -> S.B# \cr
+#' ex. c('S.B2', 'S.B5', 'S.B3', 'S.B4', 'S.B1', 'S.B6')
+#' Must be for the same set of same set of samples as provided to `exposA`. Likely the output from `CallSignatureExposures()`.
+#' @returns A *list*. A ggplot and its corresponding data matrix.
+#'
+#'
+#' @export
+SEAlluvialPlot <- function (exposA, exposB,
+                            orderA = NULL,
+                            orderB = NULL) {
+
+  exposA <- as.data.frame(t(exposA))
+  colnames(exposA) <- paste0('S.A', as.character(1:dim(exposA)[2]))
+  exposA$max_sigA <- apply(exposA, 1, function(x) which.max(x))
+  exposA$max_sigA <- paste0('S.A', exposA$max_sigA)
+  if (!is.null(orderA)) { factor(exposA$max_sigA, levels = orderA) }
+  exposA$sample_ids <- rownames(exposA)
+
+  exposB <- as.data.frame(t(exposB))
+  colnames(exposB) <- paste0('S.B', as.character(1:dim(exposB)[2]))
+  exposB$max_sigB <- apply(exposB, 1, function(x) which.max(x))
+  exposB$max_sigB <- paste0('S.B', exposB$max_sigB)
+  if (!is.null(orderB)) { factor(exposB$max_sigB, levels = orderB) }
+  exposB$sample_ids <- rownames(exposB)
+
+  plotting_data <- exposA %>% dplyr::left_join(exposB, by = c('sample_ids'))
+  rownames(plotting_data) <- plotting_data$sample_ids
+  plotting_data$sample_ids <- NULL
+
+  ggp <- easyalluvial::alluvial_wide(dplyr::select(plotting_data,
+                                                    max_sigA, max_sigB),
+                                     fill_by = 'first_variable',
+                                     stratum_label_size = 3.5) +
+    ggplot2::labs(y = "Samples", caption = '') +
+    ggplot2::theme(axis.text.x = ggplot2::element_blank(),
+                   axis.text.y = ggplot2::element_text(size = 7),
+                   axis.title.y = ggplot2::element_text(size = 12),
+                   axis.title.x = ggplot2::element_blank(),
+                   title = ggplot2::element_blank())
+
+  return(list(plot = ggp, exposures_matrix = plotting_data))
 }

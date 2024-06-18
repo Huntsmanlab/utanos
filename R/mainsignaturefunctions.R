@@ -23,15 +23,20 @@
 QuantifySignatures <- function(sample_by_component,
                                component_by_signature = NULL) {
 
-  if (class(component_by_signature) == 'character') {
+  # Validate input
+  stopifnot("No signatures provided. Please provide a matrix, NMFfitX1 object, or filepath of signatures." =
+              !is.null(component_by_signature))
+
+  if ('character' %in% class(component_by_signature)) {
     if (file.exists(component_by_signature)) {
       component_by_signature <- NMF::basis(readRDS(file = component_by_signature))
     } else {
       stop("Unable to resolve path in component_by_signature variable to a file.")
     }
-  } else if (!(class(component_by_signature) == 'NMFfitX1')) {
-    stop("Object type not recognized, please supply an object of class 'NMFfitX1'.")
+  } else if (grepl("NMFfitX1", class(component_by_signature), fixed = TRUE)) {
+    component_by_signature <- NMF::basis(component_by_signature)
   }
+
   signature_by_sample <- YAPSA::LCD(t(sample_by_component),
                                     YAPSA:::normalize_df_per_dim(component_by_signature, 2))
   signature_by_sample <- NormaliseMatrix(signature_by_sample)
@@ -59,9 +64,10 @@ QuantifySignatures <- function(sample_by_component,
 #'
 #'
 #' @export
-GenerateSignatures <- function(sample_by_component, nsig, seed = 77777,
-                               nmfalg="brunet", cores = 4) {
-    NMF::nmf(t(sample_by_component), nsig, seed = seed, nrun = 1000,
+GenerateSignatures <- function(sample_by_component, nsig,
+                               seed = 77777, nmfalg="brunet",
+                               nruns = 1000, cores = 4) {
+    NMF::nmf(t(sample_by_component), nsig, seed = seed, nrun = nruns,
              method = nmfalg,.opt = paste0("p", cores) )
 }
 
@@ -79,8 +85,6 @@ GenerateSignatures <- function(sample_by_component, nsig, seed = 77777,
 #'
 #' @param sample_by_component Matrix. Expects a sum-of-posteriors probability matrix.
 #' Likely the output from `GenerateSampleByComponentMatrix()`.
-#' @param save_path Character string. Path where to save the generated figure.
-#' @param outfile Character string. Filename.
 #' @param min_sig Integer. Minimum number of signatures to consider.
 #' @param max_sig Integer. Maximum number of signatures to consider.
 #' @param iter Integer. The number of runs of NMF to perform at each rank with a random seed.
@@ -88,34 +92,26 @@ GenerateSignatures <- function(sample_by_component, nsig, seed = 77777,
 #' @returns A figure. A figure plotting the cophenetic distance, the dispersion, sparseness and silhouette score.
 #'
 #' @export
-ChooseNumberSignatures <- function(sample_by_component, save_path = FALSE,
-                                   outfile = "numSigs.pdf", min_sig=3,
-                                   max_sig=12, iter=100, cores=4) {
+ChooseNumberSignatures <- function(sample_by_component,
+                                   min_sig = 3, max_sig = 12,
+                                   iter = 100, cores = 4,
+                                   nmfalg = "brunet",
+                                   seed = 77777) {
 
-    nmfalg <- "brunet"
-    seed <- 77777
-    estim.r <- NMF::nmfEstimateRank(t(sample_by_component), min_sig:max_sig,
-                                    seed = seed, nrun = iter, verbose = FALSE,
-                                    method = nmfalg,
-                                    .opt = list(shared.memory = FALSE,
-                                                paste0("p", cores)))
-    V.random <- NMF::randomize(t(sample_by_component))
-    estim.r.random <- NMF::nmfEstimateRank(V.random, min_sig:max_sig,
-                                           seed = seed, nrun = iter,
-                                           verbose = FALSE, method = nmfalg,
-                                           .opt = list(shared.memory = FALSE,
-                                                       paste0("p", cores)))
-    p <- NMF::plot(estim.r, estim.r.random,
-                   what = c("cophenetic", "dispersion", "sparseness", "silhouette"),
-                   xname = "Observed", yname = "Randomised", main = "")
+  estim.r <- NMF::nmfEstimateRank(t(sample_by_component), min_sig:max_sig,
+                                  seed = seed, nrun = iter, verbose = FALSE,
+                                  method = nmfalg,
+                                  .opt = list(shared.memory = FALSE,
+                                              paste0("p", cores)))
+  V.random <- NMF::randomize(t(sample_by_component))
+  estim.r.random <- NMF::nmfEstimateRank(V.random, min_sig:max_sig,
+                                         seed = seed, nrun = iter,
+                                         verbose = FALSE, method = nmfalg,
+                                         .opt = list(shared.memory = FALSE,
+                                                     paste0("p", cores)))
 
-    if (save_path != FALSE) {
-      png(file = paste0(save_path, "/", outfile), width=10, height=12, units = 'in', res = 400, type = 'cairo-png' )
-      p
-      dev.off()
-    }
-
-    return(p)
+  output <- list(estrank = estim.r, randomized_estrank = estim.r.random)
+  return(output)
 }
 
 
@@ -160,10 +156,10 @@ ExtractCopyNumberFeatures <- function(CN_data,
   # Get chromosome and centromere locations
   if (genome == 'hg19') {
     chrlen <- as.data.frame(hg19.chrom.sizes[1:24,])
-    centromeres <- gaps.hg19[gaps.hg19[,8] == "centromere",]
+    centromeres <- gaps.hg19[gaps.hg19$type == "centromere",]
   } else if (genome == 'hg38') {
     chrlen <- as.data.frame(hg38.chrom.sizes[1:24,])
-    centromeres <- centromeres.hg38
+    centromeres <- gaps.hg38[gaps.hg38$type == "centromere",]
   }
 
   # Extract CN-Features
@@ -254,10 +250,10 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data,
   # Get chromosome and centromere locations
   if (genome == 'hg19') {
     chrlen <- as.data.frame(hg19.chrom.sizes[1:24,])
-    centromeres <- gaps.hg19[gaps.hg19[,8] == "centromere",]
+    centromeres <- gaps.hg19[gaps.hg19$type == "centromere",]
   } else if (genome == 'hg38') {
     chrlen <- as.data.frame(hg38.chrom.sizes[1:24,])
-    centromeres <- centromeres.hg38
+    centromeres <- gaps.hg38[gaps.hg38$type == "centromere",]
   }
 
   # Extract CN-Features
