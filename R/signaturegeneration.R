@@ -40,20 +40,18 @@
 #'
 #' @export
 CallSignatureExposures <- function (copy_numbers_input,
-                            component_models = NULL,
-                            signatures = NULL,
-                            data_path = NULL,
-                            plot_savepath = NULL,
-                            sigs_savepath = NULL,
-                            relativeCN_data = NULL,
-                            refgenome = 'hg19') {
+                                    component_models = NULL,
+                                    signatures = NULL,
+                                    plot_savepath = NULL,
+                                    sigs_savepath = NULL,
+                                    relativeCN_data = FALSE,
+                                    refgenome = 'hg19') {
 
-  stopifnot(!is.null(component_models))                                         # We want the user to explicitly declare the components they intend to use
-  stopifnot(!is.null(signatures))                                               # We want the user to explicitly declare the signatures they intend to use
-  # stopifnot(!is.null(data_path))                                              # We want the user to explicitly declare the signatures they intend to use
+  stopifnot(!is.null(component_models))                                         # Make sure the user explicitly declares the components they intend to use
+  stopifnot(!is.null(signatures))                                               # Make sure the user explicitly declares the signatures they intend to use
   datetoday <- Sys.Date()
 
-  if (!is.null(relativeCN_data)) {
+  if (relativeCN_data) {
     CN_features <- ExtractRelativeCopyNumberFeatures(copy_numbers_input,
                                                      genome = refgenome)
   } else {
@@ -61,14 +59,23 @@ CallSignatureExposures <- function (copy_numbers_input,
                                              genome = refgenome)
   }
 
-  if (file.exists(component_models)) {
+  if ( is.character(component_models)) {
+    if (file.exists(component_models)) {
+      sample_by_component <- GenerateSampleByComponentMatrix(CN_features,
+                                                             component_models)
+    } else { stop("Component models path isn't valid, file does not exist.") }
+  } else {
     sample_by_component <- GenerateSampleByComponentMatrix(CN_features,
                                                            component_models)
-  } else { stop("Component models path isn't valid, file does not exist.") }
+  }
 
-  if (file.exists(signatures)) {
+  if ( is.character(signatures)) {
+    if (file.exists(signatures)) {
+      sigex <- QuantifySignatures(sample_by_component, signatures)
+    } else { stop("Signatures path isn't valid, file does not exist.") }
+  } else {
     sigex <- QuantifySignatures(sample_by_component, signatures)
-  } else { stop("Signatures path isn't valid, file does not exist.") }
+  }
 
   sigex <- as.data.frame(sigex)
 

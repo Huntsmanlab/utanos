@@ -8,10 +8,9 @@ CallSignatureExposures(
   copy_numbers_input,
   component_models = NULL,
   signatures = NULL,
-  data_path = NULL,
   plot_savepath = NULL,
   sigs_savepath = NULL,
-  relativeCN_data = NULL,
+  relativeCN_data = FALSE,
   refgenome = "hg19"
 )
 }
@@ -28,8 +27,6 @@ Options: \cr
 'signatures/30kb_ovarian/component_by_signature_britroc_aCNs.rds' - The signatures created using the Britroc Ovarian sWGS samples. (Macintyre 2018) \cr
 'VAFrascalHQendoVan6sigs' - The signatures created using the high-quality p53abn sWGS endometrial samples. \cr}
 
-\item{data_path}{String. The path where to find signatures objects and component models.}
-
 \item{plot_savepath}{(optional) String. The path where to save a sample-by-component heatmap. Please provide a directory.}
 
 \item{sigs_savepath}{(optional) String. The path where to save a csv of the calculated signature exposures. Please provide a directory.}
@@ -37,6 +34,8 @@ Options: \cr
 \item{relativeCN_data}{(optional) Logical. If using relative Copy-Number data as input, set to true. Otherwise, ignore.}
 
 \item{refgenome}{(optional) String. The reference genome used. (ex. 'hg19', or 'hg38')}
+
+\item{data_path}{String. The path where to find signatures objects and component models.}
 }
 \value{
 A dataframe of the exposures for each sample to each signature.

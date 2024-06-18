@@ -72,23 +72,23 @@ CalculateSumOfPosteriors <- function(CN_feature, components,name,
 }
 
 GetSegSize <- function(abs_profiles) {
-    out <- c()
-    samps <- GetSampNames(abs_profiles)
-    for (i in samps) {
-        if (class(abs_profiles) == "QDNAseqCopyNumbers") {
-            segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
-        } else {
-            segTab <- abs_profiles[[i]]
-            colnames(segTab)[4] <- "segVal"
-        }
-        segTab$segVal[as.numeric(segTab$segVal) < 0] <- 0
-        seglen <- (as.numeric(segTab$end) - as.numeric(segTab$start))
-        seglen <- seglen[seglen > 0]
-        out <- rbind(out, cbind(ID = rep(i, length(seglen)),
-                                value = seglen))
+  out <- c()
+  samps <- GetSampNames(abs_profiles)
+  for (i in samps) {
+    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
+      segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
+    } else {
+      segTab <- abs_profiles[[i]]
+      colnames(segTab)[4] <- "segVal"
     }
-    rownames(out) <- NULL
-    data.frame(out, stringsAsFactors = F)
+    segTab$segVal[as.numeric(segTab$segVal) < 0] <- 0
+    seglen <- (as.numeric(segTab$end) - as.numeric(segTab$start))
+    seglen <- seglen[seglen > 0]
+    out <- rbind(out, cbind(ID = rep(i, length(seglen)),
+                            value = seglen))
+  }
+  rownames(out) <- NULL
+  data.frame(out, stringsAsFactors = F)
 }
 
 GetBPNum <- function(abs_profiles, chrlen) {

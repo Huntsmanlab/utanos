@@ -1,11 +1,11 @@
 ---
-title: Sample Filtering and Quality Evaluation
+title: "1. Sample Filtering and Quality Evaluation"
 output: 
   rmarkdown::html_vignette:
     toc: true
 # output: html_document
 vignette: >
-  %\VignetteIndexEntry{Sample Filtering and Quality Evaluation}
+  %\VignetteIndexEntry{1. Sample Filtering and Quality Evaluation}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -100,7 +100,7 @@ Next, we can visualize the masks using the `CNSegmentsPlot` function.
 ```
 
 ```{r, out.width = '100%', echo = FALSE}
-knitr::include_graphics(path = "../images/sampleQC_vignette_01_CC-CHM-1341.png")
+knitr::include_graphics(path = "images/sampleQC_vignette_01_CC-CHM-1341.png")
 ```
 
 Clearly visible in the plot is that several of the regions that are commonly copy-number variant in humans coincide with a copy-number/segmentation change. Depending on the user's specific use case these regions may or may not be worth excluding.  
@@ -129,7 +129,7 @@ Use the `GetSampleQualityDecision` function to get quality calls for each sample
 ```
 
 ```{r, out.width = '60%', echo = FALSE}
-knitr::include_graphics(path = "../images/sampleQC_vignette_02_qcdecisions.png")
+knitr::include_graphics(path = "images/sampleQC_vignette_02_qcdecisions.png")
 ```
 
 The default behaviour of this function is make a saemple-wise decision based on thresholds for the median segment standard deviation and the total segment count.
@@ -145,14 +145,14 @@ The strategy with this quality evaluation technique is to consider both of these
 #### Sample 1: Good quality copy-number profile
 
 ```{r, out.width = '100%', echo = FALSE}
-knitr::include_graphics(path = "../images/sampleQC_vignette_03_CC-CHM-1341.png")
+knitr::include_graphics(path = "images/sampleQC_vignette_03_CC-CHM-1341.png")
 ```
 
 
 #### Sample 2: Poorer quality copy number profile
 
 ```{r, out.width = '100%', echo = FALSE}
-knitr::include_graphics(path = "../images/sampleQC_vignette_04_VS09-16339-B8.png")
+knitr::include_graphics(path = "images/sampleQC_vignette_04_VS09-16339-B8.png")
 ```
 
 The key aspects that differ between the two profiles are: the number of segments, the length of segments, and the variance within each segment of the $log_2$ ratios, i.e we see the copy number ratios more tightly clustered around the orange line for sample 1 compared to sample 2.  

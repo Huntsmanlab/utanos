@@ -1,18 +1,34 @@
 Package: utanos
 Title: Utilities for The Analysis of Shallow WGS in R
 Version: 0.0.0.9000
-Authors@R: 
-    c(person("Maxwell", "Douglas", , "jmdougla@ualberta.ca", role = c("aut", "cre")), 
-    person("Nirupama", "Tamvada", , "ntamvada@bccrc.ca", role = c("aut")),
-    person("Sameer", "Shankar", , "sshankar@bccrc.ca", role = c("aut")), 
-    person("Branden", "Lynch", , "blynch@bccrc.ca", role = c("aut")), 
-    person("Jacky", "Yiu", , "jyiu@bcgsc.ca", role = c("aut")))
+Authors@R: c(
+    person(given = "Maxwell", 
+           family = "Douglas", 
+           role = c("aut", "cre"), 
+           email = "mdouglas@bccrc.ca", 
+           comment = c(ORCID = "0009-0006-2671-1726")), 
+    person(given = "Branden", 
+           family = "Lynch", 
+           role = c("aut"), 
+           email = "blynch@bccrc.ca", 
+           comment = c(ORCID = "0009-0008-4564-8894")),
+    person(given = "Nirupama", 
+           family = "Tamvada", 
+           role = c("aut")),
+    person(given = "Sameer", 
+           family = "Shankar", 
+           role = c("aut"), 
+           email = "sshankar@bccrc.ca"), 
+    person(given = "Jacky", 
+           family = "Yiu", 
+           role = c("aut"), 
+           email = "jyiu@bcgsc.ca"))
 Description: A set of functions that assist in the analysis of shallow/low-pass 
     whole genome sequencing (WGS) and subsequent visualization. It includes 
-    built-in options for evaluating sample quality, visualizing copy-number
-    diversity, and inferring copy-number signatures.
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+    built-in options for plotting, quality evaluation, data re-structuring, 
+    copy-number aberration exploration, copy-number signature inference, 
+    and HRD identification.
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
@@ -56,3 +72,4 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
+URL: https://huntsmanlab.github.io/utanos/
