@@ -52,9 +52,9 @@ BuildWxQdnaObject <- function (input_path, genome_used = 'hg19',
   segs <- segs %>%
     purrr::map(~dplyr::mutate_at(.x, ggplot2::vars("segVal"), function(x) {exp(x)}))
   stats <- plyr::ldply(seq_along(stats_files), function(x) {
-    df <- data.table::fread(stats_files[[x]], sep = '\t', )
+    extras <- readLines(stats_files[[x]])
     read_count <- as.integer(sub("Number of reads: ", "",
-                                 readLines(stats_files[[x]])[26]))
+                                 extras[which(grepl("Number of reads: ", extras))]))
     df <- data.frame(name = samples[x],
                      total_reads = read_count,
                      stringsAsFactors=FALSE)
@@ -81,7 +81,7 @@ BuildWxQdnaObject <- function (input_path, genome_used = 'hg19',
   segs_long <- SegmentsToCopyNumber(segs, bin_size = bin_size,
                                     genome = genome_used,
                                     Xincluded = TRUE)
-  segs_wide <- tidyr::spread(segs_long, sample_id, state)
+  segs_wide <- tidyr::spread(segs_long, sample_id, segmented)
   segs_wide$chromosome <- factor(segs_wide$chromosome, levels = chroms$chrom)
   segs_wide <- segs_wide %>% dplyr::arrange(chromosome)
   segments <- matrix(NA_real_, nrow=nrow(segs_wide), ncol=length(seg_files),

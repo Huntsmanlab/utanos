@@ -7,7 +7,7 @@
 SampleGrouping(x)
 }
 \arguments{
-\item{x}{param_dat containing the following columns: sample and sample quality parameters}
+\item{x}{param_dat containing the following columns: sample_id and sample quality parameters}
 }
 \description{
 Extract sample grouping
