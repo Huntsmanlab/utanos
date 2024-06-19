@@ -12,7 +12,7 @@ test_that("Absolute copy number scaling results are correct.", {
   solutions <- FindRascalSolutions(rcn_obj)
   
   results <- CalculateACNs(rcn_obj, "mad", solutions, return_sols = TRUE, distance_decimal_places = 7)
-  results_acn <- results[["acn_segment_tables"]] %>% dplyr::bind_rows(.id = 'sample')
+  results_acn <- results[["acn_segment_tables"]] %>% dplyr::bind_rows(.id = 'sample_id')
   results_chosen_sols <- results[["rascal_solutions"]]
   
   expect_equal(solutions, valid_best_solns)
