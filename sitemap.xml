@@ -37,6 +37,12 @@
     <loc>https://huntsmanlab.github.io/utanos/reference/ACNDiversityPlot.html</loc>
   </url>
   <url>
+    <loc>https://huntsmanlab.github.io/utanos/reference/AbsoluteCopyNumberDistance.html</loc>
+  </url>
+  <url>
+    <loc>https://huntsmanlab.github.io/utanos/reference/AbsoluteCopyNumberDistanceGrid.html</loc>
+  </url>
+  <url>
     <loc>https://huntsmanlab.github.io/utanos/reference/AddGenesToPlot.html</loc>
   </url>
   <url>
@@ -82,6 +88,12 @@
     <loc>https://huntsmanlab.github.io/utanos/reference/FilterCNs.html</loc>
   </url>
   <url>
+    <loc>https://huntsmanlab.github.io/utanos/reference/FindBestFitSolutions.html</loc>
+  </url>
+  <url>
+    <loc>https://huntsmanlab.github.io/utanos/reference/FindRascalSolutions.html</loc>
+  </url>
+  <url>
     <loc>https://huntsmanlab.github.io/utanos/reference/FitMixtureModels.html</loc>
   </url>
   <url>
@@ -104,6 +116,9 @@
   </url>
   <url>
     <loc>https://huntsmanlab.github.io/utanos/reference/GetSegCounts.html</loc>
+  </url>
+  <url>
+    <loc>https://huntsmanlab.github.io/utanos/reference/IsAcceptablePloidyAndCellularity.html</loc>
   </url>
   <url>
     <loc>https://huntsmanlab.github.io/utanos/reference/MakeSummaryTable.html</loc>
@@ -130,6 +145,9 @@
     <loc>https://huntsmanlab.github.io/utanos/reference/RelativeCNSegmentsPlot.html</loc>
   </url>
   <url>
+    <loc>https://huntsmanlab.github.io/utanos/reference/RelativeToAbsoluteCopyNumber.html</loc>
+  </url>
+  <url>
     <loc>https://huntsmanlab.github.io/utanos/reference/SEAlluvialPlot.html</loc>
   </url>
   <url>
@@ -143,6 +161,9 @@
   </url>
   <url>
     <loc>https://huntsmanlab.github.io/utanos/reference/SummaryCNPlot.html</loc>
+  </url>
+  <url>
+    <loc>https://huntsmanlab.github.io/utanos/reference/TumourFraction.html</loc>
   </url>
   <url>
     <loc>https://huntsmanlab.github.io/utanos/reference/TwoFeatureScatterPlot.html</loc>

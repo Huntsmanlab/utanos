@@ -318,8 +318,37 @@ made.</p>
 <h4 id="v-1-1---performing-the-scaling-part-1">V.1.1 - Performing the scaling (part 1)<a class="anchor" aria-label="anchor" href="#v-1-1---performing-the-scaling-part-1"></a>
 </h4>
 <hr>
-<p>TODO: Outline this function’s usage.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="sc">&gt;</span> solutions <span class="ot">&lt;-</span> <span class="fu">A_FUNCTION_TO_BATCH_RUN_RASCAL</span>()</span></code></pre></div>
+<p>To find the optimal ploidy and cellularity, use the
+<code><a href="../reference/FindRascalSolutions.html">FindRascalSolutions()</a></code> function.<br>
+Only the first argument is mandatory, the rest are optional.</p>
+<p>Arguments: 1. <code>cnobj</code> - The relative copy-number object
+we’ve been using throughout all these vignettes. 2.
+<code>min_ploidy</code> &amp; <code>max_ploidy</code> - Determines the
+range of ploidies to search from. 3. <code>ploidy_step</code> - The
+stepwise increment of ploidies along the range. 4.
+<code>min_cellularity</code> &amp; <code>max_cellularity</code> -
+Determines the range of cellularities to search from. 5.
+<code>cellularity_step</code> - The stepwise increment of cellularities
+along the range. 6. <code>distance_function</code> - The distance
+function to use, “MAD” (mean absolute difference) or “RMSD” (root mean
+square difference). 7. <code>distance_filter_scale_factor</code> - The
+distance threshold above which solutions will be discarded as a multiple
+of the solution with the smallest distance. 8.
+<code>max_proportion_zero</code> - The maximum proportion of fitted
+absolute copy number values in the zero copy number state. 9.
+<code>in_proportion_close_to_whole_number</code> - The minimum
+proportion of fitted absolute copy number values sufficiently close to a
+whole number. 10. <code>max_distance_from_whole_number</code> - The
+maximum distance from a whole number that a fitted absolute copy number
+can be to be considered sufficiently close. 11.
+<code>solution_proximity_threshold</code> - How close two solutions can
+be before one will be filtered; reduces the number of best fit solutions
+where there are many minima in close proximity. 12.
+<code>keep_all</code> - <code>TRUE</code> to return all solutions but
+with additional <code>best_fit</code> column to indicate which are the
+local minima that are acceptable solutions (may be useful to avoid
+computing the distance grid twice).</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="sc">&gt;</span> solutions <span class="ot">&lt;-</span> <span class="fu">FindRascalSolutions</span>(cnobj)</span></code></pre></div>
 <hr>
 </div>
 <div class="section level4">
@@ -361,16 +390,15 @@ data.frame of the calculated rascal solutions. See part 1 for details on
 creation.</li>
 </ol>
 <p>Example solutions table:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="sc">&gt;</span> solutions <span class="ot">&lt;-</span> <span class="st">"~/some_path/rascal_solutions.csv"</span></span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="sc">&gt;</span> solutions <span class="ot">&lt;-</span> data.table<span class="sc">::</span><span class="fu">fread</span>(<span class="at">file =</span> solutions, <span class="at">sep =</span> <span class="st">','</span>)</span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">head</span>(solutions)</span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="do">##      sample_id ploidy cellularity distance</span></span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="do">## 1: CC-CHM-1341   3.34        0.85    0.166</span></span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="do">## 2: CC-CHM-1341   1.34        0.46    0.166</span></span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="do">## 3: CC-CHM-1341   3.33        0.90    0.166</span></span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="do">## 4: CC-CHM-1341   2.34        0.60    0.166</span></span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="do">## 5: CC-CHM-1341   2.35        0.52    0.174</span></span>
-<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="do">## 6: CC-CHM-1341   4.34        1.00    0.176</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="sc">&gt;</span> solutions <span class="ot">&lt;-</span> <span class="fu">FindRascalSolutions</span>(cnobj)</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">head</span>(solutions)</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="do">##      sample_id ploidy cellularity distance</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="do">## 1: CC-CHM-1341   3.34        0.85    0.166</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="do">## 2: CC-CHM-1341   1.34        0.46    0.166</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="do">## 3: CC-CHM-1341   3.33        0.90    0.166</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="do">## 4: CC-CHM-1341   2.34        0.60    0.166</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="do">## 5: CC-CHM-1341   2.35        0.52    0.174</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="do">## 6: CC-CHM-1341   4.34        1.00    0.176</span></span></code></pre></div>
 <ol start="4" style="list-style-type: decimal">
 <li>
 <code>variants</code> - The fourth argument for CalculateACNs, is an

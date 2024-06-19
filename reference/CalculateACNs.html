@@ -73,7 +73,8 @@ https://github.com/crukci-bioinformatics/rascal/blob/master/vignettes/rascal.Rmd
 <span>  variants <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  acn_save_path <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  return_sols <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  return_S4 <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  return_S4 <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  distance_decimal_places <span class="op">=</span> <span class="fl">7</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -116,6 +117,11 @@ A dataframe of known ploidies per sample - Calculate ACNs at each bin given we a
 
 <dt>return_S4</dt>
 <dd><p>(optional) Logical.</p></dd>
+
+
+<dt>distance_decimal_places</dt>
+<dd><p>number of decimal places to compare to when finding
+the minimum distance.</p></dd>
 
 </dl></div>
     <div class="section level2">

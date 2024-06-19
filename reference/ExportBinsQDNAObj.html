@@ -74,7 +74,7 @@ Unlike the similar function 'exportBins' in the QDNAseq package it does not log-
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
     <dl><dt>object</dt>
 <dd><p><em>QDNAseq Object</em> containing the copy number segments in long format with columns: <br>
-chr sample segVal</p></dd>
+chr sample_id segVal</p></dd>
 
 
 <dt>type</dt>
@@ -100,7 +100,7 @@ Defaults to <code>c("23"="X", "24"="Y", "25"="MT")</code> for human.</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     
 
-<p>A wide dataframe containing a column for each sample as well as 4 additional columns: <br></p>
+<p>A wide dataframe containing a column for each sample_id as well as 4 additional columns: <br></p>
 
 
 <p><code>feature, chromosome, start, end</code></p>
