@@ -63,7 +63,7 @@ twice)}
 }
 \value{
 a dataframe containing the calculated solutions. Each solution includes:
-sample, ploidy, celluarity, and distance.
+sample_id, ploidy, celluarity, and distance.
 }
 \description{
 FindRascalSolutions() finds the best ploidy and cellularity pairs from the relative copy number profiles of each sample.

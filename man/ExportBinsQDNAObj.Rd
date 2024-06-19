@@ -15,7 +15,7 @@ ExportBinsQDNAObj(
 }
 \arguments{
 \item{object}{\emph{QDNAseq Object} containing the copy number segments in long format with columns: \cr
-chr sample segVal}
+chr sample_id segVal}
 
 \item{type}{\emph{character} Type of data to export, options are "copynumber" (corrected or uncorrected read counts), "segments", or "calls".}
 
@@ -30,7 +30,7 @@ since these classes store chromosome names as integers, whereas all QDNAseq obje
 Defaults to \code{c("23"="X", "24"="Y", "25"="MT")} for human.}
 }
 \value{
-A wide dataframe containing a column for each sample as well as 4 additional columns: \cr
+A wide dataframe containing a column for each sample_id as well as 4 additional columns: \cr
 \verb{feature, chromosome, start, end}
 }
 \description{

@@ -7,7 +7,7 @@
 CopyNumberSegments(copy_number)
 }
 \arguments{
-\item{copy_number}{A dataframe. A dataframe with copy number calls (with columns 'sample', 'chromosome', 'start', 'end', 'segmented')}
+\item{copy_number}{A dataframe. A dataframe with copy number calls (with columns 'sample_id', 'chromosome', 'start', 'end', 'segmented')}
 }
 \value{
 A dataframe. A dataframe of summaries of various characteristics (derived from copy-number calls)

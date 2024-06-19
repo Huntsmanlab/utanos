@@ -209,7 +209,7 @@ MakeSummaryTable <- function(CNobj,
 #' @description
 #'
 #' This function takes as input a QDNAseq or CGHcall copy-number object and gives back a long-format table with several useful columns.
-#' These columns include; 'sample', 'chromosome', 'start', 'end', 'gain_probability',
+#' These columns include; 'sample_id', 'chromosome', 'start', 'end', 'gain_probability',
 #' 'loss_probability', 'relative_copy_number', 'bin_count', 'sum_of_bin_lengths',
 #' 'cytobands', 'coordinates', and 'size'
 #'
@@ -229,12 +229,12 @@ GenHumanReadableRcnProfile <- function(object, binsize,
   cytobands <- DBI::dbGetQuery(conn=connection, statement="SELECT chrom, chromStart, chromEnd, name FROM cytoBand")
   cyto_ranges <- GenomicRanges::makeGRangesFromDataFrame(cytobands)
 
-  segmented <- tidyr::gather(as.data.frame(CGHbase::segmented(object)), sample, segmented)
+  segmented <- tidyr::gather(as.data.frame(CGHbase::segmented(object)), sample_id, segmented)
   if (class(object)[1] == 'cghCall') {
-    segmented$gainP <- tidyr::gather(as.data.frame(CGHbase::probgain(object)), sample, probgain)$probgain
-    segmented$ampP <- tidyr::gather(as.data.frame(CGHbase::probamp(object)), sample, probamp)$probamp
-    segmented$lossP <- tidyr::gather(as.data.frame(CGHbase::probloss(object)), sample, probloss)$probloss
-    segmented$dlossP <- tidyr::gather(as.data.frame(CGHbase::probdloss(object)), sample, probdloss)$probdloss
+    segmented$gainP <- tidyr::gather(as.data.frame(CGHbase::probgain(object)), sample_id, probgain)$probgain
+    segmented$ampP <- tidyr::gather(as.data.frame(CGHbase::probamp(object)), sample_id, probamp)$probamp
+    segmented$lossP <- tidyr::gather(as.data.frame(CGHbase::probloss(object)), sample_id, probloss)$probloss
+    segmented$dlossP <- tidyr::gather(as.data.frame(CGHbase::probdloss(object)), sample_id, probdloss)$probdloss
     segmented$chromosome <- rep(object@featureData@data[["Chromosome"]], dim(object)[2])
     segmented$start <- rep(object@featureData@data[["Start"]], dim(object)[2])
     segmented$end <- rep(object@featureData@data[["End"]], dim(object)[2])
@@ -243,10 +243,10 @@ GenHumanReadableRcnProfile <- function(object, binsize,
     segmented$start <- rep(object@featureData@data[["start"]], dim(object)[2])
     segmented$end <- rep(object@featureData@data[["end"]], dim(object)[2])
     if ('probgain' %in% names(object@assayData)) {
-      segmented$gainP <- tidyr::gather(as.data.frame(CGHbase::probgain(object)), sample, probgain)$probgain
-      segmented$ampP <- tidyr::gather(as.data.frame(CGHbase::probamp(object)), sample, probamp)$probamp
-      segmented$lossP <- tidyr::gather(as.data.frame(CGHbase::probloss(object)), sample, probloss)$probloss
-      segmented$dlossP <- tidyr::gather(as.data.frame(CGHbase::probdloss(object)), sample, probdloss)$probdloss
+      segmented$gainP <- tidyr::gather(as.data.frame(CGHbase::probgain(object)), sample_id, probgain)$probgain
+      segmented$ampP <- tidyr::gather(as.data.frame(CGHbase::probamp(object)), sample_id, probamp)$probamp
+      segmented$lossP <- tidyr::gather(as.data.frame(CGHbase::probloss(object)), sample_id, probloss)$probloss
+      segmented$dlossP <- tidyr::gather(as.data.frame(CGHbase::probdloss(object)), sample_id, probdloss)$probdloss
     }
   }
 
@@ -277,14 +277,14 @@ GenHumanReadableRcnProfile <- function(object, binsize,
   collapsed_segs$coordinates <- paste0(GenomicRanges::seqnames(ranges), ':', GenomicRanges::ranges(ranges))
   collapsed_segs <- collapsed_segs %>% dplyr::mutate(size = end - start + 1)
   collapsed_segs$segment <- NULL
-  colnames(collapsed_segs) <- c('sample', 'chromosome', 'start', 'end', 'gain_probability',
+  colnames(collapsed_segs) <- c('sample_id', 'chromosome', 'start', 'end', 'gain_probability',
                                 'loss_probability', 'relative_copy_number', 'bin_count',
                                 'sum_of_bin_lengths', 'cytobands', 'coordinates', 'size')
   # save segment tables
   if ( save_dir != FALSE ) {
     dir.create(file.path(save_dir, binsize))
-    for (i in unique(collapsed_segs$sample)) {
-      temp <- collapsed_segs[collapsed_segs$sample == i, ]
+    for (i in unique(collapsed_segs$sample_id)) {
+      temp <- collapsed_segs[collapsed_segs$sample_id == i, ]
       file_name <- paste0(save_dir, '/', binsize, '/', i, '_', binsize, '_RsegsCytobandsTable.tsv')
       write.table(temp, file = file_name, sep = '\t', col.names = TRUE, row.names = FALSE)
     }
@@ -314,7 +314,7 @@ GenHumanReadableAcnProfile <- function(object, save_path) {
   cyto_ranges <- GenomicRanges::makeGRangesFromDataFrame(cytobands)
 
   # Add cytobands
-  collapsed_segs <- plyr::ldply(object, data.frame, .id = 'sample')
+  collapsed_segs <- plyr::ldply(object, data.frame, .id = 'sample_id')
   collapsed_segs <- collapsed_segs %>% transform(chromosome = as.character(chromosome))
   collapsed_segs$chromosome[collapsed_segs$chromosome == 23] <- 'X'
   ranges <- GenomicRanges::makeGRangesFromDataFrame(collapsed_segs)
@@ -340,19 +340,19 @@ GenHumanReadableAcnProfile <- function(object, save_path) {
   collapsed_segs$coordinates <- paste0(seqnames(ranges), ':', ranges(ranges))
   collapsed_segs <- collapsed_segs %>% mutate(size = end - start + 1)
   collapsed_segs$segment <- NULL
-  colnames(collapsed_segs) <- c('sample', 'chromosome', 'start', 'end',
+  colnames(collapsed_segs) <- c('sample_id', 'chromosome', 'start', 'end',
                                 'absolute_copy_number', 'cytobands',
                                 'coordinates', 'size')
   collapsed_segs <- collapsed_segs %>% mutate(chromosome = replace(chromosome,
                                                                    chromosome=="X", '23')) %>%
-    dplyr::group_by(sample) %>%
+    dplyr::group_by(sample_id) %>%
     dplyr::arrange(as.integer(chromosome), .by_group = TRUE) %>%
     mutate(chromosome = replace(as.character(chromosome),
                                 chromosome=='23', 'X'))
   # save segment tables
   dir.create(save_path)
-  for (i in unique(collapsed_segs$sample)) {
-    temp <- collapsed_segs[collapsed_segs$sample == i, ]
+  for (i in unique(collapsed_segs$sample_id)) {
+    temp <- collapsed_segs[collapsed_segs$sample_id == i, ]
     write.table(temp, file = paste0(save_path, i, '_segsCytobandsTable.tsv'),
                 sep = '\t', col.names = TRUE, row.names = FALSE)
   }

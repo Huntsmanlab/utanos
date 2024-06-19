@@ -20,7 +20,7 @@ Segment tables in long format (by sample id) ready to be written out to a table 
 }
 \description{
 This function takes as input a QDNAseq or CGHcall copy-number object and gives back a long-format table with several useful columns.
-These columns include; 'sample', 'chromosome', 'start', 'end', 'gain_probability',
+These columns include; 'sample_id', 'chromosome', 'start', 'end', 'gain_probability',
 'loss_probability', 'relative_copy_number', 'bin_count', 'sum_of_bin_lengths',
 'cytobands', 'coordinates', and 'size'
 }

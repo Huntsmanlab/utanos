@@ -8,10 +8,10 @@ ChromosomeSplitPos(x)
 }
 \arguments{
 \item{x}{\emph{dataframe} containing the copy number segments in long format with columns: \cr
-chr sample segVal}
+chr sample_id segVal}
 }
 \value{
-dataframe containing three separate columns for the chromosome number, sample and segVal
+dataframe containing three separate columns for the chromosome number, sample_id and segVal
 }
 \description{
 Function to split compounded chromosome-position names into separate columns.

@@ -234,7 +234,7 @@ Example solutions table:
 ```{r, eval = FALSE}
 > solutions <- FindRascalSolutions(cnobj)
 > head(solutions)
-##         sample ploidy cellularity distance
+##      sample_id ploidy cellularity distance
 ## 1: CC-CHM-1341   3.34        0.85    0.166
 ## 2: CC-CHM-1341   1.34        0.46    0.166
 ## 3: CC-CHM-1341   3.33        0.90    0.166
