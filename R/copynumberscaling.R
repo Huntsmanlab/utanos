@@ -61,7 +61,7 @@
 #' twice)
 #' 
 #' @return a dataframe containing the calculated solutions. Each solution includes:
-#' sample, ploidy, celluarity, and distance.
+#' sample_id, ploidy, celluarity, and distance.
 #'
 #' @export
 FindRascalSolutions <- function(cnobj,
@@ -81,14 +81,14 @@ FindRascalSolutions <- function(cnobj,
   
   pivoted <- tidyr::pivot_longer(rcn, 
                                  cols = !(chromosome:end),
-                                 names_to = "sample",
+                                 names_to = "sample_id",
                                  values_to = "segmented", 
                                  values_drop_na = TRUE) %>%
-    dplyr::select(sample, tidyr::everything())
+    dplyr::select(sample_id, tidyr::everything())
   
   # centering
   relative_bin_and_segments_centered <- pivoted %>%
-    dplyr::group_by(sample) %>%
+    dplyr::group_by(sample_id) %>%
     dplyr::mutate(dplyr::across(c(segmented), ~ . / stats::median(segmented, na.rm = TRUE))) %>%
     dplyr::ungroup()
   
@@ -96,7 +96,7 @@ FindRascalSolutions <- function(cnobj,
   segments <- CopyNumberSegments(relative_bin_and_segments_centered)
   
   # find best fit soln
-  solutions <- segments %>% dplyr::group_by(sample) %>% 
+  solutions <- segments %>% dplyr::group_by(sample_id) %>% 
     dplyr::group_modify(~ FindBestFitSolutions(
       .x$copy_number, .x$weight, 
       min_ploidy = min_ploidy, max_ploidy = max_ploidy, ploidy_step = ploidy_step, 
@@ -204,11 +204,11 @@ CalculateACNs <- function (cnobj, acnmethod,
 
   # Pull out cns to dataframes, both bin-wise and segmented
   wide_segs <- ExportBinsQDNAObj(cnobj, type = "segments", filter = FALSE)
-  long_segs <- wide_segs %>% tidyr::gather(sample, segmented,
+  long_segs <- wide_segs %>% tidyr::gather(sample_id, segmented,
                                            5:dim(.)[2], factor_key=TRUE)
   segments <- CopyNumberSegments(long_segs)
   wide_cns <- ExportBinsQDNAObj(cnobj, type = "copynumber", filter = FALSE)
-  long_cns <- wide_cns %>% tidyr::gather(sample, copy_number,
+  long_cns <- wide_cns %>% tidyr::gather(sample_id, copy_number,
                                          5:dim(.)[2], factor_key=TRUE)
   long_cns <- long_cns %>%
     dplyr::mutate(segmented = long_segs$segmented)          # Create combined data.frame
@@ -245,8 +245,8 @@ CalculateACNs <- function (cnobj, acnmethod,
                          return_sols, long_cns, return_S4)
 
   } else if ('data.frame' %in% class(acnmethod)) {
-    if (any(!(acnmethod$sample_id %in% unique(relative_segs$sample))) == TRUE) {
-      if (sum(!(acnmethod$sample_id %in% unique(relative_segs$sample))) == dim(acnmethod)[1]) {
+    if (any(!(acnmethod$sample_id %in% unique(long_segs$sample_id))) == TRUE) {
+      if (sum(!(acnmethod$sample_id %in% unique(long_segs$sample_id))) == dim(acnmethod)[1]) {
         stop("Sample IDs do not match between ploidy and segment tables.")
       } else {
         warning("There appear to be ploidy sample IDs for which there are no segment tables.")
@@ -297,8 +297,8 @@ GenVafAcns <- function (segments,
   output <- list()
   chosenSegmentTablesList <- list()
   j <- 1
-  acns <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
-  acns_segs <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
+  acns <- matrix(nrow = sum(cns$sample_id == cns$sample_id[1]), ncol = 0)
+  acns_segs <- matrix(nrow = sum(cns$sample_id == cns$sample_id[1]), ncol = 0)
   sols <- data.frame(sample_id = character(),
                      ploidy = double(),
                      cellularity = double(),
@@ -307,9 +307,9 @@ GenVafAcns <- function (segments,
                      stringsAsFactors = FALSE)
 
   # Loop through samples
-  for (i in unique(rascal_batch_solutions$sample)) {
-    sample_segments <- dplyr::filter(segments, sample == i)
-    solutions <- rascal_batch_solutions %>% dplyr::filter(sample == i)
+  for (i in unique(rascal_batch_solutions$sample_id)) {
+    sample_segments <- dplyr::filter(segments, sample_id == i)
+    solutions <- rascal_batch_solutions %>% dplyr::filter(sample_id == i)
     vafs <- variants %>% dplyr::filter(sample_id == i)
     if (is.na(vafs$sample_id[1])) next                                          # If there isn't a vaf for the sample skip finding an ACN
     rcn_obj <- sample_segments
@@ -317,7 +317,7 @@ GenVafAcns <- function (segments,
       vaf_gene_rcn <- GetSegmentedRcnForGene(rcn_obj, vafs$gene_name)
     })
     if (vaf_gene_rcn == FALSE) { message(paste('No segmented CN call found for',
-                                               rcn_obj$sample[1], 'VAF gene.',
+                                               rcn_obj$sample_id[1], 'VAF gene.',
                                                sep = ' ')); next}               # If there isn't a CN for the VAF skip finding an ACN
     solution_set <- solutions %>%                                               # Get from running find best fit solution
       dplyr::select(ploidy, cellularity) %>%
@@ -339,7 +339,7 @@ GenVafAcns <- function (segments,
 
     # Optionally, grab needed values to create an S4 QDNAseq object
     if (return_S4) {
-      absolute_cns <- dplyr::filter(cns, sample == i)
+      absolute_cns <- dplyr::filter(cns, sample_id == i)
       absolute_cns$copy_number <- RelativeToAbsoluteCopyNumber(absolute_cns$copy_number,
                                                                            solution_set[sol_idx,]$ploidy,
                                                                            solution_set[sol_idx,]$cellularity)
@@ -359,8 +359,8 @@ GenVafAcns <- function (segments,
 
   # Return collapsed acn segments list or an S4 object if wanted
   if (return_S4) {
-    colnames(acns) <- unique(rascal_batch_solutions$sample)
-    colnames(acns_segs) <- unique(unique(rascal_batch_solutions$sample))
+    colnames(acns) <- unique(rascal_batch_solutions$sample_id)
+    colnames(acns_segs) <- unique(unique(rascal_batch_solutions$sample_id))
     rownames(acns) <- cns$feature[1:dim(acns)[1]]
     rownames(acns_segs) <- cns$feature[1:dim(acns)[1]]
     output[["acns"]] <- acns
@@ -391,12 +391,12 @@ GenKploidyAcns <- function (segments,
   plots <- list()
   output <- list()
   cellularity <- 1.0
-  acns <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
-  acns_segs <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
+  acns <- matrix(nrow = sum(cns$sample_id == cns$sample_id[1]), ncol = 0)
+  acns_segs <- matrix(nrow = sum(cns$sample_id == cns$sample_id[1]), ncol = 0)
   ploidies$ploidy <- as.numeric(ploidies$ploidy)
 
   for (i in unique(ploidies$sample_id)) {
-    sample_segments <- dplyr::filter(segments, sample == i)
+    sample_segments <- dplyr::filter(segments, sample_id == i)
     ploidy <- dplyr::filter(ploidies, sample_id == i)
     rcn_obj <- sample_segments
     absolute_segments <- dplyr::mutate(sample_segments,
@@ -405,7 +405,7 @@ GenKploidyAcns <- function (segments,
                                                                                   cellularity))
     # Optionally, grab needed values to create an S4 QDNAseq object
     if (return_S4) {
-      absolute_cns <- dplyr::filter(cns, sample == i)
+      absolute_cns <- dplyr::filter(cns, sample_id == i)
       absolute_cns$copy_number <- RelativeToAbsoluteCopyNumber(absolute_cns$copy_number,
                                                                            ploidy$ploidy,
                                                                            cellularity)
@@ -425,8 +425,8 @@ GenKploidyAcns <- function (segments,
 
   # Return collapsed acn segments list or an S4 object if wanted
   if (return_S4) {
-    colnames(acns) <- unique(rascal_batch_solutions$sample)
-    colnames(acns_segs) <- unique(unique(rascal_batch_solutions$sample))
+    colnames(acns) <- unique(rascal_batch_solutions$sample_id)
+    colnames(acns_segs) <- unique(unique(rascal_batch_solutions$sample_id))
     rownames(acns) <- cns$feature[1:dim(acns)[1]]
     rownames(acns_segs) <- cns$feature[1:dim(acns)[1]]
     output[["acns"]] <- acns
@@ -460,16 +460,16 @@ GenMadAcns <- function (segments,
   j <- 1
   plots <- list()
   output <- list()
-  acns <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
-  acns_segs <- matrix(nrow = sum(cns$sample == cns$sample[1]), ncol = 0)
+  acns <- matrix(nrow = sum(cns$sample_id == cns$sample_id[1]), ncol = 0)
+  acns_segs <- matrix(nrow = sum(cns$sample_id == cns$sample_id[1]), ncol = 0)
 
   sols <- data.frame()
 
-  for (i in unique(rascal_batch_solutions$sample)) {
-    sample_segments <- dplyr::filter(segments, sample == i)
+  for (i in unique(rascal_batch_solutions$sample_id)) {
+    sample_segments <- dplyr::filter(segments, sample_id == i)
     # the distance is rounded just before filtering for min distance. This is to ensure distances that only differ 
     # due to floating-point error are treated as equal, and subsequently decided based on max cellularity.
-    solutions <- rascal_batch_solutions %>% dplyr::filter(sample == i) %>%
+    solutions <- rascal_batch_solutions %>% dplyr::filter(sample_id == i) %>%
                       dplyr::mutate(distance = round(distance, distance_decimal_places)) %>%
                       dplyr::filter(distance == min(distance)) %>%
                       dplyr::filter(cellularity == max(cellularity))
@@ -480,7 +480,7 @@ GenMadAcns <- function (segments,
                                                                                   solutions$cellularity))
     # Optionally, grab needed values to create an S4 QDNAseq object
     if (return_S4) {
-      absolute_cns <- dplyr::filter(cns, sample == i)
+      absolute_cns <- dplyr::filter(cns, sample_id == i)
       absolute_cns$copy_number <- RelativeToAbsoluteCopyNumber(absolute_cns$copy_number, 
                                                                            solutions$ploidy,
                                                                            solutions$cellularity)
@@ -500,8 +500,8 @@ GenMadAcns <- function (segments,
 
   # Return collapsed acn segments list or an S4 object if wanted
   if (return_S4) {
-    colnames(acns) <- unique(rascal_batch_solutions$sample)
-    colnames(acns_segs) <- unique(unique(rascal_batch_solutions$sample))
+    colnames(acns) <- unique(rascal_batch_solutions$sample_id)
+    colnames(acns_segs) <- unique(unique(rascal_batch_solutions$sample_id))
     rownames(acns) <- cns$feature[1:dim(acns)[1]]
     rownames(acns_segs) <- cns$feature[1:dim(acns)[1]]
     output[["acns"]] <- acns

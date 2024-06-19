@@ -10,19 +10,19 @@ CopySegFlat <- function(x) {
   copy_number <- as.data.frame(copy_number); segmented <- as.data.frame(segmented)
   copy_number <- copy_number %>%
     tibble::rownames_to_column("chr") %>%
-    tidyr::pivot_longer(cols = 2:(ncol(copy_number)+1), names_to = "sample")
+    tidyr::pivot_longer(cols = 2:(ncol(copy_number)+1), names_to = "sample_id")
   segmented <- segmented %>%
     tibble::rownames_to_column("chr") %>%
-    tidyr::pivot_longer(cols = 2:(ncol(segmented)+1), names_to = "sample")
+    tidyr::pivot_longer(cols = 2:(ncol(segmented)+1), names_to = "sample_id")
   copy_number <- ChromosomeSplitPos(copy_number)
   segmented <- ChromosomeSplitPos(segmented)
   colnames(copy_number)[2] <- "copy_number"
   colnames(segmented)[2] <- "segmented"
   copy_number <- data.table::setDT(copy_number)
   segmented <- data.table::setDT(segmented)
-  comb_table <- merge(copy_number, segmented, by = c("position", "sample"))
+  comb_table <- merge(copy_number, segmented, by = c("position", "sample_id"))
   comb_table <- comb_table %>%
-    dplyr::select(chromosome = chromosome.x, sample,
+    dplyr::select(chromosome = chromosome.x, sample_id,
                   copy_number, segmented, start = start.y, end = end.y)
   return(comb_table)
 }
@@ -34,15 +34,15 @@ CopySegFlat <- function(x) {
 CollapsedSegs <- function(x) {
   x <- as.data.frame(x)
   stopifnot(is.data.frame(x))
-  stopifnot("sample" %in% names(x))
+  stopifnot("sample_id" %in% names(x))
   stopifnot("chromosome" %in% names(x))
   x[, c("start", "end", "segmented")] <- lapply(x[, c("start", "end", "segmented")], as.numeric)
   x <- x %>%
     dplyr::filter(!is.na(segmented)) %>%
     dplyr::mutate(length = end - start + 1) %>%
-    dplyr::arrange(sample, chromosome, start) %>%
+    dplyr::arrange(sample_id, chromosome, start) %>%
     dplyr::mutate(new_segment = dplyr::row_number() == 1 |
-                    !(sample == dplyr::lag(sample) &
+                    !(sample_id == dplyr::lag(sample_id) &
                         chromosome == dplyr::lag(chromosome) &
                         segmented == dplyr::lag(segmented))) %>%
     dplyr::mutate(segment = cumsum(new_segment))
@@ -59,13 +59,13 @@ GetSegCounts <- function(x) {
   x <- x %>%
     dplyr::group_by(segment) %>%
     dplyr::summarize(
-      sample = dplyr::first(sample),
+      sample_id = dplyr::first(sample_id),
       chromosome = dplyr::first(chromosome),
       start = dplyr::first(start),
       end = dplyr::last(end),
       copy_number = dplyr::first(segmented))
   x <- x %>%
-    dplyr::group_by(sample) %>%
+    dplyr::group_by(sample_id) %>%
     dplyr::summarise(seg_counts = dplyr::n())
   return(x)
 }
@@ -77,10 +77,10 @@ GetSegCounts <- function(x) {
 #'
 MedSegVar <- function(x) {
   x <- x %>%
-    dplyr::group_by(sample, segment) %>%
+    dplyr::group_by(sample_id, segment) %>%
     dplyr::summarize(med_dev = median(abs(copy_number - segmented), na.rm = TRUE)) %>%
     dplyr::ungroup() %>%
-    dplyr::group_by(sample) %>%
+    dplyr::group_by(sample_id) %>%
     dplyr::summarise(median_sd = median(med_dev, na.rm = TRUE))
   return(x)
 }
@@ -88,25 +88,25 @@ MedSegVar <- function(x) {
 #' Extract sample grouping
 #'
 #' @description Extract sample grouping
-#' @param x param_dat containing the following columns: sample and sample quality parameters
+#' @param x param_dat containing the following columns: sample_id and sample quality parameters
 #'
 SampleGrouping <- function(x) {
   x <- x %>%
     dplyr::mutate(sample_group = case_when(
-                  str_detect(sample, "CC-CHM") ~ "CC-CHM",
-                  str_detect(sample, "CC-HAM") ~ "CC-HAM",
-                  str_detect(sample, "CC-JGH") ~ "CC-JGH",
-                  str_detect(sample, "CC-LAV") ~ "CC-LAV",
-                  str_detect(sample, "CC-NSH") ~ "CC-NSH",
-                  str_detect(sample, "CC-RJH") ~ "CC-RJH",
-                  str_detect(sample, "CC-SUN") ~ "CC-SUN",
-                  str_detect(sample, "CC-SSK") ~ "CC-SSK",
-                  str_detect(sample, "CC-VGH") ~ "CC-VGH",
-                  str_detect(sample, "CC-WPG") ~ "CC-WPG",
-                  str_detect(sample, "EC") ~ "EC",
-                  str_detect(sample, "VOA") ~ "VOA",
-                  str_detect(sample, "VS") ~ "VS",
-                  str_detect(sample, "YW") ~ "YW"
+                  str_detect(sample_id, "CC-CHM") ~ "CC-CHM",
+                  str_detect(sample_id, "CC-HAM") ~ "CC-HAM",
+                  str_detect(sample_id, "CC-JGH") ~ "CC-JGH",
+                  str_detect(sample_id, "CC-LAV") ~ "CC-LAV",
+                  str_detect(sample_id, "CC-NSH") ~ "CC-NSH",
+                  str_detect(sample_id, "CC-RJH") ~ "CC-RJH",
+                  str_detect(sample_id, "CC-SUN") ~ "CC-SUN",
+                  str_detect(sample_id, "CC-SSK") ~ "CC-SSK",
+                  str_detect(sample_id, "CC-VGH") ~ "CC-VGH",
+                  str_detect(sample_id, "CC-WPG") ~ "CC-WPG",
+                  str_detect(sample_id, "EC") ~ "EC",
+                  str_detect(sample_id, "VOA") ~ "VOA",
+                  str_detect(sample_id, "VS") ~ "VS",
+                  str_detect(sample_id, "YW") ~ "YW"
     ))
 }
 
@@ -127,7 +127,7 @@ GetSampleQualityDecision <- function(x, metric = "quantile", cutoff = 0.95) {
   comb_collapsed <- CollapsedSegs(comb_dat)
   seg_counts <- GetSegCounts(comb_collapsed)
   median_vars <- MedSegVar(comb_collapsed)
-  param_dat <- merge(seg_counts, median_vars, by = "sample")
+  param_dat <- merge(seg_counts, median_vars, by = "sample_id")
 
   stopifnot(is.character(metric))
     if (metric %in% c("quantile")) {
@@ -151,7 +151,7 @@ GetSampleQualityDecision <- function(x, metric = "quantile", cutoff = 0.95) {
           dplyr::mutate(row_num = dplyr::row_number())
         param_dat <- dplyr::full_join(param_dat, scores_train, by = c("row_num" = "id"))
         param_iso_dat <- param_dat %>%
-          dplyr::select(sample, seg_counts, median_sd, anomaly_score) %>%
+          dplyr::select(sample_id, seg_counts, median_sd, anomaly_score) %>%
           dplyr::mutate(decision = ifelse(anomaly_score > 0.59, "Low", "High"))
         return(param_iso_dat)
       }

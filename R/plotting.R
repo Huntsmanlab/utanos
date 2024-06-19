@@ -576,10 +576,10 @@ RCNDiversityPlot <- function(qdnaseq_obj, order_by = NULL, cluster = TRUE,
   wide_binwise_segments <- ExportBinsQDNAObj(qdnaseq_obj, type = 'segments',
                                              filter = FALSE)
   long_segs <- wide_binwise_segments %>%
-                        tidyr::gather(sample, segmented,
+                        tidyr::gather(sample_id, segmented,
                                       5:dim(.)[2], factor_key=TRUE)
   segments <- CopyNumberSegments(long_segs) %>%
-                    dplyr::select(sample, chromosome, start, end, copy_number) %>%
+                    dplyr::select(sample_id, chromosome, start, end, copy_number) %>%
                     dplyr::rename(segVal = copy_number)
   long_segs <- SegmentsToCopyNumber(segments, 1000000,
                                     genome = 'hg19',
@@ -1001,10 +1001,10 @@ CNSegmentsPlot <- function(cnobj,
       wide_cns$colouring[!cnobj@featureData@data[[i]]] <- i
     }
   }
-  long_cns <- wide_cns %>% tidyr::gather(sample, copy_number,
+  long_cns <- wide_cns %>% tidyr::gather(sample_id, copy_number,
                                          6:dim(.)[2], factor_key=TRUE)
   wide_segs <- ExportBinsQDNAObj(cnobj, type = "segments", filter = FALSE)
-  long_segs <- wide_segs %>% tidyr::gather(sample, segmented,
+  long_segs <- wide_segs %>% tidyr::gather(sample_id, segmented,
                                            5:dim(.)[2], factor_key=TRUE)
 
   if(!is.null(dolog2)) {
@@ -1015,17 +1015,17 @@ CNSegmentsPlot <- function(cnobj,
   }
 
   if (!is.null(sample)) {
-    stopifnot("sample" %in% names(long_cns))
-    stopifnot("sample" %in% names(long_segs))
+    stopifnot("sample_id" %in% names(long_cns))
+    stopifnot("sample_id" %in% names(long_segs))
     copy_number <- dplyr::filter(long_cns,
-                                 sample == !!sample, is.finite(copy_number))
+                                 sample_id == !!sample, is.finite(copy_number))
     segments <- dplyr::filter(long_segs,
-                              sample == !!sample, is.finite(segmented))
+                              sample_id == !!sample, is.finite(segmented))
   }
 
   # collapse bin-wise segment values down to proper segments
   segments <- CopyNumberSegments(segments) %>%
-    dplyr::select(sample, chromosome, start, end, copy_number)
+    dplyr::select(sample_id, chromosome, start, end, copy_number)
 
   # compute mid-point position for the copy number bins
   copy_number <- dplyr::mutate(copy_number, position = (start + end) / 2)

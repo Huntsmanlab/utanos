@@ -72,15 +72,15 @@ SegmentsToCopyNumber <- function(segs, bin_size,
     stopifnot("segVal" %in% names(segs[[1]]), is.numeric(segs[[1]]$segVal))
   } else if (is.data.frame(segs)) {
     stopifnot(dim(segs)[1] != 0)
-    stopifnot("sample" %in% colnames(segs))
+    stopifnot("sample_id" %in% colnames(segs))
     stopifnot("chromosome" %in% colnames(segs))
     stopifnot("start" %in% colnames(segs), is.numeric(segs$start))
     stopifnot("end" %in% colnames(segs), is.numeric(segs$end))
     stopifnot("segVal" %in% colnames(segs), is.numeric(segs$segVal))
     segslist <- list()
-    for (samplename in unique(segs$sample)) {
-      tempvar <- segs %>% dplyr::filter(sample == samplename) %>%
-                    dplyr::select(-sample)
+    for (samplename in unique(segs$sample_id)) {
+      tempvar <- segs %>% dplyr::filter(sample_id == samplename) %>%
+                    dplyr::select(-sample_id)
       segslist[[samplename]] <- as.data.frame(tempvar)
     }
     segs <- segslist
@@ -205,10 +205,10 @@ GetGRangesFromEnsDb <- function(
 # function for extracting the copy number for a given sample
 # can handle QDNAseqCopyNumbers object or a copy number data frame
 #' @export
-CompareBinCNs <- function(objs, sample, bin_area) {
+CompareBinCNs <- function(objs, sample_id, bin_area) {
   outlist <- vector(mode = "list", length = length(objs))
   for (i in 1:length(objs)) {
-    obj <- objs[[i]][,sample]
+    obj <- objs[[i]][,sample_id]
     copy_number_values <- Biobase::assayDataElement(obj, "copynumber")[,1]
     segmented_values <- Biobase::assayDataElement(obj, "segmented")[,1]
     df <- Biobase::fData(obj) %>%
@@ -218,10 +218,10 @@ CompareBinCNs <- function(objs, sample, bin_area) {
       dplyr::select(id, chromosome, start, end) %>%
       dplyr::mutate_at(vars(start, end), as.integer) %>%
       dplyr::mutate(chromosome = factor(chromosome, levels = unique(chromosome))) %>%
-      dplyr::mutate(sample = sample) %>%
+      dplyr::mutate(sample_id = sample_id) %>%
       dplyr::mutate(copy_number = copy_number_values) %>%
       dplyr::mutate(segmented = segmented_values) %>%
-      dplyr::select(sample, chromosome, start, end, copy_number, segmented)
+      dplyr::select(sample_id, chromosome, start, end, copy_number, segmented)
     outlist[[i]] <- df %>% dplyr::filter((start < (bin_area+75000)) & (start > (bin_area-75000)))
   }
   return(outlist)
@@ -255,14 +255,14 @@ RemoveBlacklist <- function(data) {
 #' CopyNumberSegments() transforms relative copy-number calls to segment tables.
 #' Inverse of the SegmentsToCopyNumber function.
 #'
-#' @param copy_number A dataframe. A dataframe with copy number calls (with columns 'sample', 'chromosome', 'start', 'end', 'segmented')
+#' @param copy_number A dataframe. A dataframe with copy number calls (with columns 'sample_id', 'chromosome', 'start', 'end', 'segmented')
 #' @returns A dataframe. A dataframe of summaries of various characteristics (derived from copy-number calls)
 #'
 #' @export
 CopyNumberSegments <- function(copy_number) {
 
   stopifnot(is.data.frame(copy_number))
-  stopifnot("sample" %in% names(copy_number))
+  stopifnot("sample_id" %in% names(copy_number))
   stopifnot("chromosome" %in% names(copy_number))
   stopifnot("start" %in% names(copy_number), is.numeric(copy_number$start))
   stopifnot("end" %in% names(copy_number), is.numeric(copy_number$end))
@@ -271,15 +271,15 @@ CopyNumberSegments <- function(copy_number) {
   copy_number %>%
     dplyr::filter(!is.na(segmented)) %>%
     dplyr::mutate(length = end - start + 1) %>%
-    dplyr::arrange(sample, chromosome, start) %>%
+    dplyr::arrange(sample_id, chromosome, start) %>%
     dplyr::mutate(new_segment = dplyr::row_number() == 1 |
-                    !(sample == dplyr::lag(sample) &
+                    !(sample_id == dplyr::lag(sample_id) &
                         chromosome == dplyr::lag(chromosome) &
                         segmented == dplyr::lag(segmented))) %>%
     dplyr::mutate(segment = cumsum(new_segment)) %>%
     dplyr::group_by(segment) %>%
     dplyr::summarise(
-      sample = dplyr::first(sample),
+      sample_id = dplyr::first(sample_id),
       chromosome = dplyr::first(chromosome),
       start = dplyr::first(start),
       end = dplyr::last(end),
@@ -486,14 +486,14 @@ GetChromosomeLengths <- function(build) {
 #' Distinct columns for chromosome number, start, and ending positions are the result.
 #'
 #' @param x *dataframe* containing the copy number segments in long format with columns: \cr
-#' chr sample segVal
+#' chr sample_id segVal
 #'
 #' @details
 #' A QDNAseq object generally contains the chromosome and position information as such: \cr
 #' chromosome:start-end.
 #' This is inconvenient for plotting and other data wrangling.
 #'
-#' @return dataframe containing three separate columns for the chromosome number, sample and segVal
+#' @return dataframe containing three separate columns for the chromosome number, sample_id and segVal
 #'
 ChromosomeSplitPos <- function(x) {
   x$position <- x$chr
@@ -517,7 +517,7 @@ ChromosomeSplitPos <- function(x) {
 #' Unlike the similar function 'exportBins' in the QDNAseq package it does not log-normalize.
 #'
 #' @param object *QDNAseq Object* containing the copy number segments in long format with columns: \cr
-#' chr sample segVal
+#' chr sample_id segVal
 #' @param type *character* Type of data to export, options are "copynumber" (corrected or uncorrected read counts), "segments", or "calls".
 #' @param filter *logical* If @TRUE, bins are filtered, otherwise not.
 #' @param digits *numeric* The number of digits to round to.
@@ -527,7 +527,7 @@ ChromosomeSplitPos <- function(x) {
 #' since these classes store chromosome names as integers, whereas all QDNAseq object types use character vectors.
 #' Defaults to `c("23"="X", "24"="Y", "25"="MT")` for human.
 #'
-#' @return A wide dataframe containing a column for each sample as well as 4 additional columns: \cr
+#' @return A wide dataframe containing a column for each sample_id as well as 4 additional columns: \cr
 #' `feature, chromosome, start, end`
 #'
 #' @export
