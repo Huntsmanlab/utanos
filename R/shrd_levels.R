@@ -1,44 +1,54 @@
 #' Calls some helpers to do something to gathered by ratio medians.... gotta check this
-#' Also adds a Level and an Index column to the data framr
+#' Also adds a Level and an Index column to the data frame
 #'
-#' @description 
-#' Adds couple of columns to the given segment dataframe + other processing thigns
+#' @description
+#' Adds couple of columns to the given segment dataframe + other processing things
 #'
 #' @param segments The segments gathered_by_ratio_medians
+#' @param granges_obj A granges object containing the clean ratios file after CleanBamRatios()
 #'
 #' @export
 
-PrepForLevelsInitialization <- function(segments) {
+PrepForLevelsInitialization <- function(segments, granges_obj) {
   #### Have to convert it into a .txt file and then use the readSegmFile helper ####
-  write.table(segments, file="./test_outputs/gathered_by_ratio_median.txt", sep = "\t", row.names = FALSE)
-  segment_files <- list.files("./test_outputs/", pattern = "gathered_by_ratio_median.txt", full.names = TRUE)
-  
+  write.table(segments, file="./gathered_by_ratio_median.txt", sep = "\t", row.names = FALSE)
+  segment_files <- list.files("./", pattern = "gathered_by_ratio_median.txt", full.names = TRUE)
+
   results <- ReadSegmFile(seg_file_name = segment_files[1])
   segments <- results$tmp
-  
-  
+
+  # SHRD recalculates the ratio_median, by finding the overlap with the original bin-wise ratios per segment and using their median, instead of the segmented value
+  for (i in 1:nrow(segments)) {
+    gr = GenomicRanges::GRanges(seqnames=c(segments[i,1]),
+                                ranges=IRanges::IRanges(start=c(segments[i,3]),
+                                                        end=c(segments[i,4])),
+                                strand=c("*"))
+    subsetGRobject = IRanges::subsetByOverlaps(granges_obj, gr)
+    segments[i,5] = median(subsetGRobject$ratio)
+  }
+
   #### Adds index and level columns ####
-  segments <- cbind(seq(1,dim(segments)[[1]]), 
+  segments <- cbind(seq(1,dim(segments)[[1]]),
                     segments)
   colnames(segments)[1] <- c("index")
-  
-  segments <- cbind(segments, 
+
+  segments <- cbind(segments,
                     rep(0, dim(segments)[1]))
   colnames(segments)[8] <- c("level")
-  
+
   segments <- as.data.frame(segments)
   segments
 }
 
 #' Removes the short chromosome arms (21, 22, 24) & keeps segments with size >= 3Mb
 #'
-#' @description 
+#' @description
 #' Removes any segments that lie on a chromosome arm that:
 #' - is greater than 23.6 (i.e chromosome arms 24 and beyond)
 #' - is equal to 21 (i.e. first chromosome arm of chromosome 21)
 #' - is equal to 22 (i.e. first chromosome arm of chromosome 22)
 #' Then, updates sizes of the kept segments.
-#' 
+#'
 #' @param segments The segments data frame, gathered by ratio medians.
 #'
 #' @export
@@ -49,17 +59,17 @@ ExcludeShortArms <- function(segments) {
   if (length(more_than_arm_24) > 0) {
     segments <- segments[-more_than_arm_24,]
   }
-  
+
   first_arm_chr21 <- which(segments[,3] == 21)
   if (length(first_arm_chr21) > 0) {
     segments <- segments[-first_arm_chr21,]
   }
-  
+
   first_arm_chr22 <- which(segments[,3] == 22)
   if (length(first_arm_chr22) > 0) {
     segments <- segments[-first_arm_chr22,]
   }
-  
+
   #### Updating sizes ####
   segments[,7] = segments[,5] - segments[,4] + 1
   segments
@@ -67,9 +77,9 @@ ExcludeShortArms <- function(segments) {
 
 #' Returns segments with a size >= 3Mb.
 #'
-#' @description 
+#' @description
 #' Returns a data frame with segments whose size is larger than 3 mega bases.
-#' 
+#'
 #' @param segments
 #'
 #' @export
@@ -82,15 +92,15 @@ GetLargeSegments <- function(segments) {
 
 #' Gather big segments and assign levels iteratively
 #'
-#' @description 
+#' @description
 #' Iterates through the given segments_copy data frame. Does the following at each iteration:
 #' 1. Finds the largest segment (by size). Then, finds all the segments 'close' to it: closeness
 #'    here means that that ratio_median difference between them is less than threshold (`thr`).
 #' 2. Once we identify these segments that are 'close' to each other (called closest_indices),
 #'    we iterate through them, and set their level in `segments`.
 #' 3. Finally, remove these closest_indices segments from `segments_copy`.
-#' 
-#' @param segments  A data frame containing segment data. 
+#'
+#' @param segments  A data frame containing segment data.
 #' @param thr A float: the threshold previously estimated via KDE. Used to determine whether
 #' large segments are merged.
 #'
@@ -98,7 +108,7 @@ GetLargeSegments <- function(segments) {
 
 AssignLevels <- function(segments, thr) {
   segments_copy <- segments
-  
+
   #### Iterate through the rows in segments_copy, while there are still any segments left ####
   level = 1
   while (dim(segments_copy)[1] > 1) {
@@ -114,8 +124,8 @@ AssignLevels <- function(segments, thr) {
     for (i in 1:n) {
       # Finding  segment i from `closest_indices` in `segments`
       segments[which(segments[,1] == closest_indices[i]), 8] = level
-      
-      # Getting the rest of the segments and keeping them in `segments_copy`. 
+
+      # Getting the rest of the segments and keeping them in `segments_copy`.
       segments_copy <- segments_copy[which(segments_copy[,1] != closest_indices[i]), ]
     }
     level = level + 1
@@ -123,12 +133,12 @@ AssignLevels <- function(segments, thr) {
   segments
 }
 
-#' Merges segments by level. 
+#' Merges segments by level.
 #'
-#' @description 
+#' @description
 #' Iterates through given `segments` and merges by level or by chromosome arm. In other words,
-#' we are keeping track of whenever we change chromosome arm or level. 
-#' 
+#' we are keeping track of whenever we change chromosome arm or level.
+#'
 #' @param segments A data frame containing segment data. For the first pass, these segments
 #' are those with size >= 3mb. Their last column should be their level, and should be non-zero
 #' (i.e. already determined)
@@ -142,9 +152,9 @@ GatherSegmentsByLevels <- function(segments, granges_obj) {
   result = matrix(0, ncol=8, nrow=N)
   i = 1
   c = 1
-  
+
   while (i < N+1) {
-    # Last row: we keep the data from segment i as it is, since there is nothing 
+    # Last row: we keep the data from segment i as it is, since there is nothing
     # else to merge it to
     if (i == N) {
       result[c,] = c(segments[i,1], # index
@@ -163,34 +173,34 @@ GatherSegmentsByLevels <- function(segments, granges_obj) {
       if (segments[i,3] == segments[i+1,3]) {
         # If segments i and i+1 are in the same level, then we are going to iterate
         # through the segments starting at i + 1 (so the next one), until we no longer have same level or same arm.
-        # As we iterate, we save the data from the segments we are merging. 
+        # As we iterate, we save the data from the segments we are merging.
         if (segments[i,8] == segments[i+1,8]) {
           n = 1
           vector_of_chr_numbers = c(segments[i,2])
           vector_of_seg_starts = c(segments[i,4])
           vector_of_seg_ends = c(segments[i,5])
           vector_strands = c("*")
-          
+
           # While we are on the same level and same chr_arm, merge chr_n/start/end
           while (segments[i,8] == segments[i+n,8] && segments[i,3] == segments[i+n,3]) {
             vector_of_chr_numbers = c(vector_of_chr_numbers, segments[i+n,2])
             vector_of_seg_starts = c(vector_of_seg_starts, segments[i+n,4])
             vector_of_seg_ends = c(vector_of_seg_ends, segments[i+n,5])
             vector_strands = c(vector_strands, "*")
-            
+
             n = n + 1
-            
+
             if (i + n == N+1) {
               break
             }
           }
-          
+
           # Merge the segments: GRanges helps us get ratio_median of the merge
           genomic_ranges = GenomicRanges::GRanges(seqnames = vector_of_chr_numbers,
-                                                  ranges = GenomicRanges::IRanges(start = vector_of_seg_starts, end = vector_of_seg_ends),
+                                                  ranges = IRanges::IRanges(start = vector_of_seg_starts, end = vector_of_seg_ends),
                                                   strand = vector_strands)
-          subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, genomic_ranges)
-          
+          subsetGRobject = IRanges::subsetByOverlaps(granges_obj, genomic_ranges)
+
           # Adding the merged segment into the result matrix
           result[c,] = c(segments[i,1],
                          segments[i,2],
@@ -230,7 +240,7 @@ GatherSegmentsByLevels <- function(segments, granges_obj) {
       }
     }
   }
-  
+
   #### Preparing result matrix for output ####
   result = subset(result, result[,1] != 0)
   rownames(result) <- NULL

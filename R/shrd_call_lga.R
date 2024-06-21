@@ -1,11 +1,11 @@
 #' Preps `segments` for LGA call.
-#' 
+#'
 #' @description
 #' Does many things, details found within function body. First, assigns segments
 #' that meet certain criteria an index of 0 (there's 4 cases + edge cases for assigning an
 #' index of 0, inside the inner for-loop.) Then, removes the segments that were assigned this
-#' index of 0. They're considered "small breaks". 
-#' 
+#' index of 0. They're considered "small breaks".
+#'
 #' @param threshold A float. Threshold in ratio_median difference previously estimated.
 #' @param segments A data frame: segment data that's (ideally) already been processed (merging segments,
 #' small ones have been reinserted, and so on)
@@ -17,19 +17,19 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
                           segments=segments)
   segments <- ShrinkReprTMP(segments=segments,
                            granges_obj=granges_obj)
-  
+
   small_breaks = 0
   pass = 1
   segments_lt3mb_and_pass_gt10000 = TRUE
   while (segments_lt3mb_and_pass_gt10000) {
     segments[,1] <- seq(1,dim(segments)[1])
     segments_lt3mb <- which(round((segments[,5] - segments[,4])/10^6,1) < 3)
-    
+
     if (length(segments_lt3mb) > 0 & pass < 10000) {
       # Ordering segments (their indices, really) in segments_lt3mb by their size
       ordered_segments_lt3mb <- segments_lt3mb[order((segments[segments_lt3mb,5] - segments[segments_lt3mb,4])/10^6)]
       pass = pass + 1
-      
+
       # Iterating through these small segments
       for (i in 1:length(ordered_segments_lt3mb)) {
         # If size of segment (i) is 1
@@ -46,7 +46,7 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
           # If last segment
           if (ordered_segments_lt3mb[i] == dim(segments)[1]) {
             # If last segment and previous  segment in same chromosome arm AND
-            # previous segment's index is not 0 
+            # previous segment's index is not 0
             if (segments[ordered_segments_lt3mb[i]-1, 3] == segments[ordered_segments_lt3mb[i], 3] & segments[ordered_segments_lt3mb[i]-1, 1] != 0) {
                 segments[ordered_segments_lt3mb[i], 1] <- 0
             }
@@ -56,29 +56,29 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
             previous_next_same_arm = segments[ordered_segments_lt3mb[i]-1, 3] == segments[ordered_segments_lt3mb[i]+1, 3]
             previous_segment_same_arm = segments[ordered_segments_lt3mb[i]-1, 3] == segments[ordered_segments_lt3mb[i], 3]
             segment_next_same_arm = segments[ordered_segments_lt3mb[i]+1, 3] == segments[ordered_segments_lt3mb[i], 3]
-            
-            # Case 1: 
+
+            # Case 1:
             # If Previous and Next in same chromosome arm AND
             # Previous index is not 0 AND
             # Next's index is not 0
             # Then set Segment's index to 0
-            if (previous_next_same_arm & 
-                (segments[ordered_segments_lt3mb[i]-1, 1] != 0) & 
+            if (previous_next_same_arm &
+                (segments[ordered_segments_lt3mb[i]-1, 1] != 0) &
                 (segments[ordered_segments_lt3mb[i]+1, 1] != 0)) {
-              segments[ordered_segments_lt3mb[i], 1] <- 0 
+              segments[ordered_segments_lt3mb[i], 1] <- 0
             }
-            
-            # Case 2: 
+
+            # Case 2:
             # If Previous and Segment in same chromosome arm AND
             # Segment and Next are in different chromosome arms AND
             # Previous index is not 0
             # Then set Segment's index to 0
-            if (previous_segment_same_arm & 
+            if (previous_segment_same_arm &
                 (segments[ordered_segments_lt3mb[i]+1, 3] != segments[ordered_segments_lt3mb[i], 3]) &
                 (segments[ordered_segments_lt3mb[i]-1, 1] != 0)) {
               segments[ordered_segments_lt3mb[i], 1] <- 0
             }
-            
+
             # Case 3:
             # If Segment and Next in same chromosome arm AND
             # Previous and Segment in different chromosome arms AND
@@ -89,7 +89,7 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
                 (segments[ordered_segments_lt3mb[i]+1, 1] != 0)) {
               segments[ordered_segments_lt3mb[i], 1] <- 0
             }
-            
+
             # Case 4:
             # If Segment and Next in different chromosome arms AND
             # Previous and Segment in different chromosome arms
@@ -101,13 +101,13 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
           }
         }
       }
-      
+
       zero_indexed <- which(segments[,1] == 0)
       if (length(zero_indexed) > 0) {
         segments <- segments[-zero_indexed,]
       }
       small_breaks = small_breaks + length(zero_indexed)
-      
+
       for (i in 1:(dim(segments)[1]-1)) {
         # If space between Segment and Next is < 3mb
         if (round((segments[i+1,4] - segments[i,5])/10^6,1) < 3) {
@@ -118,18 +118,18 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
           # ratio_median difference is below threshold
           if (segments[i,3] == segments[i+1,3] & below_thr) {
             segments[i+1,4] <- segments[i,4]
-            
+
             gr = GenomicRanges::GRanges(seqnames = c(segments[i+1,2]),
-                                        ranges = GenomicRanges::IRanges(start=c(segments[i+1,4]), end=c(segments[i+1,5])),
+                                        ranges = IRanges::IRanges(start=c(segments[i+1,4]), end=c(segments[i+1,5])),
                                         strand = c("*"))
-            subsetGRobject = GenomicRanges::subsetByOverlaps(granges_obj, gr)
-            
+            subsetGRobject = IRanges::subsetByOverlaps(granges_obj, gr)
+
             segments[i+1,6] <- median(subsetGRobject$ratio)
             segments[i,1] <- 0
           }
         }
       }
-      
+
       zero_indexed <- which(segments[,1] == 0)
       if (length(zero_indexed) > 0) {
         segments <- segments[-zero_indexed,]
@@ -148,17 +148,17 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
 }
 
 #' Final segmentation before LGA call
-#' 
-#' @description 
+#'
+#' @description
 #' Merges the initial `bam_ratios_frame` by segments in the same chromosome,
 #' and then assigns start/end pos to segments in `segments`, whenever
 #' we change Chr_N in the latter.
-#' 
+#'
 #' @param segments A data frame of segments with size > 3Mb. Ideally this
 #' frame has already gone through merging, small segments reinsertion, etc.
 #' @param bam_ratios_frame A data frame. For first pass: the cleaned-up version of the initial
 #' ratio file tsv. For second pass: this clean-up segments but merged by ratio_median.
-#' @param second_round A boolean: FALSE if first pass, TRUE if second pass. 
+#' @param second_round A boolean: FALSE if first pass, TRUE if second pass.
 #' @export
 GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame, second_round) {
   if (second_round == FALSE) {
@@ -166,32 +166,32 @@ GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame, second_roun
     bam_ratios_frame = bam_ratios_frame[,-1]
     bam_ratios_frame = bam_ratios_frame[,-5]
     colnames(bam_ratios_frame) <- c("chr", "start", "end", "readcount")
-    
+
     # Setting variables that are specific to the first pass
     attach(bam_ratios_frame)
-    merged_bam = merge(aggregate(start ~ chr, bam_ratios_frame, min), 
+    merged_bam = merge(aggregate(start ~ chr, bam_ratios_frame, min),
                        aggregate(end ~ chr, bam_ratios_frame, max))[seq(from=1, to=23, by=1),]
     detach(bam_ratios_frame)
-    
+
     while_loop_index = 2 # chromosome number
     num_chr = 23
   } else {
     # Setting up frame
     colnames(bam_ratios_frame) <- c("chr", "chr_arm", "start", "end", "ratio_median", "size")
-    
+
     # Setting variables that are specific to the second pass
     attach(bam_ratios_frame)
-    merged_bam = merge(aggregate(start ~ chr_arm, bam_ratios_frame, min), 
+    merged_bam = merge(aggregate(start ~ chr_arm, bam_ratios_frame, min),
                        aggregate(end ~ chr_arm, bam_ratios_frame, max))[seq(from=1, to=41, by=1),]
     detach(bam_ratios_frame)
-    
+
     while_loop_index = 3 # chromosome arm
     num_chr = 41
   }
-  
+
   # First segment
-  segments[1,4] = bam_ratios_frame[1,2]
-  
+  segments[1,4] = merged_bam[1,2]
+
   # We're going to iterate through the large segments.
   # If large_segment and next_large are in different Chr_N, then:
   #     1) large_segment's end pos is n's end pos
@@ -207,10 +207,10 @@ GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame, second_roun
     }
     c = c + 1
   }
-  
+
   segments[N_large,5] = merged_bam[num_chr,3]
   segments[,7] = segments[,5] - segments[,4] + 1
-  
+
   segments
 }
 
@@ -222,41 +222,41 @@ GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame, second_roun
 #' @param threshold A float. Threshold in ratio_median difference previously estimated.
 #' @param segments A data frame: segment data that's (ideally) already been processed (merging segments,
 #' small ones have been reinserted, and so on)
-#' 
+#'
 #' @export
 
 CallLGA <- function(threshold, segments) {
   result <- as.data.frame(matrix(0, ncol=2, nrow=9))
   result[,1] <- c(3:11)
   colnames(result) <- c("Size_LGA", "Number_LGA")
-  
+
   segments = segments[which(segments$chr != 23),]
   segments = as.matrix(segments)
-  
+
   for (i in (3:11)) {
-    segments_with_LGA <- DetermineNumberOfLGAs(threshold=threshold, size_lga=i, segments=segments) 
+    segments_with_LGA <- DetermineNumberOfLGAs(threshold=threshold, size_lga=i, segments=segments)
     result[i-2,2] = sum(segments_with_LGA)
   }
   result
 }
 
 #' Returns the segments that are LGAs of the given size
-#' 
+#'
 #' @description
 #' With help of DetermineNumberOfLGAs, keeps segment data for LGA size of `size_lga`
 #'
 #' @param threshold A float. Threshold in ratio_median difference previously estimated.
 #' @param size_lga An integer: size of the LGA to look for.
 #' @param segments A data frame: segment data
-#' 
+#'
 #' @export
 GetLGAOfSize <- function(threshold, size_lga, segments) {
   segments_with_LGA <- DetermineNumberOfLGAs(threshold=threshold,
                                              size_lga=size_lga,
-                                             segments=segments) 
+                                             segments=segments)
   result = cbind(segments, segments_with_LGA)
   colnames(result) <- c("index", "chr","chr_arm", "start", "end", "ratio_median", "size", "level", "WC")
-  
+
   N = dim(result)[1]
   i = 1
   # Iterate through the segments, and remove the ones that aren't an LGA (their index in segments_with_LGA are not 1)
@@ -270,7 +270,7 @@ GetLGAOfSize <- function(threshold, size_lga, segments) {
       i = i + 1
     }
   }
-  
+
   N_new = dim(result)[1]
   if (is.null(N_new) == FALSE) {
     # If last segment is not an LGA
@@ -280,6 +280,11 @@ GetLGAOfSize <- function(threshold, size_lga, segments) {
       while (result[N_new,9] == 0) {
         result = result[-N_new,]
         N_new = N_new - 1
+
+        # Only iterate if we have more than one non-LGA segment left
+        if (N_new == 0) {
+          break
+        }
       }
     }
   }
