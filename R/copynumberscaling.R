@@ -271,6 +271,12 @@ CalculateACNs <- function (cnobj, acnmethod,
          Please supply an accepted option.")
   }
 
+  # reorder sample names in acn matrixes
+  cnobj_samples <- Biobase::sampleNames(Biobase::phenoData(cnobj))
+  col_order <- cnobj_samples[cnobj_samples %in% colnames(output[["acns"]])]
+  output[["acns"]] <- output[["acns"]][ , col_order]
+  output[["acns_segs"]] <- output[["acns_segs"]][ , col_order]
+
   if (return_S4) {
     cnobj <- ReplaceQDNAseqAssaySlots(cnobj, output[["acns"]], output[["acns_segs"]])
     output[['acn.obj']] <- cnobj
@@ -555,8 +561,8 @@ ReplaceQDNAseqAssaySlots <- function(cnobj, new_cns, new_segs) {
                     phenodata = cnobj@phenoData@data[missing_samples,])
   Biobase::assayDataElement(new.cnobj, "segmented") <- new_segs
 
-  if (length(assayData(cnobj)) > 2) {
-    slotstoadd <- names(assayData(cnobj))
+  if (length(Biobase::assayData(cnobj)) > 2) {
+    slotstoadd <- names(Biobase::assayData(cnobj))
     slotstoadd <- slotstoadd[!slotstoadd %in% c("segmented", "copynumber")]
     for (i in slotstoadd)
     Biobase::assayDataElement(new.cnobj, i) <- cnobj@assayData[[i]][,missing_samples]
