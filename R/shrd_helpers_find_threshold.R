@@ -63,16 +63,19 @@ PrepSecondRound <- function(segments) {
 #' @param second_round A boolean. False if first round of simulation, True if second round. This should be set to True once
 #' the simulations have been ran before and we already have a possible THR that we want to re-calibrate with new differences
 #' of ratio medians (i.e. with updated segments, such as post-merging). Set to False by default.
+#' @param seed A seed to use for random number generation. Ensures reproducibility between runs.
 #'
 #' @export
 #'
 #'
-RunThresholdSimulations <- function(num_simulations=100000, all_ratio_differences, second_round=FALSE) {
+RunThresholdSimulations <- function(num_simulations=100000, all_ratio_differences, second_round=FALSE, seed) {
   list_of_possible_thresholds = c()
   tolerance = 0.10
+  set.seed(seed = seed)
 
   if (second_round == TRUE) {
     tolerance = 0.05
+    set.seed(seed = seed + 2718)
   }
 
   for (i in 1:num_simulations) {
