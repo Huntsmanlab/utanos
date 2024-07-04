@@ -20,6 +20,11 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
   N_large = dim(large_segments)[1]
   N_small = dim(small_segments)[1]
 
+  # In some cases we have no small segments; therefore return right away
+  if (N_small == 0) {
+    return(list(large_segments, small_segments))
+  }
+
   halt = 0 # whether we change chromosome arms, or small segment is after first large segment
   i = 1 # small segment
   c = 1 # large segment, always equal to 1, since we only care about the first one at this stage.
@@ -181,18 +186,34 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
 
           # Finally, we squeeze it in between segments :c-1 and c+1:
           if (below_threshold == TRUE) {
-            gr = GenomicRanges::GRanges(seqnames = c(small_segment[2]),
-                                        ranges = IRanges::IRanges(start=c(small_segment[4]), end=c(large_segment[5])),
-                                        strand = c("*"))
-            subsetGRobject = IRanges::subsetByOverlaps(granges_obj, gr)
+            # End of file
+            if (c + 1 > N_large) {
+              gr = GenomicRanges::GRanges(seqnames = c(small_segment[2]),
+                                          ranges = IRanges::IRanges(start=c(small_segment[4]), end=c(large_segment[5])),
+                                          strand = c("*"))
+              subsetGRobject = IRanges::subsetByOverlaps(granges_obj, gr)
 
-            large_segments = rbind(large_segments[1:(c-1),],
-                                   c(small_segment[1], small_segment[2], small_segment[3],
-                                     small_segment[4], large_segment[5], median(subsetGRobject$ratio),
-                                     large_segment[5] - small_segment[4] + 1, large_segment[8]),
-                                   large_segments[(c+1):N_large,])
-            c = N_large + 1
-            i = i + 1
+              large_segments = rbind(large_segments[1:(c-1),],
+                                     c(small_segment[1], small_segment[2], small_segment[3],
+                                       small_segment[4], large_segment[5], median(subsetGRobject$ratio),
+                                       large_segment[5] - small_segment[4] + 1, large_segment[8]))
+              c = N_large + 1
+              i = i + 1
+            }
+            else {
+              gr = GenomicRanges::GRanges(seqnames = c(small_segment[2]),
+                                          ranges = IRanges::IRanges(start=c(small_segment[4]), end=c(large_segment[5])),
+                                          strand = c("*"))
+              subsetGRobject = IRanges::subsetByOverlaps(granges_obj, gr)
+
+              large_segments = rbind(large_segments[1:(c-1),],
+                                     c(small_segment[1], small_segment[2], small_segment[3],
+                                       small_segment[4], large_segment[5], median(subsetGRobject$ratio),
+                                       large_segment[5] - small_segment[4] + 1, large_segment[8]),
+                                     large_segments[(c+1):N_large,])
+              c = N_large + 1
+              i = i + 1
+            }
           } else {
             # Else: not below threshold: small_segment is its own separate thing
             # Add small_segment data, in between :c-1 and c:
@@ -355,6 +376,14 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
                                                                 large_segments = large_segments,
                                                                 j = c+1,
                                                                 end_of_file = TRUE)
+              c = N_large + 1
+              i = i + 1
+            } else if (c + 2 < N_large && i == N_small) {
+              large_segments <- MergeSegmentsFiveSmallNextLarge(granges_obj = granges_obj,
+                                                                small_segment = small_segment,
+                                                                large_segments = large_segments,
+                                                                j = c+1,
+                                                                end_of_file = FALSE)
               c = N_large + 1
               i = i + 1
             } else {

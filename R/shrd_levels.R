@@ -123,10 +123,10 @@ AssignLevels <- function(segments, thr) {
     n = length(closest_indices)
     for (i in 1:n) {
       # Finding  segment i from `closest_indices` in `segments`
-      segments[which(segments[,1] == closest_indices[i]), 8] = level
+      segments[which((segments[,1] == closest_indices[i])), 8] = level
 
       # Getting the rest of the segments and keeping them in `segments_copy`.
-      segments_copy <- segments_copy[which(segments_copy[,1] != closest_indices[i]), ]
+      segments_copy <- segments_copy[which(!(segments_copy[,1] == closest_indices[i])), ]
     }
     level = level + 1
   }
