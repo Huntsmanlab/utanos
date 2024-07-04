@@ -158,9 +158,10 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
 #' frame has already gone through merging, small segments reinsertion, etc.
 #' @param bam_ratios_frame A data frame. For first pass: the cleaned-up version of the initial
 #' ratio file tsv. For second pass: this clean-up segments but merged by ratio_median.
+#' @param granges_obj A GRanges object: used to obtain genomic data from regions we're merging.
 #' @param second_round A boolean: FALSE if first pass, TRUE if second pass.
 #' @export
-GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame, second_round) {
+GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame, granges_obj, second_round) {
   if (second_round == FALSE) {
     # Setting up frame
     bam_ratios_frame = bam_ratios_frame[,-1]
@@ -210,6 +211,19 @@ GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame, second_roun
 
   segments[N_large,5] = merged_bam[num_chr,3]
   segments[,7] = segments[,5] - segments[,4] + 1
+
+  # Again iterate and correct segment ratio medians with values from original cleaned data
+  c = 1
+  while(c < N_large + 1) {
+    genomic_ranges <- GenomicRanges::GRanges(seqnames = c(segments[c, 2]),
+                                             ranges = IRanges::IRanges(start = c(segments[c, 4]), end = c(segments[c, 5])),
+                                             strand = c("*"))
+    subsetGRobject = IRanges::subsetByOverlaps(granges_obj, genomic_ranges)
+    segments[c, 6] = median(subsetGRobject$ratio)
+
+    c = c + 1
+  }
+
 
   segments
 }
@@ -291,4 +305,23 @@ GetLGAOfSize <- function(threshold, size_lga, segments) {
   result
 }
 
+#' Returns the HRD status of a sample
+#'
+#' @description
+#' Using the output of CallLGA, we determine the HRD status of a sample based on the number of LGAs >= 10 Mb in size.
+#'
+#' @param lga_calls The table of LGA counts by size, as returned by CallLGA.
+#'
+#' @returns The HRD status of the sample: TRUE if the number of LGAs >= 10 Mb exceeds 20; FALSE otherwise.
+#'
+GetHRDStatus <- function(lga_calls) {
+  n_lga <- lga_calls[which(lga_calls$Size_LGA == 10), 2]
 
+  if (n_lga >= 20) {
+    hrd_status <- TRUE
+  } else {
+    hrd_status <- FALSE
+  }
+
+  return(hrd_status)
+}
