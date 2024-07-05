@@ -1,4 +1,4 @@
-#' Utanos version of the shallowHRD algorithm for detecting homologous recombination deficiency (HRD) on tumor samples from the number of
+#' Utanos' version of the shallowHRD algorithm for detecting homologous recombination deficiency (HRD) on tumor samples from the number of
 #' large genomic alterations (LGAs). Original code found here (https://github.com/aeeckhou/shallowHRD), and original paper found here (https://academic.oup.com/bioinformatics/article/36/12/3888/5823300).
 #' Essentially, the algorithm can be divided into 5 sequential steps. We perform these steps two times (I call them 'passes'),
 #' so the first pass is sort of a 'discovery' stage, with still good estimates, but the second pass improves on the results
@@ -63,7 +63,8 @@
 #'
 #'
 RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FALSE, num_simulations=100000,
-                          shrd_save_path=FALSE, first_threshold=NULL, sample=NULL, second_threshold=NULL) {
+                          shrd_save_path=FALSE, first_threshold=NULL, sample=NULL, second_threshold=NULL,
+                          seed=1337, plot = FALSE) {
   #### Importing data####
   if(inherits(x = raw_ratios_file, what = "character")) {
     raw_ratios_file <- data.frame(read.table(file=raw_ratios_file, header=TRUE))
@@ -92,7 +93,8 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
     first_threshold <- FindThreshold(granges_obj=granges_obj,
                                      segments=gathered_by_ratio_median,
                                      second_round=FALSE,
-                                     num_simulations = num_simulations)
+                                     num_simulations=num_simulations,
+                                     seed=seed)
   }
 
   #### Levels ####
@@ -116,6 +118,7 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
                                                          granges_obj=granges_obj)
   segments <- CorrectLeftovers(segments=segments_gt3mb_small_reinserted,
                                granges_obj=granges_obj)
+
   #### Determining LGAs ####
   segments <- BreakSmoothToLGA(threshold=first_threshold,
                                segments=segments,
@@ -123,7 +126,8 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
   segments <- CorrectLeftovers(segments=segments,
                                granges_obj=granges_obj)
   segments <- GetSegmentationBeforeLGACall(segments=segments,
-                                           bam_ratios_frame=clean_ratios_file,
+                                           bam_ratios_frame=clean_ratios_file_copy,
+                                           granges_obj=granges_obj,
                                            second_round=FALSE)
   initial_lga_res <- CallLGA(threshold=first_threshold,
                              segments=segments)
@@ -138,13 +142,13 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
     second_threshold <- FindThreshold(granges_obj=granges_obj,
                                       segments=segments,
                                       second_round=TRUE,
-                                      num_simulations=num_simulations)
+                                      num_simulations=num_simulations,
+                                      seed=seed)
   }
 
   #### v2 Reading & Initialization ####
   segments_gt3mb <- GetLargeSegments(segments=segments_wo_short_arms)
   segments_btw_0.1_3mb <- GetSmallSegments(segments=segments_wo_short_arms)
-
   v2_segments_gt3mb <- AssignLevels(segments=segments_gt3mb,
                                     thr=second_threshold)
   v2_segments_gt3mb <- GatherSegmentsByLevels(segments=v2_segments_gt3mb,
@@ -173,6 +177,7 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
                                   granges_obj=granges_obj)
   v2_segments <- GetSegmentationBeforeLGACall(segments=v2_segments,
                                               bam_ratios_frame=gathered_by_ratio_median,
+                                              granges_obj = granges_obj,
                                               second_round=TRUE)
   final_lga_res <- CallLGA(threshold=second_threshold,
                            segments=v2_segments)
@@ -181,12 +186,24 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
                                      segments=v2_segments)
 
   if (shrd_save_path != FALSE) {
-    write.table(x = final_lga_segments, file = paste0(shrd_save_path, sample, "_LGAs.tsv"), sep = "\t")
-    write.table(x = final_lga_res, file = paste0(shrd_save_path, sample, "_number_LGAs.tsv"), sep = "\t")
-    #saveRDS(final_lga_res, file=shrd_save_path)
+    write.table(x = final_lga_segments, file = paste0(shrd_save_path, sample, "_LGAs.tsv"), sep = "\t", row.names = FALSE)
+    write.table(x = final_lga_res, file = paste0(shrd_save_path, sample, "_number_LGAs.tsv"), sep = "\t", row.names = FALSE)
   }
 
-  return(final_lga_res)
+  #### Determine HRD Status ####
+  hrd_status <- GetHRDStatus(lga_calls=final_lga_res)
+
+  #### Plot the segments at the start, after the first pass, and at the end ####
+  if(plot) {
+    segments_plot <- PlotSegmentChanges(segments_initial = clean_ratios_file_copy,
+                                        segments_pass_one = segments,
+                                        segments_pass_two = v2_segments,
+                                        sample = sample)
+
+    return(list("hrd_status" = hrd_status, "n_lga" = final_lga_res, "lga" = final_lga_segments, "plot" = segments_plot))
+  }
+
+  return(list("hrd_status" = hrd_status, "n_lga" = final_lga_res, "lga" = final_lga_segments))
 }
 
 #' Run ShallowHRD on a QDNAseq object.
@@ -198,13 +215,15 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
 #' @param include_chr_X Whether or not to include the X-chromosome when running ShallowHRD.
 #' @param num_simulations The number of simulations to use during the FindThreshold() step.
 #' @param shrd_save_path An optional path to save the ShallowHRD results to.
+#' @param plot Whether or not to return a plot showing how segments are merged as the algorithm runs.
 #'
 #' @returns A list of ShallowHRD results, with one entry per sample.
 #' @export
 #'
 #' @examples
-RunShallowHRDFromQDNA <- function(qdna_obj, include_chr_X=FALSE, num_simulations=100000,
-                                  shrd_save_path=FALSE) {
+RunShallowHRDFromQDNA <- function(qdna_obj, include_chr_X=FALSE, num_simulations=100000, shrd_save_path=FALSE,
+                                  plot=FALSE) {
+  # Note that ExportBinsQDNAObj does not log normalize
   bin_df <- ExportBinsQDNAObj(object = qdna_obj, type = "copynumber", filter = TRUE) %>%
     tidyr::pivot_longer(cols = !c("feature", "chromosome", "start", "end"), names_to = "sample", values_to = "ratio") %>%
     dplyr::select(!feature)
@@ -220,9 +239,14 @@ RunShallowHRDFromQDNA <- function(qdna_obj, include_chr_X=FALSE, num_simulations
   df_list <- dplyr::group_split(df_group, .keep = FALSE)
   names(df_list) <- dplyr::group_keys(df_group)$sample
 
-  shrd_result <- lapply(X = df_list, FUN = function(df) RunShallowHRD(raw_ratios_file = as.data.frame(df),
+  shrd_result <- lapply(X = names(df_list), FUN = function(sample) RunShallowHRD(raw_ratios_file = as.data.frame(df_list[[sample]]),
                                                                       log_transform = TRUE,
                                                                       include_chr_X = include_chr_X,
                                                                       num_simulations = num_simulations,
-                                                                      shrd_save_path = shrd_save_path))
+                                                                      shrd_save_path = shrd_save_path,
+                                                                      sample = sample,
+                                                                      plot = plot))
+  names(shrd_result) <- names(df_list)
+
+  return(shrd_result)
  }

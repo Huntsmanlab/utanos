@@ -535,9 +535,9 @@ ExportBinsQDNAObj <- function(object,
                               type=c("copynumber", "segments", "calls"),
                               filter=TRUE, digits=3,
                               chromosomeReplacements=c("23"="X", "24"="Y", "25"="MT"), ...) {
-  
+
   type <- match.arg(type)
-  
+
   if (inherits(object, "QDNAseqSignals")) {
     if (filter) {
       object <- object[QDNAseq:::binsToUse(object), ]
@@ -566,7 +566,7 @@ ExportBinsQDNAObj <- function(object,
     }
   } else if (inherits(object, c("cghRaw", "cghSeg", "cghCall",
                                 "cghRegions"))) {
-    
+
     feature <- Biobase::featureNames(object)
     chromosome <- as.character(QDNAseq::chromosomes(object))
     for (chromosomeReplacement in names(chromosomeReplacements)) {
@@ -593,16 +593,16 @@ ExportBinsQDNAObj <- function(object,
       dat <- CGHbase::regions(object)
     }
   }
-  
+
   if (is.numeric(digits)) {
     dat <- round(dat, digits=digits)
   }
   oopts2 <- options(scipen=15)
   on.exit(options(oopts2))
-  
+
   out <- data.frame(feature=feature, chromosome=chromosome, start=start,
                     end=end, dat, check.names=FALSE, stringsAsFactors=FALSE)
-  
+
   return(out)
 }
 
@@ -618,24 +618,31 @@ DfToQDNAseq <- function(df) {
   ))
 
   # Extract copynumber and segmented
-  rcn_matrix <- as.matrix(df[, grep("_copynumber$", colnames(df))])
+  copynumber_cols <- grep("_copynumber$", colnames(df))
+  rcn_matrix <- as.data.frame(df[, copynumber_cols, drop = FALSE])
   rownames(rcn_matrix) <- rownames(bins)
-  colnames(rcn_matrix) <- stringr::str_replace(colnames(rcn_matrix), "_copynumber", "")
-  segs_matrix <- as.matrix(df[, grep("_segmented$", colnames(df))])
+  colnames(rcn_matrix) <- stringr::str_replace(colnames(df)[copynumber_cols], "_copynumber", "")
+  rcn_matrix <- rcn_matrix %>%
+    dplyr::mutate(dplyr::across(dplyr::everything(), ~ as.numeric(.x)))
+
+  segs_cols <- grep("_segmented$", colnames(df))
+  segs_matrix <- as.data.frame(df[, segs_cols, drop = FALSE])
   rownames(segs_matrix) <- rownames(bins)
-  colnames(segs_matrix) <- stringr::str_replace(colnames(segs_matrix), "_segmented", "")
+  colnames(segs_matrix) <- stringr::str_replace(colnames(df)[segs_cols], "_segmented", "")
+  segs_matrix <- segs_matrix %>%
+    dplyr::mutate(dplyr::across(dplyr::everything(), ~ as.numeric(.x)))
 
   # Create QDNASeqCopyNumbers Object
   copyNumbers <- new('QDNAseqCopyNumbers',
                       bins = bins,
-                      copynumber = rcn_matrix,
+                      copynumber = as.matrix(rcn_matrix),
                       phenodata = Biobase::AnnotatedDataFrame(data.frame(
                         sampleNames = colnames(rcn_matrix),
                         row.names = colnames(rcn_matrix)
                     ))
   )
 
-  Biobase::assayDataElement(copyNumbers, "segmented") <- segs_matrix
+  Biobase::assayDataElement(copyNumbers, "segmented") <- as.matrix(segs_matrix)
 
   return(copyNumbers)
 }
