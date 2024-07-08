@@ -280,7 +280,11 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
                            summarytype = 'probability',
                            maskprob = 0.2, maskaberr = 0.1,
                            gaincol='blue', losscol='red', misscol=NA,
-                           build='GRCh37',... ) {
+                           build='GRCh37', plotXY = TRUE,... ) {
+  if (plotXY == FALSE) {
+    x <- x[grep("^(X|Y):", Biobase::featureNames(x), value = TRUE, invert = TRUE)]
+  }
+
   chrom <- QDNAseq::chromosomes(x)
   pos <- QDNAseq::bpstart(x)
   pos2 <- QDNAseq::bpend(x)
@@ -356,7 +360,9 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
   mtext('gains', side=2, line=3, at=0.5)
   mtext('losses', side=2, line=3, at=-0.5)
   ### number of data points
-  str <- paste(round(nrow(x) / 1000), 'k x ', sep='')
+  calls_matrix <- Biobase::assayData(x)$calls
+  nrow_notna <- nrow(calls_matrix[rowSums(is.na(calls_matrix)) != ncol(calls_matrix), ])
+  str <- paste(round(nrow_notna / 1000), 'k x ', sep='')
   probe <- median(QDNAseq::bpend(x)-QDNAseq::bpstart(x)+1)
   if (probe < 1000) {
     str <- paste(str, probe, ' bp', sep='')
@@ -1004,9 +1010,11 @@ CNSegmentsPlot <- function(cnobj,
 #' @export
 RelToAbsSegPos <- function(chromosomes, rel_start_pos, rel_end_pos, build = "GRCh37") {
   chrom_lengths <- GetChromosomeLengths(build)[as.character(unique(chromosomes))]
+  
+  max_num_chrom <- max(as.integer(chromosomes[!chromosomes %in% c("X", "Y")]))
 
-  chromosomes <- replace(chromosomes, chromosomes == "X", "23")
-  chromosomes <- as.integer(replace(chromosomes, chromosomes == "Y", "24")) # Map all chromosomes to integers so we can iterate in numeric order
+  chromosomes <- replace(chromosomes, chromosomes == "X", max_num_chrom + 1)
+  chromosomes <- as.integer(replace(chromosomes, chromosomes == "Y", max_num_chrom + 2)) # Map all chromosomes to integers so we can iterate in numeric order
   uni_chrom <- unique(chromosomes)
 
   abs_start_pos <- rel_start_pos

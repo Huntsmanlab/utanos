@@ -14,6 +14,7 @@ SummaryCNPlot(
   losscol = "red",
   misscol = NA,
   build = "GRCh37",
+  plotXY = TRUE,
   ...
 )
 }
