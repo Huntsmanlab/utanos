@@ -1,3 +1,6 @@
+#' Run shallowHRD on a dataframe or file containing segmented relative copy-number data.
+#'
+#' @description
 #' Utanos' version of the shallowHRD algorithm for detecting homologous recombination deficiency (HRD) on tumor samples from the number of
 #' large genomic alterations (LGAs). Original code found here (https://github.com/aeeckhou/shallowHRD), and original paper found here (https://academic.oup.com/bioinformatics/article/36/12/3888/5823300).
 #' Essentially, the algorithm can be divided into 5 sequential steps. We perform these steps two times (I call them 'passes'),
@@ -57,11 +60,7 @@
 
 #' Calculates the number of large genomic alterations for various sizes.
 #'
-#' @dsescription
-#'
-#'
-#'
-#'
+#' @export
 RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FALSE, num_simulations=100000,
                           shrd_save_path=FALSE, first_threshold=NULL, sample=NULL, second_threshold=NULL,
                           seed=1337, plot=FALSE) {
@@ -219,9 +218,8 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
 #' @param seed A seed to use for PRNG-dependent functions. Ensures reproduciblity between runs.
 #'
 #' @returns A list of ShallowHRD results, with one entry per sample.
-#' @export
 #'
-#' @examples
+#' @export
 RunShallowHRDFromQDNA <- function(qdna_obj, include_chr_X=FALSE, num_simulations=100000, shrd_save_path=FALSE,
                                   plot=FALSE, seed = 1337) {
   # Note that ExportBinsQDNAObj does not log normalize

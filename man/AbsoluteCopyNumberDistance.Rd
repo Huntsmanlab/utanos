@@ -39,6 +39,6 @@ Copied from rascal.
 }
 \examples{
 data(copy_number)
-copy_number <- copy_number[copy_number$sample == "X17222", ]
+copy_number <- copy_number[copy_number$sample_id == "X17222", ]
 AbsoluteCopyNumberDistance(3, 0.67, copy_number$segmented)
 }

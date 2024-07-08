@@ -23,5 +23,5 @@ cells.
 Copied from rascal.
 }
 \examples{
-tumour_fraction(3, 0.82)
+TumourFraction(3, 0.82)
 }

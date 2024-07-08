@@ -608,6 +608,7 @@ ExportBinsQDNAObj <- function(object,
 
 
 # Converts a wide dataframe with bin and segment copynumber into a QDNAseq object
+#' @importClassesFrom QDNAseq QDNAseqCopyNumbers
 DfToQDNAseq <- function(df) {
   # Create bins
   bins <- Biobase::AnnotatedDataFrame(data.frame(

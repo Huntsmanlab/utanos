@@ -78,7 +78,7 @@ ShrinkReprTMP <- function(segments, granges_obj) {
 
 #' Determines if the given segments are LGAs of the given size
 #'
-#' @descrption
+#' @description
 #' Iterates through the segments in `segments` and firstly checks if the segment meets the definition
 #' of an LGA:
 #' 1. Segment and Previous are in the same chromosome arm.

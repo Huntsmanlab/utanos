@@ -7,13 +7,17 @@
 GetSampleQualityDecision(x, metric = "quantile", cutoff = 0.95)
 }
 \arguments{
-\item{x}{\emph{QDNASeq object} containing the relative copy number calls as well as the segmented relative copy number calls}
+\item{x}{\emph{QDNASeq object} containing the relative copy number calls as well as the segmented relative copy number calls.}
+
+\item{metric}{The metric to use for determining quality. Either 'quantile' or 'DecisionTree'.}
+
+\item{cutoff}{The cutoff to use for quantile-based quality filtering. Not applicable when the metric is 'DecisionTree'.}
 }
 \value{
 A dataframe of sample quality decisions ("Low" or "High" quality sample)
 }
 \description{
-Function to classify the quality of relative copy number profile calls from QDNAseq or WiseCondorX
+Function to classify the quality of relative copy number profile calls from QDNAseq or WiseCondorX.
 }
 \details{
 Expects the input of a QDNAseq object containing relative copy-number calls (such as from QDNASeq or WiseCondorX). \cr
