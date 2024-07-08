@@ -1241,7 +1241,7 @@ AddGenesToPlot <- function(plot, genes, edb = EnsDb.Hsapiens.v75::EnsDb.Hsapiens
     dplyr::left_join(y = genes_ens, by = dplyr::join_by(chromosome == seq_name, start < midpoint, end > midpoint))
 
   plot <- plot +
-    ggrepel::geom_label_repel(aes(label = symbol), ...)
+    ggrepel::geom_label_repel(ggplot2::aes(label = symbol), ...)
 
   return(plot)
 }

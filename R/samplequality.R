@@ -113,8 +113,12 @@ SampleGrouping <- function(x) {
 #' Calculate and make a quality call for relative copy number profiles
 #'
 #' @description
-#' Function to classify the quality of relative copy number profile calls from QDNAseq or WiseCondorX
-#' @param x *QDNASeq object* containing the relative copy number calls as well as the segmented relative copy number calls
+#' Function to classify the quality of relative copy number profile calls from QDNAseq or WiseCondorX.
+#'
+#' @param x *QDNASeq object* containing the relative copy number calls as well as the segmented relative copy number calls.
+#' @param metric The metric to use for determining quality. Either 'quantile' or 'DecisionTree'.
+#' @param cutoff The cutoff to use for quantile-based quality filtering. Not applicable when the metric is 'DecisionTree'.
+#'
 #' @details
 #' Expects the input of a QDNAseq object containing relative copy-number calls (such as from QDNASeq or WiseCondorX). \cr
 #' Classifies relative copy number profiles as "High" or "Low" quality.
@@ -146,7 +150,7 @@ GetSampleQualityDecision <- function(x, metric = "quantile", cutoff = 0.95) {
         iso$fit(param_dat[, c(2, 3)])
         scores_train = param_dat %>%
           iso$predict() %>%
-          arrange(desc(anomaly_score))
+          dplyr::arrange(dplyr::desc(anomaly_score))
         param_dat <- param_dat %>%
           dplyr::mutate(row_num = dplyr::row_number())
         param_dat <- dplyr::full_join(param_dat, scores_train, by = c("row_num" = "id"))

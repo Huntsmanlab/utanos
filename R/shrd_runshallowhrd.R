@@ -64,7 +64,7 @@
 #'
 RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FALSE, num_simulations=100000,
                           shrd_save_path=FALSE, first_threshold=NULL, sample=NULL, second_threshold=NULL,
-                          seed=1337, plot = FALSE) {
+                          seed=1337, plot=FALSE) {
   #### Importing data####
   if(inherits(x = raw_ratios_file, what = "character")) {
     raw_ratios_file <- data.frame(read.table(file=raw_ratios_file, header=TRUE))
@@ -216,13 +216,14 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
 #' @param num_simulations The number of simulations to use during the FindThreshold() step.
 #' @param shrd_save_path An optional path to save the ShallowHRD results to.
 #' @param plot Whether or not to return a plot showing how segments are merged as the algorithm runs.
+#' @param seed A seed to use for PRNG-dependent functions. Ensures reproduciblity between runs.
 #'
 #' @returns A list of ShallowHRD results, with one entry per sample.
 #' @export
 #'
 #' @examples
 RunShallowHRDFromQDNA <- function(qdna_obj, include_chr_X=FALSE, num_simulations=100000, shrd_save_path=FALSE,
-                                  plot=FALSE) {
+                                  plot=FALSE, seed = 1337) {
   # Note that ExportBinsQDNAObj does not log normalize
   bin_df <- ExportBinsQDNAObj(object = qdna_obj, type = "copynumber", filter = TRUE) %>%
     tidyr::pivot_longer(cols = !c("feature", "chromosome", "start", "end"), names_to = "sample", values_to = "ratio") %>%
@@ -245,7 +246,8 @@ RunShallowHRDFromQDNA <- function(qdna_obj, include_chr_X=FALSE, num_simulations
                                                                       num_simulations = num_simulations,
                                                                       shrd_save_path = shrd_save_path,
                                                                       sample = sample,
-                                                                      plot = plot))
+                                                                      plot = plot,
+                                                                      seed = seed))
   names(shrd_result) <- names(df_list)
 
   return(shrd_result)
