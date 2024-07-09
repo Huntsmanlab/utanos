@@ -85,30 +85,6 @@ MedSegVar <- function(x) {
   return(x)
 }
 
-#' Extract sample grouping
-#'
-#' @description Extract sample grouping
-#' @param x param_dat containing the following columns: sample_id and sample quality parameters
-#'
-SampleGrouping <- function(x) {
-  x <- x %>%
-    dplyr::mutate(sample_group = case_when(
-                  str_detect(sample_id, "CC-CHM") ~ "CC-CHM",
-                  str_detect(sample_id, "CC-HAM") ~ "CC-HAM",
-                  str_detect(sample_id, "CC-JGH") ~ "CC-JGH",
-                  str_detect(sample_id, "CC-LAV") ~ "CC-LAV",
-                  str_detect(sample_id, "CC-NSH") ~ "CC-NSH",
-                  str_detect(sample_id, "CC-RJH") ~ "CC-RJH",
-                  str_detect(sample_id, "CC-SUN") ~ "CC-SUN",
-                  str_detect(sample_id, "CC-SSK") ~ "CC-SSK",
-                  str_detect(sample_id, "CC-VGH") ~ "CC-VGH",
-                  str_detect(sample_id, "CC-WPG") ~ "CC-WPG",
-                  str_detect(sample_id, "EC") ~ "EC",
-                  str_detect(sample_id, "VOA") ~ "VOA",
-                  str_detect(sample_id, "VS") ~ "VS",
-                  str_detect(sample_id, "YW") ~ "YW"
-    ))
-}
 
 #' Calculate and make a quality call for relative copy number profiles
 #'

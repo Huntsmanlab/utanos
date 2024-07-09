@@ -107,7 +107,7 @@ SegmentsToCopyNumber <- function(segs, bin_size,
     sample <- segs[[name]] %>% dplyr::mutate(size = end - start + 1) %>%
       dplyr::mutate(nbins = size/bin_size)
     sample <- as.data.frame(lapply(sample, rep, sample$nbins)) %>%
-      dplyr::group_by(start,end,segVal) %>%
+      dplyr::group_by(chromosome,start,end,segVal) %>%
       dplyr::mutate(id = 1:dplyr::n()) %>%
       dplyr::mutate(chromosome = as.character(chromosome),
                     start = (floor(start/bin_size) * bin_size + 1) + ((id-1) * bin_size),
@@ -231,9 +231,16 @@ CompareBinCNs <- function(objs, sample_id, bin_area) {
 # DESCRIPTION
 # Parameters:
 # data -
-RemoveBlacklist <- function(data) {
+RemoveBlacklist <- function(data, refgenome) {
+
   # Read in blacklist file
-  blacklist = hg19.blacklistBins
+  if (refgenome == 'hg19') {
+    blacklist = hg19.blacklistBins
+  } else if (rmblacklist == 'hg38') {
+    stop("Not added yet, though note the comCNV regions and 'use' slot cover these regions.")
+  } else {
+    stop("Invalid value for rmblacklist parameter.")
+  }
 
   # Convert blacklist and data to GRanges objects and find indices of overlaps
   grBL = GenomicRanges::makeGRangesFromDataFrame(blacklist)

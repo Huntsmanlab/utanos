@@ -8,6 +8,7 @@ ExtractRelativeCopyNumberFeatures(
   CN_data,
   genome,
   cores = 1,
+  log_gaussians = TRUE,
   extra_features = FALSE
 )
 }

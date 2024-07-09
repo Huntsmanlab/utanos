@@ -12,17 +12,26 @@ Authors@R: c(
            role = c("aut"), 
            email = "blynch@bccrc.ca", 
            comment = c(ORCID = "0009-0008-4564-8894")),
+    person(given = "Carlos", 
+           family = "Vasquez", 
+           role = c("aut")),
+    person(given = "Jacky", 
+           family = "Yiu", 
+           role = c("aut"), 
+           email = "jyiu@bcgsc.ca", 
+           comment = c(ORCID = "0009-0007-4273-0051")),
+    person(given = "Ding", 
+           family = "Ma", 
+           role = c("aut"), 
+           email = "dma@bccrc.ca"),
     person(given = "Nirupama", 
            family = "Tamvada", 
            role = c("aut")),
     person(given = "Sameer", 
            family = "Shankar", 
            role = c("aut"), 
-           email = "sshankar@bccrc.ca"), 
-    person(given = "Jacky", 
-           family = "Yiu", 
-           role = c("aut"), 
-           email = "jyiu@bcgsc.ca"))
+           email = "sshankar@bccrc.ca") 
+    )
 Description: A set of functions that assist in the analysis of shallow/low-pass 
     whole genome sequencing (WGS) and subsequent visualization. It includes 
     built-in options for plotting, quality evaluation, data re-structuring, 

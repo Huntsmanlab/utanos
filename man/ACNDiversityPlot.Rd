@@ -6,9 +6,12 @@
 \usage{
 ACNDiversityPlot(
   long_segments = data.frame(),
-  order = FALSE,
+  order = TRUE,
   ret_order = FALSE,
   save_path = FALSE,
+  rmblacklist = NULL,
+  addtitle = NULL,
+  ann_df = NULL,
   obj_name = "version1"
 )
 }

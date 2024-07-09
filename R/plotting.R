@@ -1,17 +1,15 @@
 # This is a script containing plotting functions (and helpers) for shallow WGS analysis
 
-# List of functions:
+# List of functions + notes:
 # SignatureExposuresPlot
 # ACNDiversityPlot
 # SortHeatmap
-# PlotCellularityAndMaxVaf <- too dataset specific, don't see a clear generalization, should likely be removed...
-# PlotBABAM <- too dataset specific, don't see a clear generalization, should likely be removed...
-# PlotMetadataHeatmaps <- too dataset specific, don't see a clear generalization, should likely be removed...
-# SelectMaxElement
+# PlotAnnotationBars
 # SummaryCNPlot <- Should be converted to a ggplot whenever convenient
 # RCNDiversityPlot
-# RelativeCNSegmentsPlot <- made redundant? Can be removed soon, just test CNSegmentsPlot on WisecondorX output to make sure
+# RelativeCNSegmentsPlot <- made redundant? Can be removed soon, test CNSegmentsPlot on WisecondorX output to make sure
 # CNSegmentsPlot
+# RelToAbsSegPos
 # AddGenesToPlot
 # QualityPlot
 
@@ -39,6 +37,7 @@ SignatureExposuresPlot <- function (signatures,
                                     order = FALSE,
                                     transpose = FALSE,
                                     save_path = FALSE,
+                                    addtitle = NULL,
                                     obj_name = 'sig_exposures_obj') {
 
   # Convert data to long format and add column for max. sig. exposure
@@ -64,23 +63,26 @@ SignatureExposuresPlot <- function (signatures,
           axis.ticks.x = ggplot2::element_blank(),
           # axis.text.x = element_text(size = 15, angle = 75, vjust = 0.5, hjust=0.5),
           axis.text.x = ggplot2::element_blank(),
-          axis.title.x = ggplot2::element_text(size = 18),
-          axis.text.y = ggplot2::element_text(size = 18),
-          legend.title = ggplot2::element_text(size = 18)) +
+          axis.title.x = ggplot2::element_text(size = 14),
+          axis.text.y = ggplot2::element_text(size = 14),
+          legend.title = ggplot2::element_text(size = 16)) +
     ggplot2::labs(fill = 'Signature \nExposure', x = "Samples", y = " ") +
-    ggplot2::scale_y_discrete(limits = paste0('S', 1:dim(signatures)[1])) +
-    ggplot2::ggtitle("Signature exposures called per sample")
-  g
+    ggplot2::scale_y_discrete(limits = paste0('S', 1:dim(signatures)[1]))
 
   if (transpose != FALSE) {
     g <- g + ggplot2::theme(plot.title = ggplot2::element_text(size = 20),
                    axis.ticks.y = ggplot2::element_blank(),
-                   axis.text.x = ggplot2::element_text(size = 18),
-                   axis.title.x = ggplot2::element_text(size = 18),
+                   axis.text.x = ggplot2::element_text(size = 14),
+                   axis.title.x = ggplot2::element_text(size = 14),
                    axis.text.y = ggplot2::element_blank(),
-                   legend.title = ggplot2::element_text(size = 18)) +
+                   legend.title = ggplot2::element_text(size = 16)) +
       ggplot2::coord_flip()
   }
+
+  if (!is.null(addtitle)) {
+    g <- g + ggplot2::ggtitle("Signature exposures called per sample")
+  }
+
   if (save_path != FALSE) {
     if (transpose != FALSE) {
       ggplot2::ggsave(paste0(save_path, "/signatures_heatmap_", obj_name,".png"), plot = g, width = 10, height = 15)
@@ -117,24 +119,48 @@ SignatureExposuresPlot <- function (signatures,
 #'
 #' @export
 ACNDiversityPlot <- function(long_segments = data.frame(),
-                             order = FALSE,
+                             order = TRUE,
                              ret_order = FALSE,
                              save_path = FALSE,
+                             rmblacklist = NULL,
+                             addtitle = NULL,
+                             ann_df = NULL,
                              obj_name = "version1") {
 
+  output <- list()
   if (nrow(long_segments) == 0) { stop("No copy-number data provided.") }
-  long_segments = RemoveBlacklist(long_segments)                                # remove blacklist regions from hg19
+
+  if (!is.null(rmblacklist)) {
+    if (rmblacklist == 'hg19') {
+      long_segments = RemoveBlacklist(long_segments, refgenome = 'hg19')
+    } else if (rmblacklist == 'hg38') {
+      long_segments = RemoveBlacklist(long_segments, refgenome = 'hg38')
+    } else {
+      stop("Invalid value for rmblacklist parameter.")
+    }
+  }
 
   long_segments <- long_segments[, c("chromosome", "start", "sample_id", "state")]
 
   # Generate standard CNV heatmap data
   long_segments$state[long_segments$state < 0] <- 0
-  slice <- SortHeatmap(long_segments)
-  slice$state <- round(slice$state)
-  slice$state[slice$state >= 15] <- 15
-  slice$state <- as.character(slice$state)
-  slice$state[slice$state == '15'] <- '15+'                                     # Assign all copy-numbers greater than 15 to the same value
-  slice <- slice %>%
+
+  if (isTRUE(order)) {
+    long_segments <- SortHeatmap(long_segments)
+  } else if (isFALSE(order)) {
+    long_segments$chromosome <- factor(long_segments$chromosome, levels = c(1:22, "X", "Y"))
+  } else if (is.character(order)) {
+    long_segments$chromosome <- factor(long_segments$chromosome, levels = c(1:22, "X", "Y"))
+    long_segments$sample_id <- factor(long_segments$sample_id, level = order)
+  } else {
+    stop("Invalid value passed to order parameter. See docs for accepted options.")
+  }
+
+  long_segments$state <- round(long_segments$state)
+  long_segments$state[long_segments$state >= 15] <- 15
+  long_segments$state <- as.character(long_segments$state)
+  long_segments$state[long_segments$state == '15'] <- '15+'                                     # Assign all copy-numbers greater than 15 to the same value
+  long_segments <- long_segments %>%
     dplyr::mutate(state = factor(state, levels = c(0:14, "15+"))) %>%
     dplyr::arrange(chromosome)
 
@@ -144,24 +170,28 @@ ACNDiversityPlot <- function(long_segments = data.frame(),
             "#A61568", "#CE4191", "#CE8FB4", "#F5B1D9")                         # #FFDBF0
   names(cols) <- c(0:14, "15+")
 
-  if (!isFALSE(order)) {
-    slice$sample_id <- factor(slice$sample_id, level = order)
-  }
 
-  g <- ggplot2::ggplot(slice, ggplot2::aes(start, sample_id, fill = state)) + ggplot2::geom_tile() +
-    ggplot2::scale_fill_manual(na.value = "white", values = cols, name = 'Copy-Number \nColour Code') +
-    ggplot2::facet_grid(~chromosome, scales = "free", space = "free", switch = "x") +
+
+  g <- ggplot2::ggplot(long_segments, ggplot2::aes(start, sample_id, fill = state)) +
+    ggplot2::geom_tile() +
+    ggplot2::scale_fill_manual(na.value = "white", values = cols,
+                               name = 'Copy-Number \nColour Code') +
+    ggplot2::facet_grid(~chromosome, scales = "free",
+                        space = "free", switch = "x") +
     ggplot2::scale_x_continuous(expand = c(0, 0), breaks = NULL) +
     ggplot2::theme(panel.spacing = ggplot2::unit(0.1, "lines"),
-          plot.title = ggplot2::element_text(size = 28, hjust = 0.5),
-          axis.text.y = ggplot2::element_blank(),
-          axis.title = ggplot2::element_text(size = 22),
-          legend.title = ggplot2::element_text(size = 22),
-          legend.text = ggplot2::element_text(size = 18)) +
-    ggplot2::labs(x = "Chromosomes", y = "Samples", fill = "Copy Number") +
-    ggplot2::ggtitle("Absolute copy number calls across the genome")
+                   plot.title = ggplot2::element_text(size = 22, hjust = 0.5),
+                   axis.text.y = ggplot2::element_blank(),
+                   axis.title = ggplot2::element_text(size = 12),
+                   legend.title = ggplot2::element_text(size = 16),
+                   legend.text = ggplot2::element_text(size = 12)) +
+    ggplot2::labs(x = "Chromosomes", y = "Samples", fill = "Copy Number")
 
-  output <- g
+  if (!is.null(addtitle)) {
+    g <- g + ggplot2::ggtitle("Absolute copy number calls across the genome")
+  }
+
+  output[["plot"]] <- g
 
   if (save_path != FALSE) {
     png(paste0(save_path, "/cnv_diversity_heatmap_", obj_name,".png"),
@@ -170,7 +200,12 @@ ACNDiversityPlot <- function(long_segments = data.frame(),
     dev.off()
   }
   if (ret_order != FALSE) {
-    output <- list(plot = g, ordering = levels(slice$sample_id))
+    output[["ordering"]] <- levels(long_segments$sample_id)
+  }
+
+  if (!is.null(ann_df)) {
+    annotation_plot <- PlotAnnotationBars(ann_df)
+    output[["annotation_plot"]] <- annotation_plot
   }
 
   return(output)
@@ -190,254 +225,38 @@ SortHeatmap <- function(slice) {
   return(slice)
 }
 
-
-### Plot cellularity and VAF values
-# DESCRIPTION
-# Parameters:
-# slice: As input we want the order of the samples in the heatmap
-#
+### Make coloured annotation bars for each sample provided and their corresponding categories
 #' @export
-PlotCellularityAndMaxVaf <- function(reads = data.frame(), save_path, obj_name) {
+PlotAnnotationBars <- function(ann_df) {
 
-  if(nrow(reads) == 0) { stop("No reads data provided.") }                      # If reads DF is empty, return
-  reads = removeBlacklist(reads)                                                # remove blacklist regions from hg19
-  reads <- reads[, c("chromosome", "start", "sample_id", "state")]
-  reads$state[reads$state < 0] <- 0
-  slice <- SortHeatmap(reads)
+  ann_df_long <- ann_df %>% tidyr::pivot_longer(cols = -sample_id,
+                                                names_to = "annotation_type",
+                                                values_to = "category")
 
-  vafscels <- data.table::fread(file = '~/Documents/projects/cn_signatures_shallowWGS/metadata/vafs_and_cellularities.tsv', sep = '\t', header = TRUE)
-  vafscels$sample_id <- str_replace_all(vafscels$sample_id, "-", ".")
-  vafscels <- vafscels %>% dplyr::filter(sample_id %in% unique(slice$sample_id))
-  # vafscels <- vafscels[3:171,]
+  # Generate a unique color for each category in each annotation column using viridis palette
+  unique_categories <- unique(ann_df_long$category)
+  category_colors <- viridis::viridis(length(unique_categories), option = "B")
+  names(category_colors) <- unique_categories
 
-  # Cellularity ETL section
-  celstab <- data.frame(sample_id = levels(slice$sample_id))
-  celstab <- celstab %>% left_join(vafscels, by = c('sample_id'))
-  celstab$sample_id <- factor(levels(slice$sample_id), level = levels(slice$sample_id))
-  preproc2 <- preProcess(as.data.frame(celstab$cellularity), method=c("range"))
-  minmaxed <- predict(preproc2, as.data.frame(celstab$cellularity))
-  celstab$minmaxed_cel <- minmaxed$`celstab$cellularity`
-
-  # Plot cellularity colour bar
-  p1 <- ggplot(celstab, aes(sample_id, sample_type)) +
-    geom_tile(aes(fill = minmaxed_cel)) +
-    scale_fill_gradientn(colors = c('blue', 'red'), values = c(0, 0.6, 1) ) +
-    theme(axis.text.x = element_blank(),
-          axis.title.x = element_blank(),
-          axis.title.y = element_blank(),
-          legend.position="none")
-
-  # VAFs ETL section
-  # To simplify matters lets sum all unique vafs for a given gene/sample and treat them as a single vaf
-  vafscels[,8:13] <- as.data.frame(apply(vafscels[,8:13],
-                                         MARGIN = c(1,2),
-                                         function(x) sum_delimited_elements(x, ';')))
-  celstab$max_vaf <- NA
-  for (i in 1:dim(vafscels)[1]) {
-    vafs <- vafscels[i,]
-    if (is.na(vafs$sample_id[1])) next                                          # If there isn't a vaf for the sample skip finding an ACN
-    vafs <- vafs %>% dplyr::select(-c(sample_id, batch, tissue, sample_type, cancer_type, status, cellularity))
-    vaf_idx <- which.max(as.double(vafs[1,]))                                   # Choose max vaf
-    if (length(vaf_idx) == 0) next                                              # If there isn't a vaf for the sample skip finding an ACN
-    celstab[celstab$sample_id == vafscels$sample_id[i],]$max_vaf <- as.double(vafs[1, ..vaf_idx])
-    vaf_name <- names(vafs[1, ..vaf_idx])
-    vaf_name <- toupper(str_split(vaf_name, pattern = '\\.')[[1]][1])           # vaf name
-  }
-  celstab$max_vaf[celstab$max_vaf > 100] <- 100
-  preproc2 <- preProcess(as.data.frame(celstab$max_vaf), method=c("range"))
-  minmaxed <- predict(preproc2, as.data.frame(celstab$max_vaf))
-  celstab$minmaxed_vaf <- minmaxed$`celstab$max_vaf`
-
-  # Plot vaf colour bar
-  p2 <- ggplot(celstab, aes(sample_id, sample_type)) +
-    geom_tile(aes(fill = minmaxed_vaf)) +
-    scale_fill_gradientn(colors = c('blue', 'red'), values = c(0, 0.6, 1) ) +
-    theme(axis.text.x = element_blank(),
-          axis.text.y = element_blank(),
-          axis.title.x = element_blank(),
-          axis.title.y = element_blank(),
-          legend.position="none")
-
-  # Plot both cellularity and max. vaf together
-  p <- ggpubr::ggarrange(p1 + coord_flip(), p2 + coord_flip(), ncol = 2)
-  ggsave(paste0(save_path, "colourbars_vafscellularities_clustered_", obj_name, ".png"), plot = p, width = 20, height = 24)
-
-  # Plot both cellularity and max. vaf together but as a line plot
-  lineplotdata <- data.frame(sample_id = as.character(rep(celstab$sample_id, 2)),
-                             groups = c(rep("cellularities", dim(celstab)[1]), rep("vafs", dim(celstab)[1])),
-                             vals = c(celstab$minmaxed_cel, celstab$minmaxed_vaf))
-  lineplotdata <- lineplotdata %>% dplyr::arrange(desc(vals))
-  lineplotdata$sample_id <- factor(lineplotdata$sample_id, levels = (lineplotdata %>% dplyr::filter(groups == 'cellularities'))$sample_id)
-  p3 <- ggplot(data=lineplotdata, aes(x=sample_id, y=vals, group=groups)) +
-    geom_line(aes(color=groups))+
-    geom_point(aes(color=groups)) +
-    theme(axis.text.x = element_blank(),
-          axis.title.x = element_blank(),)
-
-  ggsave(paste0(save_path, "lineplot_vafscellularities_", obj_name, ".png"), plot = p3, width = 16, height = 4)
-
-  message("The Pearson correlation of the cellularity and max. vaf for this subset is:")
-  cor(celstab$minmaxed_cel, celstab$minmaxed_vaf, method = 'p')
+  annotation_plot <- ggplot2::ggplot(ann_df_long, ggplot2::aes(x = annotation_type,
+                                                               y = sample_id)) +
+    ggplot2::geom_tile(ggplot2::aes(fill = category), color = "white") +
+    ggplot2::scale_fill_manual(values = category_colors) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      axis.title = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_blank(),
+      axis.ticks.x = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_blank(),
+      axis.ticks.y = ggplot2::element_blank(),
+      panel.grid = ggplot2::element_blank(),
+      panel.background = ggplot2::element_blank(),
+      plot.margin = ggplot2::margin(0, 0, 0, 0),
+      legend.position = "right"
+    )
+  return(annotation_plot)
 }
 
-#' @export
-PlotBABAM <- function(reads = data.frame(), save_path, obj_name) {
-
-  if(nrow(reads) == 0) { stop("No reads data provided.") }                      # If reads DF is empty, return
-  reads = removeBlacklist(reads)                                                # remove blacklist regions from hg19
-  reads <- reads[, c("chromosome", "start", "sample_id", "state")]
-  reads$state[reads$state < 0] <- 0
-  slice <- SortHeatmap(reads)
-
-  qual <- data.table::fread(file = '~/Downloads/swgs_sample_biologic_metadata.csv', sep = ',', header = TRUE)
-  qual <- qual %>% dplyr::filter(status == 'p53_abn')
-  qual$other_aliases <- str_replace_all(qual$other_aliases, "-", ".")
-  qual <- qual %>% dplyr::filter(!is.na(qual$`BABAM IHC H Score`))
-  qual <- qual %>% dplyr::filter(other_aliases %in% unique(slice$sample_id))
-
-  # Cellularity ETL section
-  celstab <- data.frame(sample_id = levels(slice$sample_id))
-  celstab <- celstab %>% left_join(qual, by = c('sample_id' = 'other_aliases'))
-  celstab$sample_id <- factor(levels(slice$sample_id), level = levels(slice$sample_id))
-
-  # Plot BABAM status
-  preproc2 <- preProcess(as.data.frame(celstab$`BABAM IHC H Score`), method=c("range"))
-  minmaxed <- predict(preproc2, as.data.frame(celstab$`BABAM IHC H Score`))
-  celstab$minmaxed_babam <- minmaxed[,1]
-  p1 <- ggplot(celstab, aes(sample_id, sample_type)) +
-    geom_tile(aes(fill = minmaxed_babam)) +
-    scale_fill_gradientn(colors = c('blue', 'red'), values = c(0, 0.6, 1) ) +
-    theme(axis.text.x = element_blank(),
-          axis.title.x = element_blank(),
-          axis.title.y = element_blank(),
-          legend.position="none") + coord_flip()
-
-  ggsave(paste0(save_path, "colourbars_bioIndicator_clustered_", obj_name, ".png"), plot = p1, width = 20, height = 24)
-}
-
-
-### Plot metadata values in heatmap form (essentially make annotation bars)
-# DESCRIPTION
-# Parameters:
-#   (DF)      met_basic: Basic metadata dataframe
-#   (DF)      met_bio: Biologic metadata
-#   (DF)      met_quality: Quality metrics metadata dataframe
-#   (DF)      met_vafs: VAFs and Cellularities per sample
-#
-# Return:
-#   (ggplot)  output: A cowplot combination of several heatmap bars
-###
-#' @export
-PlotMetadataHeatmaps <- function(met_basic, met_bio = FALSE, met_quality = FALSE, met_vafs = FALSE) {
-
-
-  stopifnot("The first argument must be a dataframe and should contain
-            basic metadata pertaining to your samples." = is.data.frame(met_basic),
-            "The basic metadata DF must contain a column for the names
-            of the samples titled 'sample_id'." = 'sample_id' %in% colnames(test))
-
-
-  # Massage data into a single dataframe
-
-  metadata <- data.frame(sample_id = met_basic$sample_id)
-
-  if (is.data.frame(met_bio)) {
-    met_bio$ihc_data_present <- is.na(met_bio$`CCNE1 H score`) & is.na(met_bio$`GRB7 IHC H score`)
-    met_bio <- met_bio %>% dplyr::rename(sample_id = other_aliases,
-                                         CCNE1_H = `CCNE1 H score`,
-                                         GRB7_H = `GRB7 IHC H score`,
-                                         BABAM_H = `BABAM IHC H Score`) %>%
-                           dplyr::mutate(HER2_H = suppressWarnings(as.numeric(`HER2 IHC int`) * as.numeric(`HER2 % pos`)))
-    met_bio$normality_classification <- 'abnormal'
-    met_bio$normality_classification[met_bio$notes == 'looks pretty normal'] <- 'looks normal'
-    met_bio$normality_classification[met_bio$notes == 'normal looking but with odd half-ploidy changes'] <- 'near normal'
-    met_bio$CCNE1_H <- minmax_column(met_bio$CCNE1_H)
-    met_bio$GRB7_H <- minmax_column(met_bio$GRB7_H)
-    met_bio$BABAM_H <- minmax_column(met_bio$BABAM_H)
-    met_bio$HER2_H <- minmax_column(met_bio$HER2_H)
-
-    met_bio <- met_bio %>% dplyr::select(sample_id, ihc_data_present, BABAM_H,
-                                         normality_classification,
-                                         CCNE1_H, GRB7_H, HER2_H)
-    metadata <- metadata %>% dplyr::left_join(met_bio, by = c('sample_id'))
-  }
-
-  if (is.data.frame(met_quality)) {
-    met_quality <- met_quality %>% dplyr::select(sample_id, nreads, percent_coverage,
-                                         mean_X_coverage, std_dev, mad, contains('quality_'))
-    metadata <- metadata %>% dplyr::left_join(met_quality, by = c('sample_id'))
-  }
-
-  if (is.data.frame(met_vafs)) {
-    celstab <- met_vafs
-
-    # To simplify matters lets sum all unique vafs for a given gene/sample and treat them as a single vaf
-    met_vafs[,8:13] <- as.data.frame(apply(met_vafs[,8:13],
-                                           MARGIN = c(1,2),
-                                           function(x) sum_delimited_elements(x, ';')))
-    # Select maximum vaf
-    celstab$max_vaf <- as.numeric(NA, rep(dim(celstab)[1]))
-    for (i in 1:dim(met_vafs)[1]) {
-      vafs <- met_vafs[i,]
-      if (is.na(vafs$sample_id[1])) next                                          # If there isn't a vaf for the sample skip finding an ACN
-      vafs <- vafs %>% dplyr::select(-c(sample_id, batch, tissue, sample_type, cancer_type, status, cellularity))
-      vaf_idx <- which.max(as.double(vafs[1,]))                                   # Choose max vaf
-      if (length(vaf_idx) == 0) next                                              # If there isn't a vaf for the sample skip finding an ACN
-      celstab[celstab$sample_id == met_vafs$sample_id[i],]$max_vaf <- as.double(vafs[1, ..vaf_idx])
-    }
-    celstab$max_vaf[celstab$max_vaf > 100] <- 100
-    celstab$minmaxed_cel <- minmax_column(celstab$cellularity)
-    celstab$minmaxed_vaf <- minmax_column(celstab$max_vaf)
-
-    browser()
-    # test
-    xx <- met_vafs %>% mutate(maxvaf = apply(X = met_vafs, MARGIN = 1, function(x) SelectMaxElement(x)))
-
-    celstab <- celstab %>% dplyr::select(sample_id, minmaxed_cel, minmaxed_vaf, max_vaf)
-    metadata <- metadata %>% dplyr::left_join(celstab, by = c('sample_id'))
-  }
-
-  browser()
-  metadata$sample_id <- factor(metadata$sample_id, levels = metadata$sample_id)
-  metadata$swgs <- c('swgs_sample')
-  # # ETL
-  # p1 <- ggplot(metadata, aes(sample_id, swgs)) +
-  #   geom_tile(aes(fill = sd_dev)) +
-  #   scale_fill_gradientn(colors = c('blue', 'red'), values = c(0, 0.6, 1) ) +
-  #   theme(axis.text.x = element_blank(),
-  #         # axis.text.y = element_blank(),
-  #         axis.title.x = element_blank(),
-  #         axis.title.y = element_blank(),
-  #         legend.position="none") +
-  #   labs(title = 'std.dev') + coord_flip()
-  # p2 <- ggplot(metadata, aes(sample_id, swgs)) +
-  #   geom_tile(aes(fill = mad)) +
-  #   scale_fill_gradientn(colors = c('blue', 'red'), values = c(0, 0.6, 1) ) +
-  #   theme(axis.text.x = element_blank(),
-  #         axis.text.y = element_blank(),
-  #         axis.title.x = element_blank(),
-  #         axis.title.y = element_blank(),
-  #         legend.position="none") +
-  #   labs(title = 'med.abs.dev') + coord_flip()
-  # p3 <- ggplot(metadata, aes(sample_id, swgs)) +
-  #   geom_tile(aes(fill = max_vaf)) +
-  #   scale_fill_gradientn(colors = c('blue', 'red'), values = c(0, 0.6, 1), na.value = "white") +
-  #   theme(axis.text.x = element_blank(),
-  #         axis.text.y = element_blank(),
-  #         axis.title.x = element_blank(),
-  #         axis.title.y = element_blank(),
-  #         legend.position="none") +
-  #   labs(title = 'max. VAF') + coord_flip()
-  #
-  # p <- plot_grid(p1, p2, p3, p4, p5, p6, p7, p8, nrow = 1, rel_widths = c(1.5,1,1,1,1,1,1,1))
-  # ggsave2(plot = p, filename = '~/Downloads/quality_heatmaps.pdf', width = 10, height = 25)
-}
-
-SelectMaxElement <- function (element_vector) {
-  element_vector <- element_vector[grepl('vaf', names(element_vector), fixed = TRUE)]
-  max_value <- max(as.numeric(element_vector), na.rm = TRUE)
-  return(max_value)
-}
 
 #' Generate Summary Copy-Number Aberrations Plot
 #'
