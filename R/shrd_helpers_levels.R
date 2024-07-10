@@ -31,7 +31,7 @@ FindBigSegmentsIndices <- function(segments_copy, thr) {
     # We add +1 to num every time segment i and the other segment have a ratio_median difference
     # less than the threshold
     for (j in 1:n) {
-      if (abs(segments_copy[i,6] - segments_copy[which((segments_copy[,1] == segments_indices[j])),6]) < thr) {
+      if (abs(segments_copy[i,6] - segments_copy[which(segments_copy[,1] == segments_indices[j]),6]) < thr) {
         num_of_times_close_to_segments = num_of_times_close_to_segments + 1
       }
     }
@@ -60,7 +60,7 @@ ReadSegmFile<-function(seg_file_name){
   tmp<-read.delim(seg_file_name,skip=k-1, header=T,sep="\t")
   tmp<-data.matrix(tmp)
   if(k==2){
-    results<-getInfoSegm(scan(seg_file_name,nlines=1,what="character",quiet = T))
+    results<-GetInfoSegm(scan(seg_file_name,nlines=1,what="character",quiet = T))
     homoConst<-results$homoConst
     sdH<-results$sdH
     p_BAF<-results$p_BAF
