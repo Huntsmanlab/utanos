@@ -9,6 +9,7 @@ SignatureExposuresPlot(
   order = FALSE,
   transpose = FALSE,
   save_path = FALSE,
+  addtitle = NULL,
   obj_name = "sig_exposures_obj"
 )
 }

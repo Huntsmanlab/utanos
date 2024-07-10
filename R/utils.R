@@ -107,7 +107,7 @@ SegmentsToCopyNumber <- function(segs, bin_size,
     sample <- segs[[name]] %>% dplyr::mutate(size = end - start + 1) %>%
       dplyr::mutate(nbins = size/bin_size)
     sample <- as.data.frame(lapply(sample, rep, sample$nbins)) %>%
-      dplyr::group_by(start,end,segVal) %>%
+      dplyr::group_by(chromosome,start,end,segVal) %>%
       dplyr::mutate(id = 1:dplyr::n()) %>%
       dplyr::mutate(chromosome = as.character(chromosome),
                     start = (floor(start/bin_size) * bin_size + 1) + ((id-1) * bin_size),
@@ -231,9 +231,16 @@ CompareBinCNs <- function(objs, sample_id, bin_area) {
 # DESCRIPTION
 # Parameters:
 # data -
-RemoveBlacklist <- function(data) {
+RemoveBlacklist <- function(data, refgenome) {
+
   # Read in blacklist file
-  blacklist = hg19.blacklistBins
+  if (refgenome == 'hg19') {
+    blacklist = hg19.blacklistBins
+  } else if (rmblacklist == 'hg38') {
+    stop("Not added yet, though note the comCNV regions and 'use' slot cover these regions.")
+  } else {
+    stop("Invalid value for rmblacklist parameter.")
+  }
 
   # Convert blacklist and data to GRanges objects and find indices of overlaps
   grBL = GenomicRanges::makeGRangesFromDataFrame(blacklist)
@@ -462,20 +469,30 @@ CreateShallowHRDInput <- function (input_obj, temp_path, output_path) {
 }
 
 GetChromosomeLengths <- function(build) {
-  build <- as.integer(gsub('[^0-9]', '', build))
-  if (build == 34 || build == 16) {
+  build_lower <- tolower(build)
+  if (build_lower == 'grch34' || build_lower == 'hg16') {
     chromosome.lengths <- c(246127941, 243615958, 199344050, 191731959, 181034922, 170914576, 158545518, 146308819, 136372045, 135037215, 134482954, 132078379, 113042980, 105311216, 100256656, 90041932, 81860266, 76115139, 63811651, 63741868, 46976097, 49396972, 153692391, 50286555)
-  } else if (build == 35 || build == 17) {
+  } else if (build_lower == 'grch35' || build_lower == 'hg17') {
     chromosome.lengths <- c(245522847, 243018229, 199505740, 191411218, 180857866, 170975699, 158628139, 146274826, 138429268, 135413628, 134452384, 132449811, 114142980, 106368585, 100338915, 88827254, 78774742, 76117153, 63811651, 62435964, 46944323, 49554710, 154824264, 57701691)
-  } else if (build == 36 || build == 18) {
+  } else if (build_lower == 'grch36' || build_lower == 'hg18') {
     chromosome.lengths <- c(247249719, 242951149, 199501827, 191273063, 180857866, 170899992, 158821424, 146274826, 140273252, 135374737, 134452384, 132349534, 114142980, 106368585, 100338915, 88827254, 78774742, 76117153, 63811651, 62435964, 46944323, 49691432, 154913754, 57772954)
-  } else if (build == 37 || build == 19)  {
+  } else if (build_lower == 'grch37' || build_lower == 'hg19') {
     chromosome.lengths <- c(249250621, 243199373, 198022430, 191154276, 180915260, 171115067, 159138663, 146364022, 141213431, 135534747, 135006516, 133851895, 115169878, 107349540, 102531392, 90354753, 81195210, 78077248, 59128983, 63025520, 48129895, 51304566, 155270560, 59373566)
-  } else { # hg38
+  } else if (build_lower == 'grch38' || build_lower == 'hg38') {
     chromosome.lengths <- c(248956422, 242193529, 198295559, 190214555, 181538259, 170805979, 159345973, 145138636, 138394717, 133797422, 135086622, 133275309, 114364328, 107043718, 101991189, 90338345, 83257441, 80373285, 58617616, 64444167, 46709983, 50818468, 156040895, 57227415)
+  } else if (build_lower == 'grcm38' || build_lower == 'mm10') {
+    chromosome.lengths <- c(195471971, 182113224, 160039680, 156508116, 151834684, 149736546, 145441459, 129401213, 124595110, 130694993, 122082543, 120129022, 120421639, 124902244, 104043685, 98207768, 94987271, 90702639, 61431566, 171031299, 91744698)
+  } else {
+    stop("invalid/unsupported genome build")
   }
-  names(chromosome.lengths) <- as.character(c(1:22, 'X', 'Y'))
-  chromosome.lengths
+  
+  if (grepl("(grch|hg)", build_lower)) {
+    names(chromosome.lengths) <- as.character(c(1:22, 'X', 'Y'))
+  } else if (grepl("(grcm|mm)", build_lower)) {
+    names(chromosome.lengths) <- as.character(c(1:19, 'X', 'Y'))
+  }
+  
+  return(chromosome.lengths)
 }
 
 
@@ -535,9 +552,9 @@ ExportBinsQDNAObj <- function(object,
                               type=c("copynumber", "segments", "calls"),
                               filter=TRUE, digits=3,
                               chromosomeReplacements=c("23"="X", "24"="Y", "25"="MT"), ...) {
-  
+
   type <- match.arg(type)
-  
+
   if (inherits(object, "QDNAseqSignals")) {
     if (filter) {
       object <- object[QDNAseq:::binsToUse(object), ]
@@ -566,7 +583,7 @@ ExportBinsQDNAObj <- function(object,
     }
   } else if (inherits(object, c("cghRaw", "cghSeg", "cghCall",
                                 "cghRegions"))) {
-    
+
     feature <- Biobase::featureNames(object)
     chromosome <- as.character(QDNAseq::chromosomes(object))
     for (chromosomeReplacement in names(chromosomeReplacements)) {
@@ -593,21 +610,22 @@ ExportBinsQDNAObj <- function(object,
       dat <- CGHbase::regions(object)
     }
   }
-  
+
   if (is.numeric(digits)) {
     dat <- round(dat, digits=digits)
   }
   oopts2 <- options(scipen=15)
   on.exit(options(oopts2))
-  
+
   out <- data.frame(feature=feature, chromosome=chromosome, start=start,
                     end=end, dat, check.names=FALSE, stringsAsFactors=FALSE)
-  
+
   return(out)
 }
 
 
 # Converts a wide dataframe with bin and segment copynumber into a QDNAseq object
+#' @importClassesFrom QDNAseq QDNAseqCopyNumbers
 DfToQDNAseq <- function(df) {
   # Create bins
   bins <- Biobase::AnnotatedDataFrame(data.frame(
@@ -618,24 +636,31 @@ DfToQDNAseq <- function(df) {
   ))
 
   # Extract copynumber and segmented
-  rcn_matrix <- as.matrix(df[, grep("_copynumber$", colnames(df))])
+  copynumber_cols <- grep("_copynumber$", colnames(df))
+  rcn_matrix <- as.data.frame(df[, copynumber_cols, drop = FALSE])
   rownames(rcn_matrix) <- rownames(bins)
-  colnames(rcn_matrix) <- stringr::str_replace(colnames(rcn_matrix), "_copynumber", "")
-  segs_matrix <- as.matrix(df[, grep("_segmented$", colnames(df))])
+  colnames(rcn_matrix) <- stringr::str_replace(colnames(df)[copynumber_cols], "_copynumber", "")
+  rcn_matrix <- rcn_matrix %>%
+    dplyr::mutate(dplyr::across(dplyr::everything(), ~ as.numeric(.x)))
+
+  segs_cols <- grep("_segmented$", colnames(df))
+  segs_matrix <- as.data.frame(df[, segs_cols, drop = FALSE])
   rownames(segs_matrix) <- rownames(bins)
-  colnames(segs_matrix) <- stringr::str_replace(colnames(segs_matrix), "_segmented", "")
+  colnames(segs_matrix) <- stringr::str_replace(colnames(df)[segs_cols], "_segmented", "")
+  segs_matrix <- segs_matrix %>%
+    dplyr::mutate(dplyr::across(dplyr::everything(), ~ as.numeric(.x)))
 
   # Create QDNASeqCopyNumbers Object
   copyNumbers <- new('QDNAseqCopyNumbers',
                       bins = bins,
-                      copynumber = rcn_matrix,
+                      copynumber = as.matrix(rcn_matrix),
                       phenodata = Biobase::AnnotatedDataFrame(data.frame(
                         sampleNames = colnames(rcn_matrix),
                         row.names = colnames(rcn_matrix)
                     ))
   )
 
-  Biobase::assayDataElement(copyNumbers, "segmented") <- segs_matrix
+  Biobase::assayDataElement(copyNumbers, "segmented") <- as.matrix(segs_matrix)
 
   return(copyNumbers)
 }

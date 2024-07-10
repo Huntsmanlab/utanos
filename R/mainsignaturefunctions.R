@@ -134,7 +134,7 @@ ChooseNumberSignatures <- function(sample_by_component,
 #' 7. Minimum number of chromosomes (a count) needed to account for 50% of CN changes in a sample - `nc50` \cr
 #' 8. Distance in base pairs of each breakpoint to the centromere - `cdist`
 #'
-#' @param CN_data List of datafames or S4 QDNAseq object. Segmented copy-number data for for 1 or more samples.
+#' @param CN_data List of dataframes or S4 QDNAseq object. Segmented copy-number data for for 1 or more samples.
 #' If input is a list of dataframes, columns should be: \cr
 #' 1. chromosome
 #' 2. start
@@ -144,6 +144,7 @@ ChooseNumberSignatures <- function(sample_by_component,
 #' @param genome Character string. The reference genome used for alignment. \cr
 #' Options: 'hg19', 'hg38'
 #' @param cores Integer. The number of cores to use for parallel processing.
+#' @param log_gaussians Logical. If TRUE, take the log1p of the extracted CN-features for those being modeled by gaussians. (segsize, changepoint, copynumber)
 #' @param extra_features Logical. If TRUE, extracts CN-feature data for two more features: nc50, and cdist.
 #' @returns A list. Each list element contains feature data for a single feature.
 #'
@@ -151,6 +152,7 @@ ChooseNumberSignatures <- function(sample_by_component,
 ExtractCopyNumberFeatures <- function(CN_data,
                                       genome,
                                       cores = 1,
+                                      log_gaussians = FALSE,
                                       extra_features = FALSE) {
 
   # Get chromosome and centromere locations
@@ -185,14 +187,22 @@ ExtractCopyNumberFeatures <- function(CN_data,
     unlist( temp_list, recursive = FALSE )
   } else {
     segsize <- GetSegSize(CN_data)
-    bp10MB <- GetBPNum(CN_data,chrlen)
-    osCN <- GetOscilation(CN_data,chrlen)
-    bpchrarm <- GetBPChromArmCounts(CN_data,centromeres,chrlen)
+    bp10MB <- GetBPNum(CN_data, chrlen)
+    osCN <- GetOscilation(CN_data, chrlen)
+    bpchrarm <- GetBPChromArmCounts(CN_data, centromeres, chrlen)
     changepoint <- GetChangePointCN(CN_data)
     copynumber <- GetCN(CN_data)
 
-    features <- list(segsize = segsize, bp10MB = bp10MB, osCN = osCN,
-                     bpchrarm = bpchrarm, changepoint = changepoint,
+    if (isTRUE(log_gaussians)) {
+      segsize$value = log1p(as.numeric(segsize$value))
+      changepoint$value = log1p(as.numeric(changepoint$value))
+      copynumber$value = log1p(as.numeric(copynumber$value))
+    }
+    features <- list(segsize = segsize,
+                     bp10MB = bp10MB,
+                     osCN = osCN,
+                     bpchrarm = bpchrarm,
+                     changepoint = changepoint,
                      copynumber = copynumber)
 
     if (extra_features) {
@@ -238,6 +248,7 @@ ExtractCopyNumberFeatures <- function(CN_data,
 #' @param genome Character string. The reference genome used for alignment. \cr
 #' Options: 'hg19', 'hg38'
 #' @param cores Integer. The number of cores to use for parallel processing.
+#' @param log_gaussians Logical. If TRUE, take the log1p of the extracted CN-features for those being modeled by gaussians. (segsize, changepoint, copynumber)
 #' @param extra_features Logical. If TRUE, extracts CN-feature data for two more features: nc50, and cdist.
 #' @returns A list. Each list element contains feature data for a single feature.
 #'
@@ -245,6 +256,7 @@ ExtractCopyNumberFeatures <- function(CN_data,
 ExtractRelativeCopyNumberFeatures <- function(CN_data,
                                               genome,
                                               cores = 1,
+                                              log_gaussians = FALSE,
                                               extra_features = FALSE) {
 
   # Get chromosome and centromere locations
@@ -285,8 +297,16 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data,
     changepoint <- GetRelativeChangePointCN(CN_data)
     copynumber <- GetRelativeCN(CN_data)
 
-    features <- list(segsize = segsize, bp10MB = bp10MB, osCN = osCN,
-                     bpchrarm = bpchrarm, changepoint = changepoint,
+    if (isTRUE(log_gaussians)) {
+      segsize$value = log1p(as.numeric(segsize$value))
+      changepoint$value = log1p(as.numeric(changepoint$value))
+      copynumber$value = log1p(as.numeric(copynumber$value))
+    }
+    features <- list(segsize = segsize,
+                     bp10MB = bp10MB,
+                     osCN = osCN,
+                     bpchrarm = bpchrarm,
+                     changepoint = changepoint,
                      copynumber = copynumber)
 
     if (extra_features) {

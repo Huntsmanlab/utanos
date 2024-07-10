@@ -132,7 +132,7 @@ Use the `GetSampleQualityDecision` function to get quality calls for each sample
 knitr::include_graphics(path = "images/sampleQC_vignette_02_qcdecisions.png")
 ```
 
-The default behaviour of this function is make a saemple-wise decision based on thresholds for the median segment standard deviation and the total segment count.
+The default behaviour of this function is make a sample-wise decision based on thresholds for the median segment standard deviation and the total segment count.
 
 ### II.1 - About the metrics: Median segment variance and segment count
 

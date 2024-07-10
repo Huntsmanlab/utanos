@@ -4,10 +4,16 @@
 \alias{ExtractCopyNumberFeatures}
 \title{Extract Absolute Copy-Number Features}
 \usage{
-ExtractCopyNumberFeatures(CN_data, genome, cores = 1, extra_features = FALSE)
+ExtractCopyNumberFeatures(
+  CN_data,
+  genome,
+  cores = 1,
+  log_gaussians = FALSE,
+  extra_features = FALSE
+)
 }
 \arguments{
-\item{CN_data}{List of datafames or S4 QDNAseq object. Segmented copy-number data for for 1 or more samples.
+\item{CN_data}{List of dataframes or S4 QDNAseq object. Segmented copy-number data for for 1 or more samples.
 If input is a list of dataframes, columns should be: \cr
 \enumerate{
 \item chromosome
@@ -20,6 +26,8 @@ If input is a list of dataframes, columns should be: \cr
 Options: 'hg19', 'hg38'}
 
 \item{cores}{Integer. The number of cores to use for parallel processing.}
+
+\item{log_gaussians}{Logical. If TRUE, take the log1p of the extracted CN-features for those being modeled by gaussians. (segsize, changepoint, copynumber)}
 
 \item{extra_features}{Logical. If TRUE, extracts CN-feature data for two more features: nc50, and cdist.}
 }

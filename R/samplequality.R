@@ -85,36 +85,16 @@ MedSegVar <- function(x) {
   return(x)
 }
 
-#' Extract sample grouping
-#'
-#' @description Extract sample grouping
-#' @param x param_dat containing the following columns: sample_id and sample quality parameters
-#'
-SampleGrouping <- function(x) {
-  x <- x %>%
-    dplyr::mutate(sample_group = case_when(
-                  str_detect(sample_id, "CC-CHM") ~ "CC-CHM",
-                  str_detect(sample_id, "CC-HAM") ~ "CC-HAM",
-                  str_detect(sample_id, "CC-JGH") ~ "CC-JGH",
-                  str_detect(sample_id, "CC-LAV") ~ "CC-LAV",
-                  str_detect(sample_id, "CC-NSH") ~ "CC-NSH",
-                  str_detect(sample_id, "CC-RJH") ~ "CC-RJH",
-                  str_detect(sample_id, "CC-SUN") ~ "CC-SUN",
-                  str_detect(sample_id, "CC-SSK") ~ "CC-SSK",
-                  str_detect(sample_id, "CC-VGH") ~ "CC-VGH",
-                  str_detect(sample_id, "CC-WPG") ~ "CC-WPG",
-                  str_detect(sample_id, "EC") ~ "EC",
-                  str_detect(sample_id, "VOA") ~ "VOA",
-                  str_detect(sample_id, "VS") ~ "VS",
-                  str_detect(sample_id, "YW") ~ "YW"
-    ))
-}
 
 #' Calculate and make a quality call for relative copy number profiles
 #'
 #' @description
-#' Function to classify the quality of relative copy number profile calls from QDNAseq or WiseCondorX
-#' @param x *QDNASeq object* containing the relative copy number calls as well as the segmented relative copy number calls
+#' Function to classify the quality of relative copy number profile calls from QDNAseq or WiseCondorX.
+#'
+#' @param x *QDNASeq object* containing the relative copy number calls as well as the segmented relative copy number calls.
+#' @param metric The metric to use for determining quality. Either 'quantile' or 'DecisionTree'.
+#' @param cutoff The cutoff to use for quantile-based quality filtering. Not applicable when the metric is 'DecisionTree'.
+#'
 #' @details
 #' Expects the input of a QDNAseq object containing relative copy-number calls (such as from QDNASeq or WiseCondorX). \cr
 #' Classifies relative copy number profiles as "High" or "Low" quality.
@@ -146,7 +126,7 @@ GetSampleQualityDecision <- function(x, metric = "quantile", cutoff = 0.95) {
         iso$fit(param_dat[, c(2, 3)])
         scores_train = param_dat %>%
           iso$predict() %>%
-          arrange(desc(anomaly_score))
+          dplyr::arrange(dplyr::desc(anomaly_score))
         param_dat <- param_dat %>%
           dplyr::mutate(row_num = dplyr::row_number())
         param_dat <- dplyr::full_join(param_dat, scores_train, by = c("row_num" = "id"))

@@ -53,10 +53,12 @@ CallSignatureExposures <- function (copy_numbers_input,
 
   if (relativeCN_data) {
     CN_features <- ExtractRelativeCopyNumberFeatures(copy_numbers_input,
-                                                     genome = refgenome)
+                                                     genome = refgenome,
+                                                     log_gaussians = FALSE)
   } else {
     CN_features <- ExtractCopyNumberFeatures(copy_numbers_input,
-                                             genome = refgenome)
+                                             genome = refgenome,
+                                             log_gaussians = FALSE)
   }
 
   if ( is.character(component_models)) {
