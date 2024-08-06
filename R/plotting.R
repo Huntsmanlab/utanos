@@ -181,9 +181,8 @@ ACNDiversityPlot <- function(long_segments = data.frame(),
     ggplot2::scale_x_continuous(expand = c(0, 0), breaks = NULL) +
     ggplot2::theme(panel.spacing = ggplot2::unit(0.1, "lines"),
                    plot.title = ggplot2::element_text(size = 22, hjust = 0.5),
-                   axis.text.y = ggplot2::element_blank(),
                    axis.title = ggplot2::element_text(size = 12),
-                   legend.title = ggplot2::element_text(size = 16),
+                   legend.title = ggplot2::element_text(size = 14),
                    legend.text = ggplot2::element_text(size = 12)) +
     ggplot2::labs(x = "Chromosomes", y = "Samples", fill = "Copy Number")
 
@@ -227,21 +226,20 @@ SortHeatmap <- function(slice) {
 
 ### Make coloured annotation bars for each sample provided and their corresponding categories
 #' @export
-PlotAnnotationBars <- function(ann_df) {
-
+PlotAnnotationBars <- function(ann_df, cat_name, color_option) {
   ann_df_long <- ann_df %>% tidyr::pivot_longer(cols = -sample_id,
                                                 names_to = "annotation_type",
-                                                values_to = "category")
+                                                values_to = cat_name)
 
   # Generate a unique color for each category in each annotation column using viridis palette
-  unique_categories <- unique(ann_df_long$category)
-  category_colors <- viridis::viridis(length(unique_categories), option = "B")
+  unique_categories <- unique(ann_df_long[[cat_name]])
+  category_colors <- viridis::viridis(length(unique_categories), option = color_option)
   names(category_colors) <- unique_categories
 
   annotation_plot <- ggplot2::ggplot(ann_df_long, ggplot2::aes(x = annotation_type,
                                                                y = sample_id)) +
-    ggplot2::geom_tile(ggplot2::aes(fill = category), color = "white") +
-    ggplot2::scale_fill_manual(values = category_colors) +
+    ggplot2::geom_tile(ggplot2::aes(fill = get(cat_name)), color = "white") +
+    ggplot2::scale_fill_manual(values = category_colors, name = cat_name) +
     ggplot2::theme_minimal() +
     ggplot2::theme(
       axis.title = ggplot2::element_blank(),
@@ -388,6 +386,7 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
 #' @param subset optional *character vector* A subset of samples that you'd like to plot.
 #' @param breaks *vector* containing the limits of your colour gradient. Passed to scale_fill_gradientn
 #' @param limits *vector* containing the limits of your colour gradient. Passed to scale_fill_gradientn
+#' @param genome reference genome build
 #' @return Heatmap of relative copy number calls
 #'
 #' @export
@@ -395,7 +394,8 @@ RCNDiversityPlot <- function(qdnaseq_obj, order_by = NULL, cluster = TRUE,
                              subset = NULL,
                              Xchr = FALSE,
                              limits = c(-1.5, 1.5),
-                             breaks = c( 2.5, 1, 0.5, 0, -0.5, -1, -2.5)) {
+                             breaks = c( 2.5, 1, 0.5, 0, -0.5, -1, -2.5),
+                             genome = 'hg19') {
 
   # Extract and re-shape data
   wide_binwise_segments <- ExportBinsQDNAObj(qdnaseq_obj, type = 'segments',
@@ -407,7 +407,7 @@ RCNDiversityPlot <- function(qdnaseq_obj, order_by = NULL, cluster = TRUE,
                     dplyr::select(sample_id, chromosome, start, end, copy_number) %>%
                     dplyr::rename(segVal = copy_number)
   long_segs <- SegmentsToCopyNumber(segments, 1000000,
-                                    genome = 'hg19',
+                                    genome = genome,
                                     Xincluded = Xchr)
 
   if (isTRUE(cluster)) {
@@ -424,7 +424,7 @@ RCNDiversityPlot <- function(qdnaseq_obj, order_by = NULL, cluster = TRUE,
                                            levels = order_by)
   }
   if (!is.null(subset)) {
-    long_segs <- long_segs %>% filter(sample_id %in% subset)
+    long_segs <- long_segs %>% dplyr::filter(sample_id %in% subset)
   }
 
   long_segs$segmented <- log2(long_segs$segmented)
