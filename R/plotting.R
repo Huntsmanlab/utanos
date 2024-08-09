@@ -205,7 +205,7 @@ ACNDiversityPlot <- function(long_segments = data.frame(),
   if (!is.null(ann_df)) {
     annotation_plots <- PlotAnnotationBars(ann_df,
                                            cols = colnames(dplyr::select(ann_df, -sample_id)),
-                                           colors = LETTERS[1:ncol(test)-1],
+                                           colors = LETTERS[1:ncol(ann_df)-1],
                                            order = levels(long_segments$sample_id))
     output[["annotation_plot"]] <- annotation_plots
   }
@@ -227,13 +227,20 @@ SortHeatmap <- function(slice) {
   return(slice)
 }
 
-### Make a list of coloured annotation bars for each sample provided and their corresponding categories
-# ann_df - dataframe, must contain at least `sample_id` and all columns in `cols`
-# cols - vector of categorical columns to include as annotations, i.e. one column = one annotation bar
-# colors - vector of corresponding viridis color options for each column, any letter A-H
-# order - vector containing all values of sample_id in desired order, controls order of tiles.
+#' Create annotation bars 
+#' 
+#' Make a list of coloured annotation bars for each sample provided and their corresponding categories
+#'
+#' @param ann_df A dataframe. Must contain at least `sample_id` and all columns in `cols` \cr
+#' @param cols Character vector. Names of categorical columns to include as annotations, i.e. one column = one annotation bar \cr
+#' @param colors Character vector. Letters A-H indicating the viridis color option to be used for each column. Must have same length as `cols` \cr
+#' Example if `cols` lists two columns: \cr
+#' colors <- c('A', 'B')
+#' @param order vector containing all values of sample_id in desired order, controls order of tiles. \cr
+#' @return A list of ggplot2 objects
+#'
 #' @export
-PlotAnnotationBars <- function(ann_df, cols, colors, order) {
+PlotAnnotationBars <- function(ann_df, cols, colors = LETTERS[1:length(cols)], order) {
   if (length(colors) != length(cols)) {
     stop("`cols` and `colors` must be of equal length")
   }
