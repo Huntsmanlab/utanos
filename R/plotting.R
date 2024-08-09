@@ -181,9 +181,8 @@ ACNDiversityPlot <- function(long_segments = data.frame(),
     ggplot2::scale_x_continuous(expand = c(0, 0), breaks = NULL) +
     ggplot2::theme(panel.spacing = ggplot2::unit(0.1, "lines"),
                    plot.title = ggplot2::element_text(size = 22, hjust = 0.5),
-                   axis.text.y = ggplot2::element_blank(),
                    axis.title = ggplot2::element_text(size = 12),
-                   legend.title = ggplot2::element_text(size = 16),
+                   legend.title = ggplot2::element_text(size = 14),
                    legend.text = ggplot2::element_text(size = 12)) +
     ggplot2::labs(x = "Chromosomes", y = "Samples", fill = "Copy Number")
 
@@ -204,8 +203,11 @@ ACNDiversityPlot <- function(long_segments = data.frame(),
   }
 
   if (!is.null(ann_df)) {
-    annotation_plot <- PlotAnnotationBars(ann_df)
-    output[["annotation_plot"]] <- annotation_plot
+    annotation_plots <- PlotAnnotationBars(ann_df,
+                                           cols = colnames(dplyr::select(ann_df, -sample_id)),
+                                           colors = LETTERS[1:ncol(ann_df)-1],
+                                           order = levels(long_segments$sample_id))
+    output[["annotation_plot"]] <- annotation_plots
   }
 
   return(output)
@@ -225,36 +227,57 @@ SortHeatmap <- function(slice) {
   return(slice)
 }
 
-### Make coloured annotation bars for each sample provided and their corresponding categories
+#' Create annotation bars 
+#' 
+#' Make a list of coloured annotation bars for each sample provided and their corresponding categories
+#'
+#' @param ann_df A dataframe. Must contain at least `sample_id` and all columns in `cols` \cr
+#' @param cols Character vector. Names of categorical columns to include as annotations, i.e. one column = one annotation bar \cr
+#' @param colors Character vector. Letters A-H indicating the viridis color option to be used for each column. Must have same length as `cols` \cr
+#' Example if `cols` lists two columns: \cr
+#' colors <- c('A', 'B')
+#' @param order vector containing all values of sample_id in desired order, controls order of tiles. \cr
+#' @return A list of ggplot2 objects
+#'
 #' @export
-PlotAnnotationBars <- function(ann_df) {
+PlotAnnotationBars <- function(ann_df, cols, colors = LETTERS[1:length(cols)], order) {
+  if (length(colors) != length(cols)) {
+    stop("`cols` and `colors` must be of equal length")
+  }
+  if (length(order) != nrow(ann_df)) {
+    stop("length of `order` must match the number of rows in `ann_df`")
+  }
 
-  ann_df_long <- ann_df %>% tidyr::pivot_longer(cols = -sample_id,
-                                                names_to = "annotation_type",
-                                                values_to = "category")
+  plot_col <- function (col, color) {
+    # Generate a unique color for each category in each annotation column using viridis palette
+    unique_categories <- unique(ann_df[[col]])
+    category_colors <- viridis::viridis(length(unique_categories), option = color)
+    names(category_colors) <- unique_categories
 
-  # Generate a unique color for each category in each annotation column using viridis palette
-  unique_categories <- unique(ann_df_long$category)
-  category_colors <- viridis::viridis(length(unique_categories), option = "B")
-  names(category_colors) <- unique_categories
+    ggplot2::ggplot(ann_df, ggplot2::aes(x = !!col,
+                                        y = sample_id)) +
+      ggplot2::geom_tile(ggplot2::aes(fill = get(col)), color = "white") +
+      ggplot2::scale_fill_manual(values = category_colors, name = col) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(
+        axis.title = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_blank(),
+        axis.ticks.x = ggplot2::element_blank(),
+        axis.text.y = ggplot2::element_blank(),
+        axis.ticks.y = ggplot2::element_blank(),
+        panel.grid = ggplot2::element_blank(),
+        panel.background = ggplot2::element_blank(),
+        plot.margin = ggplot2::margin(0, 0, 0, 0),
+        legend.position = "right",
+        axis.ticks.length.y = ggplot2::unit(0, "pt")
+      ) +
+      ggplot2::scale_y_discrete(limits = order) +
+      ggplot2::scale_x_discrete(expand = c(0,0))
+  }
 
-  annotation_plot <- ggplot2::ggplot(ann_df_long, ggplot2::aes(x = annotation_type,
-                                                               y = sample_id)) +
-    ggplot2::geom_tile(ggplot2::aes(fill = category), color = "white") +
-    ggplot2::scale_fill_manual(values = category_colors) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-      axis.title = ggplot2::element_blank(),
-      axis.text.x = ggplot2::element_blank(),
-      axis.ticks.x = ggplot2::element_blank(),
-      axis.text.y = ggplot2::element_blank(),
-      axis.ticks.y = ggplot2::element_blank(),
-      panel.grid = ggplot2::element_blank(),
-      panel.background = ggplot2::element_blank(),
-      plot.margin = ggplot2::margin(0, 0, 0, 0),
-      legend.position = "right"
-    )
-  return(annotation_plot)
+  lop <- mapply(plot_col, cols, colors, SIMPLIFY = FALSE)
+
+  return(lop)
 }
 
 
@@ -388,6 +411,7 @@ SummaryCNPlot <- function (x, main='Relative Copy-Number Summary Plot',
 #' @param subset optional *character vector* A subset of samples that you'd like to plot.
 #' @param breaks *vector* containing the limits of your colour gradient. Passed to scale_fill_gradientn
 #' @param limits *vector* containing the limits of your colour gradient. Passed to scale_fill_gradientn
+#' @param genome reference genome build
 #' @return Heatmap of relative copy number calls
 #'
 #' @export
@@ -395,7 +419,8 @@ RCNDiversityPlot <- function(qdnaseq_obj, order_by = NULL, cluster = TRUE,
                              subset = NULL,
                              Xchr = FALSE,
                              limits = c(-1.5, 1.5),
-                             breaks = c( 2.5, 1, 0.5, 0, -0.5, -1, -2.5)) {
+                             breaks = c( 2.5, 1, 0.5, 0, -0.5, -1, -2.5),
+                             genome = 'hg19') {
 
   # Extract and re-shape data
   wide_binwise_segments <- ExportBinsQDNAObj(qdnaseq_obj, type = 'segments',
@@ -407,7 +432,7 @@ RCNDiversityPlot <- function(qdnaseq_obj, order_by = NULL, cluster = TRUE,
                     dplyr::select(sample_id, chromosome, start, end, copy_number) %>%
                     dplyr::rename(segVal = copy_number)
   long_segs <- SegmentsToCopyNumber(segments, 1000000,
-                                    genome = 'hg19',
+                                    genome = genome,
                                     Xincluded = Xchr)
 
   if (isTRUE(cluster)) {
@@ -424,7 +449,7 @@ RCNDiversityPlot <- function(qdnaseq_obj, order_by = NULL, cluster = TRUE,
                                            levels = order_by)
   }
   if (!is.null(subset)) {
-    long_segs <- long_segs %>% filter(sample_id %in% subset)
+    long_segs <- long_segs %>% dplyr::filter(sample_id %in% subset)
   }
 
   long_segs$segmented <- log2(long_segs$segmented)
@@ -1010,7 +1035,7 @@ CNSegmentsPlot <- function(cnobj,
 #' @export
 RelToAbsSegPos <- function(chromosomes, rel_start_pos, rel_end_pos, build = "GRCh37") {
   chrom_lengths <- GetChromosomeLengths(build)[as.character(unique(chromosomes))]
-  
+
   max_num_chrom <- max(as.integer(chromosomes[!chromosomes %in% c("X", "Y")]))
 
   chromosomes <- replace(chromosomes, chromosomes == "X", max_num_chrom + 1)
