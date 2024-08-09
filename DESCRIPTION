@@ -77,7 +77,9 @@ Suggests:
     doMC,
     knitr,
     rmarkdown,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    EnsDb.Hsapiens.v86,
+    EnsDb.Mmusculus.v79
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 URL: https://huntsmanlab.github.io/utanos/

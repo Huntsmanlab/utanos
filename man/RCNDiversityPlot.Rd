@@ -11,7 +11,8 @@ RCNDiversityPlot(
   subset = NULL,
   Xchr = FALSE,
   limits = c(-1.5, 1.5),
-  breaks = c(2.5, 1, 0.5, 0, -0.5, -1, -2.5)
+  breaks = c(2.5, 1, 0.5, 0, -0.5, -1, -2.5),
+  genome = "hg19"
 )
 }
 \arguments{
@@ -24,6 +25,8 @@ RCNDiversityPlot(
 \item{limits}{\emph{vector} containing the limits of your colour gradient. Passed to scale_fill_gradientn}
 
 \item{breaks}{\emph{vector} containing the limits of your colour gradient. Passed to scale_fill_gradientn}
+
+\item{genome}{reference genome build}
 
 \item{x}{\emph{dataframe} containing the copy number segments in long format: columns should be start, sample id (named sample) and segmented}
 }
