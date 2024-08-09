@@ -203,8 +203,11 @@ ACNDiversityPlot <- function(long_segments = data.frame(),
   }
 
   if (!is.null(ann_df)) {
-    annotation_plot <- PlotAnnotationBars(ann_df)
-    output[["annotation_plot"]] <- annotation_plot
+    annotation_plots <- PlotAnnotationBars(ann_df,
+                                           cols = colnames(dplyr::select(ann_df, -sample_id)),
+                                           colors = LETTERS[1:ncol(test)-1],
+                                           order = levels(long_segments$sample_id))
+    output[["annotation_plot"]] <- annotation_plots
   }
 
   return(output)
@@ -224,35 +227,50 @@ SortHeatmap <- function(slice) {
   return(slice)
 }
 
-### Make coloured annotation bars for each sample provided and their corresponding categories
+### Make a list of coloured annotation bars for each sample provided and their corresponding categories
+# ann_df - dataframe, must contain at least `sample_id` and all columns in `cols`
+# cols - vector of categorical columns to include as annotations, i.e. one column = one annotation bar
+# colors - vector of corresponding viridis color options for each column, any letter A-H
+# order - vector containing all values of sample_id in desired order, controls order of tiles.
 #' @export
-PlotAnnotationBars <- function(ann_df, cat_name, color_option) {
-  ann_df_long <- ann_df %>% tidyr::pivot_longer(cols = -sample_id,
-                                                names_to = "annotation_type",
-                                                values_to = cat_name)
+PlotAnnotationBars <- function(ann_df, cols, colors, order) {
+  if (length(colors) != length(cols)) {
+    stop("`cols` and `colors` must be of equal length")
+  }
+  if (length(order) != nrow(ann_df)) {
+    stop("length of `order` must match the number of rows in `ann_df`")
+  }
 
-  # Generate a unique color for each category in each annotation column using viridis palette
-  unique_categories <- unique(ann_df_long[[cat_name]])
-  category_colors <- viridis::viridis(length(unique_categories), option = color_option)
-  names(category_colors) <- unique_categories
+  plot_col <- function (col, color) {
+    # Generate a unique color for each category in each annotation column using viridis palette
+    unique_categories <- unique(ann_df[[col]])
+    category_colors <- viridis::viridis(length(unique_categories), option = color)
+    names(category_colors) <- unique_categories
 
-  annotation_plot <- ggplot2::ggplot(ann_df_long, ggplot2::aes(x = annotation_type,
-                                                               y = sample_id)) +
-    ggplot2::geom_tile(ggplot2::aes(fill = get(cat_name)), color = "white") +
-    ggplot2::scale_fill_manual(values = category_colors, name = cat_name) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-      axis.title = ggplot2::element_blank(),
-      axis.text.x = ggplot2::element_blank(),
-      axis.ticks.x = ggplot2::element_blank(),
-      axis.text.y = ggplot2::element_blank(),
-      axis.ticks.y = ggplot2::element_blank(),
-      panel.grid = ggplot2::element_blank(),
-      panel.background = ggplot2::element_blank(),
-      plot.margin = ggplot2::margin(0, 0, 0, 0),
-      legend.position = "right"
-    )
-  return(annotation_plot)
+    ggplot2::ggplot(ann_df, ggplot2::aes(x = !!col,
+                                        y = sample_id)) +
+      ggplot2::geom_tile(ggplot2::aes(fill = get(col)), color = "white") +
+      ggplot2::scale_fill_manual(values = category_colors, name = col) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(
+        axis.title = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_blank(),
+        axis.ticks.x = ggplot2::element_blank(),
+        axis.text.y = ggplot2::element_blank(),
+        axis.ticks.y = ggplot2::element_blank(),
+        panel.grid = ggplot2::element_blank(),
+        panel.background = ggplot2::element_blank(),
+        plot.margin = ggplot2::margin(0, 0, 0, 0),
+        legend.position = "right",
+        axis.ticks.length.y = ggplot2::unit(0, "pt")
+      ) +
+      ggplot2::scale_y_discrete(limits = order) +
+      ggplot2::scale_x_discrete(expand = c(0,0))
+  }
+
+  lop <- mapply(plot_col, cols, colors, SIMPLIFY = FALSE)
+
+  return(lop)
 }
 
 
@@ -1010,7 +1028,7 @@ CNSegmentsPlot <- function(cnobj,
 #' @export
 RelToAbsSegPos <- function(chromosomes, rel_start_pos, rel_end_pos, build = "GRCh37") {
   chrom_lengths <- GetChromosomeLengths(build)[as.character(unique(chromosomes))]
-  
+
   max_num_chrom <- max(as.integer(chromosomes[!chromosomes %in% c("X", "Y")]))
 
   chromosomes <- replace(chromosomes, chromosomes == "X", max_num_chrom + 1)
