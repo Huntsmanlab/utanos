@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
 
 ---
 
-### I - Introduction
+### I - Introduction & background
 
 ---
 
@@ -69,7 +69,7 @@ Annotation:
 
 We can run shallowHRD directly on the QDNAseq object we just read in, using the `RunShallowHRDFromQDNA()` function, or on a table of segments, using the `RunShallowHRD()` function. Since estimating the threshold used to merge segments requires us to take 100,000 samples by default, running a single sample can take a few minutes. In the interest of time, we will extract a single sample from the QDNAseq object and demonstrate running shallowHRD on a table of segments. To run it for all the samples in the object, we could just call `RunShallowHRDFromQDNA()` directly on the QDNAseq object, with most arguments remaining the same as those we'll provide to `RunShallowHRD()`.
 
-Let's extract the bin-wise and segment-wise rCN data form the QDNAseq object using the `ExportBinsQDNAObj()`, and join them into a single table. This process is taken care of for us by `RunShallowHRDFromQDNA()` if run shallowHRD for all samples.
+Let's extract the bin-wise and segment-wise rCN data form the QDNAseq object using the `ExportBinsQDNAObj()`, and join them into a single table. This process is taken care of for us by `RunShallowHRDFromQDNA()` if running shallowHRD for all samples.
 
 ```{r, eval=FALSE}
 > bin_df <- ExportBinsQDNAObj(object = rcn.obj, type = "copynumber", filter = TRUE) %>%
@@ -103,7 +103,7 @@ Below we can see the resulting dataframe for a single sample. Note that `ExportB
 6 1          990001 0.988        0.941
 ```
 
-shallowHRD expects rCN data to be log-transformed, so when we call `RunShallowHRD()`, we need to indicate that the data should be log-transformed, by setting `log_transform = TRUE`. Since we know these samples are from a female, we will include the X-chromosome: `include_chr_X = TRUE`. Because the sampling process during threshold estimation relies on pseudo-random number generation, we have the option of specifying a seed, which will ensure repeated runs of the same sample will produce an identical result. We can do so with the `seed` parameter, but a value is specified by default, and it is not necessary to change it. We will leave the `num_simulations` to the default value of 100,000. We don't recommend reducing this value, as it leads to instability in the estimation of the segment merging threshold in our experience. By setting ` shrd_save_path = './'`, we will save a table summarizing the large segments detected, and the count of large segments for a range of sizes, to the current working directory. Lastly, we specify the sample name, which will be used to label our files and plots, `sample = 'CC-CHM-1341'`, and we indicate that we wish to generate a plot illustrating the segment merging process, `plot = TRUE`.
+shallowHRD expects rCN data to be log-transformed, so when we call `RunShallowHRD()`, we need to indicate that the data should be log-transformed, by setting `log_transform = TRUE`. Since we know this sample is from a female, we will include the X-chromosome: `include_chr_X = TRUE`. Because the sampling process during threshold estimation relies on pseudo-random number generation, we have the option of specifying a seed, which will ensure repeated runs of the same sample will produce an identical result. We can do so with the `seed` parameter, but a value is specified by default, and it is not necessary to change it. We will leave the `num_simulations` to the default value of 100,000. We don't recommend reducing this value, as it leads to instability in the estimation of the segment merging threshold in our experience. By setting ` shrd_save_path = './'`, we will save a table summarizing the large segments detected, and the count of large segments for a range of sizes, to the current working directory. Lastly, we specify the sample name, which will be used to label our files and plots, `sample = 'CC-CHM-1341'`, and we indicate that we wish to generate a plot illustrating the segment merging process, `plot = TRUE`.
 
 ```{r, eval=FALSE}
 > shrd_result <- RunShallowHRD(raw_ratios_file = as.data.frame(df_list$`CC-CHM-1341`), 
@@ -168,7 +168,7 @@ $plot
 
 We can see that a list is returned, stored in `shrd_result`. The first element, `hrd_status`, is a boolean that indicates whether this sample is predicted to be HRD or not; in this case we see that this sample predicted to be non-HRD. Next we see `n_lga`, a table that indicates the number of genomic alterations of a given size (in Mb) or greater. For example, we can see that after merging segments, this sample had 27 segments of size 3 Mb or greater, which includes 11 segments of 10 Mb or greater. Since a sample must have 20 or more segments of 10 Mb or greater with altered rCN for a positive prediction of HRD, we can see why this sample is non-HRD. The `lga` element is a table of all the segments greater than 10 Mb in size, including segments that are not considered LGAs under the precise criteria for LGAs, which is why we see more segments in this table than in the corresponding entry in the `n_lga` table. Recall that to be considered an LGA, a segment must be greater than 10 Mb, preceded by another segment greater than 10 Mb in the same chromosome arm, and the distance between those segments must be less than 3 Mb. The `WC` column marks LGA segments with a 1, and non-LGA segments with a 0. If you add up the number of 1s in the `WC` column, you will see that they sum to 11, as indicated in row 8 of the `n_lga` table. Finally, the `plot` element provides a plot that illustrates the segment merging process:
 
-```{r, out.width = '60%', echo = FALSE}
+```{r, out.width = '100%', echo = FALSE}
 knitr::include_graphics("images/shallowhrd_vignette_1.png")
 ```
 
@@ -242,7 +242,7 @@ $plot
 
 In this sample, we find 15 LGAs, which are visually reflected in the plot:
 
-```{r, out.width = '60%', echo = FALSE}
+```{r, out.width = '100%', echo = FALSE}
 knitr::include_graphics("images/shallowhrd_vignette_2.png")
 ```
 
