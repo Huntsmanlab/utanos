@@ -485,13 +485,13 @@ GetChromosomeLengths <- function(build) {
   } else {
     stop("invalid/unsupported genome build")
   }
-  
+
   if (grepl("(grch|hg)", build_lower)) {
     names(chromosome.lengths) <- as.character(c(1:22, 'X', 'Y'))
   } else if (grepl("(grcm|mm)", build_lower)) {
     names(chromosome.lengths) <- as.character(c(1:19, 'X', 'Y'))
   }
-  
+
   return(chromosome.lengths)
 }
 
@@ -663,4 +663,10 @@ DfToQDNAseq <- function(df) {
   Biobase::assayDataElement(copyNumbers, "segmented") <- as.matrix(segs_matrix)
 
   return(copyNumbers)
+}
+
+
+RoundToNearest <- function(value, x) {
+  rounded_value <- round(value / x) * x
+  return(rounded_value)
 }
