@@ -62,8 +62,7 @@
 #'
 #' @export
 RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FALSE, num_simulations=100000,
-                          shrd_save_path=FALSE, first_threshold=NULL, sample=NULL, second_threshold=NULL,
-                          seed=1337, plot=FALSE) {
+                          shrd_save_path=FALSE, sample=NULL, seed=1337, plot=FALSE) {
   #### Importing data####
   if(inherits(x = raw_ratios_file, what = "character")) {
     raw_ratios_file <- data.frame(read.table(file=raw_ratios_file, header=TRUE))
@@ -86,15 +85,11 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
   #### Finding the first threshold ####
   granges_obj <- GetGRangesObject(bam_ratios_frame=clean_ratios_file_copy)
 
-  if (!is.null(first_threshold)) {
-    first_threshold <- first_threshold
-  } else {
-    first_threshold <- FindThreshold(granges_obj=granges_obj,
+  first_threshold <- FindThreshold(granges_obj=granges_obj,
                                      segments=gathered_by_ratio_median,
                                      second_round=FALSE,
                                      num_simulations=num_simulations,
                                      seed=seed)
-  }
 
   #### Levels ####
   prepped_gathered_by_ratio_median <- PrepForLevelsInitialization(segments=gathered_by_ratio_median, granges_obj=granges_obj)
@@ -135,15 +130,11 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
                                segments=segments)
 
   #### v2 Finding the second threshold ####
-  if (!is.null(second_threshold)) {
-    second_threshold <- second_threshold
-  } else {
     second_threshold <- FindThreshold(granges_obj=granges_obj,
                                       segments=segments,
                                       second_round=TRUE,
                                       num_simulations=num_simulations,
                                       seed=seed)
-  }
 
   #### v2 Reading & Initialization ####
   segments_gt3mb <- GetLargeSegments(segments=segments_wo_short_arms)
