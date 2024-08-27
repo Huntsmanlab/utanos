@@ -14,9 +14,9 @@
 #' @export
 BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
   segments <- GetSegmentID(threshold=threshold,
-                          segments=segments)
+                           segments=segments)
   segments <- ShrinkReprTMP(segments=segments,
-                           granges_obj=granges_obj)
+                            granges_obj=granges_obj)
 
   small_breaks = 0
   pass = 1
@@ -41,16 +41,16 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
               segments[ordered_segments_lt3mb[i], 1] <- 0
             }
           }
-        # else: segment size of (i) is not 1
+          # else: segment size of (i) is not 1
         } else {
           # If last segment
           if (ordered_segments_lt3mb[i] == dim(segments)[1]) {
             # If last segment and previous  segment in same chromosome arm AND
             # previous segment's index is not 0
             if (segments[ordered_segments_lt3mb[i]-1, 3] == segments[ordered_segments_lt3mb[i], 3] & segments[ordered_segments_lt3mb[i]-1, 1] != 0) {
-                segments[ordered_segments_lt3mb[i], 1] <- 0
+              segments[ordered_segments_lt3mb[i], 1] <- 0
             }
-          # Not last segment
+            # Not last segment
           } else {
             # We have |-previous-| |-segment-| |-next-|
             previous_next_same_arm = segments[ordered_segments_lt3mb[i]-1, 3] == segments[ordered_segments_lt3mb[i]+1, 3]
@@ -142,7 +142,7 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
   segments <- GetSegmentID(threshold=threshold,
                            segments=segments)
   segments <- ShrinkReprTMP(segments=segments,
-                           granges_obj=granges_obj)
+                            granges_obj=granges_obj)
   segments[1,1] <- small_breaks
   segments
 }
@@ -169,25 +169,25 @@ GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame, granges_obj
     colnames(bam_ratios_frame) <- c("chr", "start", "end", "readcount")
 
     # Setting variables that are specific to the first pass
+    num_chr = max(bam_ratios_frame$chr)
     attach(bam_ratios_frame)
     merged_bam = merge(aggregate(start ~ chr, bam_ratios_frame, min),
-                       aggregate(end ~ chr, bam_ratios_frame, max))[seq(from=1, to=23, by=1),]
+                       aggregate(end ~ chr, bam_ratios_frame, max))[seq(from=1, to=num_chr, by=1),]
     detach(bam_ratios_frame)
 
     while_loop_index = 2 # chromosome number
-    num_chr = 23
   } else {
     # Setting up frame
     colnames(bam_ratios_frame) <- c("chr", "chr_arm", "start", "end", "ratio_median", "size")
 
     # Setting variables that are specific to the second pass
+    num_chr = length(unique(bam_ratios_frame$chr_arm))
     attach(bam_ratios_frame)
     merged_bam = merge(aggregate(start ~ chr_arm, bam_ratios_frame, min),
-                       aggregate(end ~ chr_arm, bam_ratios_frame, max))[seq(from=1, to=41, by=1),]
+                       aggregate(end ~ chr_arm, bam_ratios_frame, max))[seq(from=1, to=num_chr, by=1),]
     detach(bam_ratios_frame)
 
     while_loop_index = 3 # chromosome arm
-    num_chr = 41
   }
 
   # First segment
