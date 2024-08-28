@@ -120,42 +120,43 @@ GetBPNum <- function(abs_profiles, chrlen) {
 }
 
 GetOscilation <- function(abs_profiles, chrlen) {
-    out <- c()
-    samps <- GetSampNames(abs_profiles)
-    for (i in samps) {
-        if (class(abs_profiles) == "QDNAseqCopyNumbers") {
-            segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
-        } else {
-            segTab <- abs_profiles[[i]]
-            colnames(segTab)[4] <- "segVal"
-        }
-        chrs <- unique(segTab$chromosome)
-        oscCounts <- c()
-        for (c in chrs) {
-            currseg <- segTab[segTab$chromosome == c,"segVal"]
-            currseg <- round(as.numeric(currseg))                          # Change to currseg$segVal from currseg in order to work with datatables (but that usually screws up more stuff)
-            if (length(currseg) > 3) {
-                prevval <- currseg[1]
-                count = 0
-                for (j in 3:length(currseg)) {
-                    if ((currseg[j] == prevval) & (currseg[j] != currseg[j-1])) {
-                        count <- count + 1
-                    } else {
-                        oscCounts <- c(oscCounts, count)
-                        count <- 0
-                    }
-                    prevval <- currseg[j-1]
-                }
-            }
-        }
-        out <- rbind(out, cbind(ID = rep(i, length(oscCounts)),
-                                value = oscCounts))
-        if (length(oscCounts) == 0) {
-            out <- rbind(out, cbind(ID = i, value = 0))
-        }
+  out <- c()
+  samps <- GetSampNames(abs_profiles)
+  for (i in samps) {
+    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
+      segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
+    } else {
+      segTab <- abs_profiles[[i]]
+      colnames(segTab)[4] <- "segVal"
     }
-    rownames(out) <- NULL
-    data.frame(out, stringsAsFactors = F)
+    chrs <- unique(segTab$chromosome)
+    segTab <- segTab[!is.na(segTab$segVal),]
+    oscCounts <- c()
+    for (c in chrs) {
+      currseg <- segTab[segTab$chromosome == c,"segVal"]
+      currseg <- round(as.numeric(currseg))                          # Change to currseg$segVal from currseg in order to work with datatables (but that usually screws up more stuff)
+      if (length(currseg) > 3) {
+        prevval <- currseg[1]
+        count = 0
+        for (j in 3:length(currseg)) {
+          if ((currseg[j] == prevval) & (currseg[j] != currseg[j-1])) {
+            count <- count + 1
+          } else {
+            oscCounts <- c(oscCounts, count)
+            count <- 0
+          }
+          prevval <- currseg[j-1]
+        }
+      }
+    }
+    out <- rbind(out, cbind(ID = rep(i, length(oscCounts)),
+                            value = oscCounts))
+    if (length(oscCounts) == 0) {
+      out <- rbind(out, cbind(ID = i, value = 0))
+    }
+  }
+  rownames(out) <- NULL
+  data.frame(out, stringsAsFactors = F)
 }
 
 
@@ -170,6 +171,7 @@ GetRelativeOscilation <- function(cn_profiles, chrlen) {
       colnames(segTab)[4] <- "segVal"
     }
     chrs <- unique(segTab$chromosome)
+    segTab <- segTab[!is.na(segTab$segVal),]
     # Rather than being rounded to integers...
     # In the relative case we round to the nearest 0.1 to determine an oscillation
     # Change to currseg$segVal from currseg in order to work with datatables (but that usually screws up more stuff)
@@ -207,7 +209,7 @@ GetRelativeOscilation <- function(cn_profiles, chrlen) {
 GetBPChromArmCounts <- function (abs_profiles, centromeres, chrlen) {
   out <- c()
   samps <- GetSampNames(abs_profiles)
-  # browser()
+
   for (i in samps) {
     if (class(abs_profiles) == "QDNAseqCopyNumbers") {
       segTab <- GetSegTable(abs_profiles[,which(colnames(abs_profiles) == i)])
@@ -217,10 +219,9 @@ GetBPChromArmCounts <- function (abs_profiles, centromeres, chrlen) {
     }
     chrs <- unique(segTab$chromosome)
     all_dists <- c()
-    # browser()
+
     for (c in chrs) {
       if (nrow(segTab) > 1) {
-        # browser()
         starts <- as.numeric(segTab[segTab$chromosome == c, 2])[-1]
         segstart <- as.numeric(segTab[segTab$chromosome == c, 2])[1]
         ends <- as.numeric(segTab[segTab$chromosome == c, 3])
@@ -246,8 +247,8 @@ GetBPChromArmCounts <- function (abs_profiles, centromeres, chrlen) {
         all_dists <- rbind(all_dists, sum(ndist <= 0))
       }
     }
-    if(nrow(all_dists) > 0){
-      out <- rbind(out,cbind(ID = i,value = all_dists[,1]))
+    if (nrow(all_dists) > 0) {
+      out <- rbind(out, cbind(ID = i, value = all_dists[,1]))
     }
   }
   rownames(out)<-NULL
@@ -255,37 +256,33 @@ GetBPChromArmCounts <- function (abs_profiles, centromeres, chrlen) {
 }
 
 
-GetChangePointCN<-function(abs_profiles)
-{
-    out<-c()
-    samps<-GetSampNames(abs_profiles)
-    for(i in samps)
-    {
-        if(class(abs_profiles)=="QDNAseqCopyNumbers")
-        {
-            segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
-        }
-        else
-        {
-            segTab<-abs_profiles[[i]]
-            colnames(segTab)[4]<-"segVal"
-        }
-        segTab$segVal[as.numeric(segTab$segVal)<0]<-0
-        chrs<-unique(segTab$chromosome)
-        allcp<-c()
-        for(c in chrs)
-        {
-            currseg<-as.numeric(segTab[segTab$chromosome==c,"segVal"])
-            allcp<-c(allcp,abs(currseg[-1]-currseg[-length(currseg)]))
-        }
-        if(length(allcp)==0)
-        {
-            allcp<-0 #if there are no changepoints
-        }
-        out<-rbind(out,cbind(ID=rep(i,length(allcp)),value=allcp))
+GetChangePointCN <- function (abs_profiles) {
+  out <- c()
+  samps <- GetSampNames(abs_profiles)
+
+  for (i in samps) {
+    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
+      segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
+    } else {
+      segTab <- abs_profiles[[i]]
+      colnames(segTab)[4] <- "segVal"
     }
-    rownames(out)<-NULL
-    data.frame(out,stringsAsFactors = F)
+    segTab <- segTab[!is.na(segTab$segVal),]
+    segTab$segVal[as.numeric(segTab$segVal) < 0] <- 0
+    chrs <- unique(segTab$chromosome)
+    allcp <- c()
+
+    for (c in chrs) {
+      currseg <- as.numeric(segTab[segTab$chromosome == c, "segVal"])
+      allcp <- c(allcp, abs(currseg[-1] - currseg[-length(currseg)]))
+    }
+    if (length(allcp) == 0) {
+      allcp <- 0 # if there are no changepoints
+    }
+    out <- rbind(out, cbind(ID = rep(i, length(allcp)), value = allcp))
+  }
+  rownames(out) <- NULL
+  data.frame(out, stringsAsFactors = F)
 }
 
 
@@ -319,13 +316,14 @@ GetRelativeChangePointCN <- function(abs_profiles) {
   samps <- GetSampNames(abs_profiles)
   for (i in samps) {
     if (class(abs_profiles) == "QDNAseqCopyNumbers") {
-      segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles) == i)])
+      segTab <- GetSegTable(abs_profiles[,which(colnames(abs_profiles) == i)])
     }
     else {
-      segTab<-abs_profiles[[i]]
+      segTab <- abs_profiles[[i]]
       colnames(segTab)[4]<-"segVal"
     }
-    segTab$segVal[as.numeric(segTab$segVal) < 0] <- 0
+    segTab <- segTab[!is.na(segTab$segVal),]
+    segTab$segVal[as.numeric(segTab$segVal) <= 0] <- 0.00001
     segTab$segVal <- log(as.numeric((segTab$segVal))) #log transform segVal for relative CN
     chrs <- unique(segTab$chromosome)
     allcp <- c()
@@ -344,25 +342,22 @@ GetRelativeChangePointCN <- function(abs_profiles) {
 
 
 GetCN <- function(abs_profiles) {
-    out<-c()
-    samps<-GetSampNames(abs_profiles)
-    for(i in samps)
-    {
-        if(class(abs_profiles)=="QDNAseqCopyNumbers")
-        {
-            segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
-        }
-        else
-        {
-            segTab<-abs_profiles[[i]]
-            colnames(segTab)[4]<-"segVal"
-        }
-        segTab$segVal[as.numeric(segTab$segVal)<0]<-0
-        cn<-as.numeric(segTab$segVal)
-        out<-rbind(out,cbind(ID=rep(i,length(cn)),value=cn))
+  out <- c()
+  samps <- GetSampNames(abs_profiles)
+  for (i in samps) {
+    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
+      segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles) == i)])
+    } else {
+      segTab <- abs_profiles[[i]]
+      colnames(segTab)[4] <- "segVal"
     }
-    rownames(out)<-NULL
-    data.frame(out,stringsAsFactors = F)
+    segTab <- segTab[!is.na(segTab$segVal),]
+    segTab$segVal[as.numeric(segTab$segVal) < 0] <- 0
+    cn <- as.numeric(segTab$segVal)
+    out <- rbind(out, cbind(ID = rep(i, length(cn)), value = cn))
+  }
+  rownames(out) <- NULL
+  data.frame(out, stringsAsFactors = F)
 }
 
 # Return relative copy-numbers
@@ -378,7 +373,8 @@ GetRelativeCN <- function(cn_profiles) {
       segTab <- cn_profiles[[i]]
       colnames(segTab)[4] <- "segVal"
     }
-    segTab$segVal[as.numeric(segTab$segVal) < 0] <- 0
+    segTab <- segTab[!is.na(segTab$segVal),]
+    segTab$segVal[as.numeric(segTab$segVal) <= 0] <- 0.00001
     segTab$segVal <- log(as.numeric((segTab$segVal))) # log transform segVal for relative CN
     relative_cn <- as.numeric(segTab$segVal)
     out <- rbind(out,cbind(ID = rep(i, length(relative_cn)), value = relative_cn))
@@ -387,17 +383,13 @@ GetRelativeCN <- function(cn_profiles) {
   data.frame(out, stringsAsFactors = F)
 }
 
-GetSampNames<-function(abs_profiles)
-{
-    if(class(abs_profiles)=="QDNAseqCopyNumbers")
-    {
-        samps<-colnames(abs_profiles)
-    }
-    else
-    {
-        samps<-names(abs_profiles)
-    }
-    samps
+GetSampNames<-function(abs_profiles) {
+  if (class(abs_profiles) == "QDNAseqCopyNumbers") {
+    samps <- colnames(abs_profiles)
+  } else {
+    samps <- names(abs_profiles)
+  }
+  samps
 }
 
 GetSegTable<-function(x)
@@ -423,59 +415,51 @@ GetSegTable<-function(x)
             c(fdfilt$chromosome[starts[s]], from, to, segValue)
         }) -> segtmp
         segTableRaw <- data.frame(matrix(unlist(segtmp), ncol=4, byrow=T),stringsAsFactors=F)
-        segTable<-rbind(segTable,segTableRaw)
+        segTable <- rbind(segTable, segTableRaw)
     }
     colnames(segTable) <- c("chromosome", "start", "end", "segVal")
     segTable
 }
 
 
-GetPloidy<-function(abs_profiles)
-{
-  out<-c()
-  samps<-GetSampNames(abs_profiles)
-  for(i in samps)
-  {
-    if(class(abs_profiles)=="QDNAseqCopyNumbers")
-    {
-      segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles)==i)])
+GetPloidy <- function(abs_profiles) {
+  out <- c()
+  samps <- GetSampNames(abs_profiles)
+  for (i in samps) {
+    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
+      segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
+    } else {
+      segTab <- abs_profiles[[i]]
+      colnames(segTab)[4] <- "segVal"
     }
-    else
-    {
-      segTab<-abs_profiles[[i]]
-      colnames(segTab)[4]<-"segVal"
-    }
-    segLen<-(as.numeric(segTab$end)-as.numeric(segTab$start))
-    ploidy<-sum((segLen/sum(segLen))*as.numeric(segTab$segVal))
-    out<-c(out,ploidy)
+    segLen <- (as.numeric(segTab$end) - as.numeric(segTab$start))
+    ploidy <- sum((segLen/sum(segLen)) * as.numeric(segTab$segVal))
+    out <- c(out, ploidy)
   }
-  data.frame(out,stringsAsFactors = F)
+  data.frame(out, stringsAsFactors = F)
 }
 
 
-NormaliseMatrix<-function(signature_by_sample,sig_thresh=0.01)
-{
-    norm_const<-colSums(signature_by_sample)
-    sample_by_signature<-apply(signature_by_sample,1,function(x){x/norm_const})
-    sample_by_signature<-apply(sample_by_signature,1,LowerNorm,sig_thresh)
-    signature_by_sample<-t(sample_by_signature)
-    norm_const<-apply(signature_by_sample,1,sum)
-    sample_by_signature<-apply(signature_by_sample,2,function(x){x/norm_const})
-    signature_by_sample<-t(sample_by_signature)
-    signature_by_sample
+NormaliseMatrix <- function(signature_by_sample,
+                            sig_thresh = 0.01) {
+  norm_const <- colSums(signature_by_sample)
+  sample_by_signature <- apply(signature_by_sample, 1, function(x){x/norm_const})
+  sample_by_signature <- apply(sample_by_signature, 1, LowerNorm, sig_thresh)
+  signature_by_sample <- t(sample_by_signature)
+  norm_const <- apply(signature_by_sample, 1, sum)
+  sample_by_signature <- apply(signature_by_sample, 2, function(x){x/norm_const})
+  signature_by_sample <- t(sample_by_signature)
+  signature_by_sample
 }
 
-LowerNorm<-function(x,sig_thresh=0.01)
-{
-    new_x<-x
-    for(i in 1:length(x))
-    {
-        if(x[i]<sig_thresh)
-        {
-            new_x[i]<-0
-        }
+LowerNorm <- function(x, sig_thresh = 0.01) {
+  new_x <- x
+  for (i in 1:length(x)) {
+    if(x[i] < sig_thresh) {
+      new_x[i] <- 0
     }
-    new_x
+  }
+  new_x
 }
 
 GetDistsFromCentromere <- function(abs_profiles, centromeres, chrlen) {
