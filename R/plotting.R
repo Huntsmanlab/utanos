@@ -442,7 +442,7 @@ RCNDiversityPlot <- function(qdnaseq_obj, order_by = NULL, cluster = TRUE,
   }
   if (sum(is.na(long_segs) > 0)) {
     long_segs <- na.omit(long_segs)
-    warning("Bins with NA values removed. May or may not be an issue. Up to the user.")
+    warning("Bins with NA values removed.")
   }
   if (!is.null(order_by)) {
     long_segs$sample_id <- factor(long_segs$sample_id,
@@ -466,13 +466,13 @@ RCNDiversityPlot <- function(qdnaseq_obj, order_by = NULL, cluster = TRUE,
     ggplot2::facet_grid(~ chromosome, scales = "free",
                      space = "free", switch = "x") +
     ggplot2::scale_x_continuous(expand = c(0, 0), breaks = NULL) +
-    ggplot2::theme(panel.spacing = grid::unit(0.05, "lines")) +
+    ggplot2::theme(panel.spacing.x = grid::unit(0.1, "cm"),
+                   panel.background = ggplot2::element_rect(fill = 'white')) +
     ggplot2::scale_fill_gradientn(colours = c( "blue", "grey", "red"),
                                breaks = breaks,
                                limits = limits) +
-    ggplot2::theme_bw() +
     ggplot2::guides(fill = ggplot2::guide_legend(override.aes = list(size = 5))) +
-    ggplot2::labs(fill = "Relative Copy Number") +
+    ggplot2::labs(fill = "Relative \nCopy-Number") +
     ggplot2::xlab('chromosomes') +
     ggplot2::ylab('samples')
 

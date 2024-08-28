@@ -144,7 +144,7 @@ ChooseNumberSignatures <- function(sample_by_component,
 #' @param genome Character string. The reference genome used for alignment. \cr
 #' Options: 'hg19', 'hg38'
 #' @param cores Integer. The number of cores to use for parallel processing.
-#' @param log_gaussians Logical. If TRUE, take the log1p of the extracted CN-features for those being modeled by gaussians. (segsize, changepoint, copynumber)
+#' @param log_features FALSE or char vector. If a vector of feature names is provided, take the log1p of these extracted CN-features.
 #' @param extra_features Logical. If TRUE, extracts CN-feature data for two more features: nc50, and cdist.
 #' @returns A list. Each list element contains feature data for a single feature.
 #'
@@ -152,7 +152,7 @@ ChooseNumberSignatures <- function(sample_by_component,
 ExtractCopyNumberFeatures <- function(CN_data,
                                       genome,
                                       cores = 1,
-                                      log_gaussians = FALSE,
+                                      log_features = FALSE,
                                       extra_features = FALSE) {
 
   # Get chromosome and centromere locations
@@ -169,7 +169,10 @@ ExtractCopyNumberFeatures <- function(CN_data,
     require(foreach)
     doMC::registerDoMC(cores)
 
-    temp_list = foreach::foreach(i=1:6) %dopar% {
+    num_feats <- 6
+    if (extra_features) {num_feats <- 8}
+
+    temp_list = foreach::foreach(i=1:num_feats) %dopar% {
         if (i == 1) {
           list(segsize = GetSegSize(CN_data) )
         } else if (i == 2) {
@@ -180,11 +183,15 @@ ExtractCopyNumberFeatures <- function(CN_data,
           list(bpchrarm = GetBPChromArmCounts(CN_data,centromeres,chrlen) )
         } else if (i == 5) {
           list(changepoint = GetChangePointCN(CN_data) )
-        } else {
+        } else if (i == 6) {
           list(copynumber = GetCN(CN_data))
+        } else if (i == 7) {
+          list(nc50 = GetNC50(CN_data))
+        } else {
+          list(cdist = GetDistsFromCentromere(CN_data, centromeres, chrlen))
         }
     }
-    unlist( temp_list, recursive = FALSE )
+    features <- unlist( temp_list, recursive = FALSE )
   } else {
     segsize <- GetSegSize(CN_data)
     bp10MB <- GetBPNum(CN_data, chrlen)
@@ -193,11 +200,6 @@ ExtractCopyNumberFeatures <- function(CN_data,
     changepoint <- GetChangePointCN(CN_data)
     copynumber <- GetCN(CN_data)
 
-    if (isTRUE(log_gaussians)) {
-      segsize$value = log1p(as.numeric(segsize$value))
-      changepoint$value = log1p(as.numeric(changepoint$value))
-      copynumber$value = log1p(as.numeric(copynumber$value))
-    }
     features <- list(segsize = segsize,
                      bp10MB = bp10MB,
                      osCN = osCN,
@@ -212,6 +214,19 @@ ExtractCopyNumberFeatures <- function(CN_data,
       features[["cdist"]] <- cdist
     }
   }
+
+  # Log1p features if needed
+  if (!isFALSE(log_features)) {
+    if (all(log_features %in% names(features))) {
+      for (i in log_features) {
+        features[[i]]$value[features[[i]]$value <= 0] <- 0.0001
+        features[[i]]$value <- log1p(as.numeric(features[[i]]$value))
+      }
+    } else {
+      stop("The list of features to log doesn't match the available features.")
+    }
+  }
+
   return(features)
 }
 
@@ -248,7 +263,7 @@ ExtractCopyNumberFeatures <- function(CN_data,
 #' @param genome Character string. The reference genome used for alignment. \cr
 #' Options: 'hg19', 'hg38'
 #' @param cores Integer. The number of cores to use for parallel processing.
-#' @param log_gaussians Logical. If TRUE, take the log1p of the extracted CN-features for those being modeled by gaussians. (segsize, changepoint, copynumber)
+#' @param log_features FALSE or char vector. If a vector of feature names is provided, take the log1p of these extracted CN-features.
 #' @param extra_features Logical. If TRUE, extracts CN-feature data for two more features: nc50, and cdist.
 #' @returns A list. Each list element contains feature data for a single feature.
 #'
@@ -256,7 +271,7 @@ ExtractCopyNumberFeatures <- function(CN_data,
 ExtractRelativeCopyNumberFeatures <- function(CN_data,
                                               genome,
                                               cores = 1,
-                                              log_gaussians = FALSE,
+                                              log_features = FALSE,
                                               extra_features = FALSE) {
 
   # Get chromosome and centromere locations
@@ -273,7 +288,10 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data,
     require(foreach)
     doMC::registerDoMC(cores)
 
-    temp_list = foreach::foreach(i=1:6) %dopar% {
+    num_feats <- 6
+    if (extra_features) {num_feats <- 8}
+
+    temp_list = foreach::foreach(i=1:num_feats) %dopar% {
       if (i == 1) {
         list(segsize = GetSegSize(CN_data) )
       } else if (i == 2) {
@@ -284,11 +302,16 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data,
         list(bpchrarm = GetBPChromArmCounts(CN_data,centromeres,chrlen) )
       } else if (i == 5) {
         list(changepoint = GetRelativeChangePointCN(CN_data) )
-      } else {
+      } else if (i == 6) {
         list(copynumber = GetRelativeCN(CN_data))
+      } else if (i == 7) {
+        list(nc50 = GetNC50(CN_data))
+      } else {
+        list(cdist = GetDistsFromCentromere(CN_data, centromeres, chrlen))
       }
     }
-    unlist( temp_list, recursive = FALSE )
+    features <- unlist(temp_list, recursive = FALSE)
+
   } else {
     segsize <- GetSegSize(CN_data)
     bp10MB <- GetBPNum(CN_data, chrlen)
@@ -297,11 +320,6 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data,
     changepoint <- GetRelativeChangePointCN(CN_data)
     copynumber <- GetRelativeCN(CN_data)
 
-    if (isTRUE(log_gaussians)) {
-      segsize$value = log1p(as.numeric(segsize$value))
-      changepoint$value = log1p(as.numeric(changepoint$value))
-      copynumber$value = log1p(as.numeric(copynumber$value))
-    }
     features <- list(segsize = segsize,
                      bp10MB = bp10MB,
                      osCN = osCN,
@@ -316,6 +334,19 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data,
       features[["cdist"]] <- cdist
     }
   }
+
+  # Log1p features if needed
+  if (!isFALSE(log_features)) {
+    if (all(log_features %in% names(features))) {
+      for (i in log_features) {
+        features[[i]]$value[features[[i]]$value <= 0] <- 0.0001
+        features[[i]]$value <- log1p(as.numeric(features[[i]]$value))
+      }
+    } else {
+      stop("The list of features to log doesn't match the available features.")
+    }
+  }
+
   return(features)
 }
 
@@ -352,46 +383,58 @@ FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2,
 
     require(foreach)
     doMC::registerDoMC(cores)
-    temp_list = foreach(i=1:6) %dopar% {
 
-          if (i == 1 & i %in% featsToFit ) {
+    temp_list <- foreach(i=1:length(CN_features)) %dopar% {
+      if (i == 1 & i %in% featsToFit ) {
+        dat<-as.numeric(CN_features[["segsize"]][,2])
+        list( segsize = FitComponent(dat,seed=seed,model_selection=model_selection,
+            min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
-              dat<-as.numeric(CN_features[["segsize"]][,2])
-              list( segsize = FitComponent(dat,seed=seed,model_selection=model_selection,
-                  min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+      } else if (i == 2 & i %in% featsToFit ) {
+        dat<-as.numeric(CN_features[["bp10MB"]][,2])
+        list( bp10MB = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+            min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
-          } else if (i == 2 & i %in% featsToFit ) {
+      } else if (i == 3 & i %in% featsToFit ) {
+        dat<-as.numeric(CN_features[["osCN"]][,2])
+        list( osCN = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+            min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
-              dat<-as.numeric(CN_features[["bp10MB"]][,2])
-              list( bp10MB = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-                  min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+      } else if (i == 4 & i %in% featsToFit ) {
+        dat<-as.numeric(CN_features[["bpchrarm"]][,2])
+        list( bpchrarm = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+            min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
-          } else if (i == 3 & i %in% featsToFit ) {
+      } else if (i == 5 & i %in% featsToFit ) {
+        dat<-as.numeric(CN_features[["changepoint"]][,2])
+        list( changepoint = FitComponent(dat,seed=seed,model_selection=model_selection,
+            min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
-              dat<-as.numeric(CN_features[["osCN"]][,2])
-              list( osCN = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-                  min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+      } else if (i == 6 & i %in% featsToFit) {
+        dat <- as.numeric(CN_features[["copynumber"]][,2])
+        list(copynumber = FitComponent(dat, seed = seed, model_selection = model_selection,
+            nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000) )
 
-          } else if (i == 4 & i %in% featsToFit ) {
+      } else if (i == 7 & i %in% featsToFit) {
+        dat <- as.numeric(CN_features[["nc50"]][,2])
+        list( nc50 = FitComponent(dat, dist = "pois", seed = seed,
+                                  model_selection = model_selection,
+                                  min_prior = min_prior, niter = niter,
+                                  nrep = nrep, min_comp = min_comp,
+                                  max_comp = max_comp) )
 
-              dat<-as.numeric(CN_features[["bpchrarm"]][,2])
-              list( bpchrarm = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-                  min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
-
-          } else if (i == 5 & i %in% featsToFit ) {
-
-              dat<-as.numeric(CN_features[["changepoint"]][,2])
-              list( changepoint = FitComponent(dat,seed=seed,model_selection=model_selection,
-                  min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
-
-          } else if (i == 6 & i %in% featsToFit) {
-
-              dat<-as.numeric(CN_features[["copynumber"]][,2])
-              list( copynumber = FitComponent(dat,seed=seed,model_selection=model_selection,
-                  nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000) )
-          }
+      } else {
+        dat <- as.numeric(CN_features[["cdist"]][,2])
+        list( cdist = FitComponent(dat, seed = seed,
+                                   model_selection = model_selection,
+                                   min_prior = min_prior, niter = niter,
+                                   nrep = nrep, min_comp = min_comp,
+                                   max_comp = max_comp) )
       }
-      unlist( temp_list, recursive = FALSE )
+    }
+
+    output <- unlist(temp_list, recursive = FALSE)
+
   } else {
       dat<-as.numeric(CN_features[["segsize"]][,2])
       segsize_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
@@ -423,7 +466,7 @@ FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2,
 
       if (exists("nc50", CN_features)) {
         dat <- as.numeric(CN_features[["nc50"]][,2])
-        nc50_mm <- FitComponent(dat, seed = seed,
+        nc50_mm <- FitComponent(dat, dist="pois", seed = seed,
                                 model_selection = model_selection,
                                 min_prior = min_prior, niter = niter,
                                 nrep = nrep, min_comp = min_comp,
@@ -433,15 +476,23 @@ FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2,
 
       if (exists("cdist", CN_features)) {
         dat <- as.numeric(CN_features[["cdist"]][,2])
-        cdist_mm <- FitComponent(dat, dist="pois", seed = seed,
+        cdist_mm <- FitComponent(dat, seed = seed,
                                 model_selection = model_selection,
                                 min_prior = min_prior, niter = niter,
                                 nrep = nrep, min_comp = min_comp,
                                 max_comp = max_comp)
         output[["cdist"]] <- cdist_mm
       }
-
   }
+
+  # Re-order components
+  gaussians <- as.logical(lapply(output, function(x) {
+    stringr::str_detect(x@model[[1]]@name, "Gaussian")}))
+  output[gaussians] <- lapply(output[gaussians], function(x) {
+    flexmix::relabel(x, by = "model", which = "mean")})
+  output[!gaussians] <- lapply(output[!gaussians], function(x) {
+    flexmix::relabel(x, by = order(flexmix::parameters(x)))})
+
   return(output)
 }
 
@@ -461,12 +512,11 @@ FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2,
 #' Likely the output from `FitMixtureModels()`.
 #' @param cores Integer. The number of cores to use for parallel processing.
 #' @param rowIter Integer. Number of rows to ingest per iteration if using multiple cores. Otherwise ignored.
-#' @param subcores Integer. In parallel mode each CN-feature will be run separately, this is the number for cores to allocate to each of these sub-jobs.
 #' @returns A sum-of-posteriors probability matrix.
 #'
 #' @export
 GenerateSampleByComponentMatrix <- function (CN_features, all_components = NULL,
-                                             cores = 1, rowIter = 1000, subcores = 2) {
+                                             cores = 1, rowIter = 1000) {
 
   if ((class(all_components) == 'character') && (file.exists(all_components))) {
     all_components<-readRDS(file = all_components)
@@ -478,10 +528,12 @@ GenerateSampleByComponentMatrix <- function (CN_features, all_components = NULL,
   if (cores > 1) {
     require(foreach)
 
-    feats = c( "segsize", "bp10MB", "osCN",
-               "changepoint", "copynumber", "bpchrarm", "nc50" )
+    # In parallel mode each CN-feature will be run separately.
+    # This is the number for cores to allocate to each of these sub-jobs.
+    subcores <- max(1, cores %/% length(CN_features))
+
     doMC::registerDoMC(cores)
-    full_mat = foreach(feat=feats, .combine=cbind) %dopar% {
+    full_mat = foreach(feat = names(all_components), .combine=cbind) %dopar% {
       CalculateSumOfPosteriors(CN_features[[feat]],
                                all_components[[feat]],
                                feat, rowIter = rowIter, cores = subcores)
@@ -496,11 +548,11 @@ GenerateSampleByComponentMatrix <- function (CN_features, all_components = NULL,
       CalculateSumOfPosteriors(CN_features[["bpchrarm"]],all_components[["bpchrarm"]],"bpchrarm")
     )
     if (exists("nc50", CN_features)) {
-      sumofpost <- CalculateSumOfPosteriors(CN_features[["nc50"]],all_components[["nc50"]],"nc50")
+      sumofpost <- CalculateSumOfPosteriors(CN_features[["nc50"]], all_components[["nc50"]], "nc50")
       full_mat <- cbind(full_mat, sumofpost)
     }
-    if (exists("dist", CN_features)) {
-      sumofpost <- CalculateSumOfPosteriors(CN_features[["dist"]],all_components[["dist"]],"dist")
+    if (exists("cdist", CN_features)) {
+      sumofpost <- CalculateSumOfPosteriors(CN_features[["cdist"]], all_components[["cdist"]], "cdist")
       full_mat <- cbind(full_mat, sumofpost)
     }
   }

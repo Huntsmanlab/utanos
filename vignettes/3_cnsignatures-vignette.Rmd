@@ -26,7 +26,7 @@ This vignette demonstrates how to use copy-number (CN) abnormalities data, which
 Most of the published literature thus far has focused on CN-Signatures from absolute copy-number data. That is to say data where the sample ploidy is known. However, CN-Signatures can be extracted from both relative and absolute CN data, and so both cases will be covered here.
 
 First, this vignette will cover finding signature exposures in a new dataset using existing signatures (section III). Second, the creation of new signatures will be covered (section IV). In either case, to begin, a set of samples with segmented copy-number profiles are needed.
-These profiles should be either formatted as a list of named dataframes or exist within a QDNAseq object.  
+These profiles should be either formatted as a list of named dataframes or exist within a `QDNAseq` object.  
 
 ---
 
@@ -72,7 +72,14 @@ acn.obj <- acn.obj[,britroc_samples_subset$x]
 
 ---
 
-Step 2: extract copy number features using either the `ExtractCopyNumberFeatures()` or `ExtractRelativeCopyNumberFeatures()` function. To model copy-number aberrations in the genome, find trends and commonalities (what we will call signatures henceforth), specific features within the dataset are pulled out and modeled separately.
+Step 2: To model copy-number aberrations in the genome, find trends and commonalities (what we will call signatures henceforth), specific features within the dataset are pulled out and modeled separately. We can extract copy number features using either the `ExtractCopyNumberFeatures()` or `ExtractRelativeCopyNumberFeatures()` functions. 
+
+#### II.1 - Relative Copy-Numbers 
+
+Section coming soon!  
+
+
+#### II.2 - Relative Copy-Numbers 
 
 Standard features:  
 
@@ -104,7 +111,7 @@ cn_features <- ExtractCopyNumberFeatures(acn.obj,
 
 The HGSOC CN-Signatures included in the utanosmodellingdata repository were created using 91 samples (the highest quality ones). To find exposures for the remaining samples in the group, subset the original object by those samples not used for signature creation, and calculate exposures.  
 
-The `CallSignatureExposures()` function in utanos runs several computational steps in the appropriate order for convenience. A user can run each of these separately should they want. For details see the docs for `ExtractCopyNumberFeatures()`/`ExtractRelativeCopyNumberFeatures`, `GenerateSampleByComponentMatrix()`, and `QuantifySignatures()`. 
+The `CallSignatureExposures()` function in utanos runs several computational steps in the appropriate order for convenience. A user can run each of these separately should they want. For details see the docs for `ExtractCopyNumberFeatures()`/`ExtractRelativeCopyNumberFeatures()`, `GenerateSampleByComponentMatrix()`, and `QuantifySignatures()`. 
 
 ```{r, eval=FALSE}
 hgsoc_sigs <- readRDS(file = "~/repos/utanosmodellingdata/signatures/30kb_ovarian/component_by_signature_britroc_aCNs.rds")
@@ -138,7 +145,7 @@ ggp1$plot
 knitr::include_graphics("images/signatures_vignette_02.png")
 ```
 
-Interpreting this plot, it is clear the sample subset has higher exposures for signatures 1 and 4. These signatures correspond to poor overall survival + breakage-fusion bridge events and whole-genome duplication + PI3K/AKT signalling inactivation respectively. 
+Interpreting this plot, it is clear the sample subset has higher exposures for signatures 1 and 4. Referencing [@macintyre2018copy], these signatures correspond to poor overall survival + breakage-fusion bridge events and whole-genome duplication + PI3K/AKT signalling inactivation respectively. 
 
 <br>
 
@@ -192,25 +199,30 @@ knitr::include_graphics("images/signatures_vignette_03.png")
 
 This dot and line plot contains several metrics from the NMF runs over possible ranks that aid in the selection of an optimal number of signatures.
 
-Very brief heuristics for what to look for in the values of each metric:  
-cophenetic: higher => better; after the trend begins increasing (after 2) choose the max value before it decreases again.  
-dispersion: higher => better, measures the reproducibility  
-silhouette: higher => better, measures consistency between clusters  
-sparseness: higher => better, try to choose the maximum sparsity which can be achieved without that for the corresponding randomly permuted matrix exceeding it  
+Brief heuristics for what to look for in the values of each metric:  
 
-For a detailed discussions about each of these metrics consult the NMF package documentation or other sources online.
+| Metric | Description | Interpretation |   
+| :---: | :------: | :---: |
+| cophenetic | after the trend begins increasing choose the max value before it decreases again. | higher => better |
+| dispersion | measures the reproducibility | higher => better | 
+| silhouette | measures consistency between clusters | higher => better | 
+| sparseness | choose the maximum sparsity which can be achieved without that for the corresponding randomly permuted matrix exceeding it | higher => better |   
 
-The utanos package defaults for the ChooseNumberSignatures() function include running NMF 100 times for each rank. This was to keep the default run-time manageable. Package users however are encouraged to experiment with more iterations and other run parameter values. The [@macintyre2018copy] paper for instance used 1000 iterations in estimating the rank (this and a few other parameters are the reason this plot differs from the one in the paper bitbucket repository).      
+For detailed discussions about each of these metrics consult the [NMF](https://renozao.github.io/NMF/devel/index.html) package documentation or other sources online.
+
+The utanos package defaults for the `ChooseNumberSignatures()` function include running NMF 100 times for each rank. This was to keep the default run-time manageable. Package users however are encouraged to experiment with more iterations and other run parameter values. The [@macintyre2018copy] paper for instance used 1000 iterations in estimating the rank (this and a few other parameters are the reason this plot differs from the one in the paper bitbucket repository).      
+
+<br>
 
 #### IV.2 - Evaluation
 
 At this point it is a good idea to stop and examine the modelling done thus far.  
 Some points to consider:
 
-* If the metrics provided above for the input matrices do not appear to be outperforming the randomized matrices, you may wish to set more restrictive demands on what samples can be used as input data. The ability to detect copy number signatures absolutely depends on whether each pattern is sufficiently represented in the data, BUT, this signal can be obfuscated with lower quality samples that introduce noise. Finding a balance of quantity vs. quality is important. The largest number of high-quality samples possible used for signature creation (but no more) is ideal.
+* If the metrics provided above for the input matrices do not appear to be outperforming the randomized matrices, you may wish to set more restrictive demands on what samples can be used as input data. The ability to detect copy number signatures depends heavily on whether each pattern is sufficiently represented in the data, BUT, this signal can be obfuscated with lower quality samples that introduce noise. Finding a balance of quantity vs. quality is important. The largest number of high-quality samples possible used for signature creation (but no more) is ideal.
 * By default utanos suggests using 6 CN features for modelling, however it may be desirable to use more/others. There are two more that can easily be used by setting the `extra_features` parameter of `ExtractCopyNumberFeatures()` to TRUE.
 * Examine the sample-by-component matrix as a heatmap to see if there are major contributions from many different samples to each component. If the sample-by-component matrix does not indicate higher values for the posteriors for at least several components per sample it could be the case that the modelling is not appropriately capturing the heterogeneity in the data.
-* Examine the consensus matrices (the average connectivity matrix across NMF runs) in heatmap form alongside the silhouette track (or others) to see how samples cluster together. Are there clear clusters emerging?
+* Examine the consensus matrices (the average connectivity matrix across NMF runs) in heatmap form alongside the silhouette track (or others) to see how samples cluster together. Do clear clusters emerge?
 
 Visualize the sample-by-component matrix:
 ```{r, eval=FALSE}
