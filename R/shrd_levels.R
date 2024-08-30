@@ -10,13 +10,6 @@
 #' @export
 
 PrepForLevelsInitialization <- function(segments, granges_obj) {
-  #### Have to convert it into a .txt file and then use the readSegmFile helper ####
-  write.table(segments, file="./gathered_by_ratio_median.txt", sep = "\t", row.names = FALSE)
-  segment_files <- list.files("./", pattern = "gathered_by_ratio_median.txt", full.names = TRUE)
-
-  results <- ReadSegmFile(seg_file_name = segment_files[1])
-  segments <- results$tmp
-
   # SHRD recalculates the ratio_median, by finding the overlap with the original bin-wise ratios per segment and using their median, instead of the segmented value
   for (i in 1:nrow(segments)) {
     gr = GenomicRanges::GRanges(seqnames=c(segments[i,1]),
@@ -24,7 +17,13 @@ PrepForLevelsInitialization <- function(segments, granges_obj) {
                                                         end=c(segments[i,4])),
                                 strand=c("*"))
     subsetGRobject = IRanges::subsetByOverlaps(granges_obj, gr)
-    segments[i,5] = median(subsetGRobject$ratio)
+
+    # Handles cases in which we have infinite negative values due to losses, i.e. ratios of 0.
+    # We assume that the most extreme loss is 1 copy in 64 copies, as in a pure tumor bearing a single copy of a segment with an overall ploidy of 64n
+    # So that log2(1/64) = -6
+    new_ratio_medians <- as.vector(subsetGRobject$ratio)
+    new_ratio_medians[which(new_ratio_medians == -Inf)] <- -6
+    segments[i,5] = median(new_ratio_medians)
   }
 
   #### Adds index and level columns ####
