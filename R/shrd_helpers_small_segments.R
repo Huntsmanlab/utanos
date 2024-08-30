@@ -378,7 +378,7 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
                                                                 end_of_file = TRUE)
               c = N_large + 1
               i = i + 1
-            } else if (c + 2 < N_large && i == N_small) {
+            } else if (c + 2 <= N_large && i == N_small) {
               large_segments <- MergeSegmentsFiveSmallNextLarge(granges_obj = granges_obj,
                                                                 small_segment = small_segment,
                                                                 large_segments = large_segments,
