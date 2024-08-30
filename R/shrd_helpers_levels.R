@@ -48,30 +48,6 @@ FindBigSegmentsIndices <- function(segments_copy, thr) {
 }
 
 #' TODO: write docs
-ReadSegmFile<-function(seg_file_name){
-  aa<-scan(seg_file_name,nlines=1,what="character",quiet = T)
-  k<-1
-
-  while((length(grep("#",aa))!=0)&&(grep("#",aa)==1)){
-    aa<-scan(seg_file_name,skip=k,nlines=1,what="character",quiet = T)
-    k<-k+1
-  }
-
-  tmp<-read.delim(seg_file_name,skip=k-1, header=T,sep="\t")
-  tmp<-data.matrix(tmp)
-  if(k==2){
-    results<-GetInfoSegm(scan(seg_file_name,nlines=1,what="character",quiet = T))
-    homoConst<-results$homoConst
-    sdH<-results$sdH
-    p_BAF<-results$p_BAF
-    q_LRR<-results$q_LRR
-    Delta<-results$Delta
-  }else{homoConst<-1;sdH<-NA;p_BAF<-NA;q_LRR<-NA;Delta<-c(2,NA)}
-
-  out<-list(tmp=tmp,homoConst=homoConst,sdH=sdH,p_BAF=p_BAF,q_LRR=q_LRR,Delta=Delta)
-}
-
-#' TODO: write docs
 GetInfoSegm <- function(infoString){
 
   tt<-unlist(strsplit(infoString,";"))
