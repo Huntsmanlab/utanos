@@ -90,7 +90,7 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
                                      second_round=FALSE,
                                      num_simulations=num_simulations,
                                      seed=seed)
-
+  browser()
   #### Levels ####
   prepped_gathered_by_ratio_median <- PrepForLevelsInitialization(segments=gathered_by_ratio_median, granges_obj=granges_obj)
   segments_wo_short_arms <- ExcludeShortArms(segments=prepped_gathered_by_ratio_median)
@@ -207,12 +207,13 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
 #' @param shrd_save_path An optional path to save the ShallowHRD results to.
 #' @param plot Whether or not to return a plot showing how segments are merged as the algorithm runs.
 #' @param seed A seed to use for PRNG-dependent functions. Ensures reproduciblity between runs.
+#' @param cores The number of cores to use for running samples in parallel. If set to 1, no parallel processing will be used.
 #'
 #' @returns A list of ShallowHRD results, with one entry per sample.
 #'
 #' @export
 RunShallowHRDFromQDNA <- function(qdna_obj, include_chr_X=FALSE, num_simulations=100000, shrd_save_path=FALSE,
-                                  plot=FALSE, seed = 1337) {
+                                  plot=FALSE, seed = 1337, cores = 1) {
   # Note that ExportBinsQDNAObj does not log normalize
   bin_df <- ExportBinsQDNAObj(object = qdna_obj, type = "copynumber", filter = TRUE) %>%
     tidyr::pivot_longer(cols = !c("feature", "chromosome", "start", "end"), names_to = "sample", values_to = "ratio") %>%
@@ -229,14 +230,33 @@ RunShallowHRDFromQDNA <- function(qdna_obj, include_chr_X=FALSE, num_simulations
   df_list <- dplyr::group_split(df_group, .keep = FALSE)
   names(df_list) <- dplyr::group_keys(df_group)$sample
 
-  shrd_result <- lapply(X = names(df_list), FUN = function(sample) RunShallowHRD(raw_ratios_file = as.data.frame(df_list[[sample]]),
-                                                                      log_transform = TRUE,
-                                                                      include_chr_X = include_chr_X,
-                                                                      num_simulations = num_simulations,
-                                                                      shrd_save_path = shrd_save_path,
-                                                                      sample = sample,
-                                                                      plot = plot,
-                                                                      seed = seed))
+  if (cores > 1) {
+    require(foreach)
+    doMC::registerDoMC(cores)
+
+    shrd_result <- foreach(sample=names(df_list)) %dopar% {
+      RunShallowHRD(raw_ratios_file = as.data.frame(df_list[[sample]]),
+                    log_transform = TRUE,
+                    include_chr_X = include_chr_X,
+                    num_simulations = num_simulations,
+                    shrd_save_path = shrd_save_path,
+                    sample = sample,
+                    plot = plot,
+                    seed = seed)
+    }
+
+  }
+  else {
+    shrd_result <- lapply(X = names(df_list), FUN = function(sample) RunShallowHRD(raw_ratios_file = as.data.frame(df_list[[sample]]),
+                                                                                   log_transform = TRUE,
+                                                                                   include_chr_X = include_chr_X,
+                                                                                   num_simulations = num_simulations,
+                                                                                   shrd_save_path = shrd_save_path,
+                                                                                   sample = sample,
+                                                                                   plot = plot,
+                                                                                   seed = seed))
+  }
+
   names(shrd_result) <- names(df_list)
 
   return(shrd_result)
