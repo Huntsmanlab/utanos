@@ -90,7 +90,7 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
                                      second_round=FALSE,
                                      num_simulations=num_simulations,
                                      seed=seed)
-  browser()
+
   #### Levels ####
   prepped_gathered_by_ratio_median <- PrepForLevelsInitialization(segments=gathered_by_ratio_median, granges_obj=granges_obj)
   segments_wo_short_arms <- ExcludeShortArms(segments=prepped_gathered_by_ratio_median)
