@@ -22,7 +22,7 @@ knitr::opts_chunk$set(
 
 ## I - Introduction
 
-Broadly, this vignette seeks to demonstrate how a user could answer the following three questions using __utanos__:
+Broadly, this vignette seeks to demonstrate how a user could answer the following three questions using __Utanos__:
 
   * In my dataset, where do copy-number (CN) gains and losses co-occur? 
   * To what extent do these aberrations co-occur across individual samples?
@@ -195,18 +195,19 @@ To find the optimal ploidy and cellularity, use the `FindRascalSolutions()` func
 Only the first argument is mandatory, the rest are optional.
 
 Arguments:
-1. `cnobj` - The relative copy-number object we've been using throughout all these vignettes.
-2. `min_ploidy` & `max_ploidy` - Determines the range of ploidies to search from.
-3. `ploidy_step` - The stepwise increment of ploidies along the range.
-4. `min_cellularity` & `max_cellularity` - Determines the range of cellularities to search from.
-5. `cellularity_step` - The stepwise increment of cellularities along the range.
-6. `distance_function` - The distance function to use, "MAD" (mean absolute difference) or "RMSD" (root mean square difference).
-7. `distance_filter_scale_factor` - The distance threshold above which solutions will be discarded as a multiple of the solution with the smallest distance.
-8. `max_proportion_zero` - The maximum proportion of fitted absolute copy number values in the zero copy number state.
-9. `in_proportion_close_to_whole_number` - The minimum proportion of fitted absolute copy number values sufficiently close to a whole number.
-10. `max_distance_from_whole_number` - The maximum distance from a whole number that a fitted absolute copy number can be to be considered sufficiently close.
-11. `solution_proximity_threshold` - How close two solutions can be before one will be filtered; reduces the number of best fit solutions where there are many minima in close proximity.
-12. `keep_all` - `TRUE` to return all solutions but with additional `best_fit` column to indicate which are the local minima that are acceptable solutions (may be useful to avoid computing the distance grid twice).
+
+1. `cnobj` - The relative copy-number object we've been using throughout all these vignettes.  
+2. `min_ploidy` & `max_ploidy` - Determines the range of ploidies to search from.  
+3. `ploidy_step` - The stepwise increment of ploidies along the range.  
+4. `min_cellularity` & `max_cellularity` - Determines the range of cellularities to search from.  
+5. `cellularity_step` - The stepwise increment of cellularities along the range.  
+6. `distance_function` - The distance function to use, "MAD" (mean absolute difference) or "RMSD" (root mean square difference).  
+7. `distance_filter_scale_factor` - The distance threshold above which solutions will be discarded as a multiple of the solution with the smallest distance.  
+8. `max_proportion_zero` - The maximum proportion of fitted absolute copy number values in the zero copy number state.  
+9. `in_proportion_close_to_whole_number` - The minimum proportion of fitted absolute copy number values sufficiently close to a whole number.  
+10. `max_distance_from_whole_number` - The maximum distance from a whole number that a fitted absolute copy number can be to be considered sufficiently close.  
+11. `solution_proximity_threshold` - How close two solutions can be before one will be filtered; reduces the number of best fit solutions where there are many minima in close proximity.  
+12. `keep_all` - `TRUE` to return all solutions but with additional `best_fit` column to indicate which are the local minima that are acceptable solutions (may be useful to avoid computing the distance grid twice).  
 
 ```{r, eval = FALSE}
 > solutions <- FindRascalSolutions(cnobj)
@@ -222,8 +223,8 @@ The first 4 arguments would benefit from some elaboration, so those will be desc
 
 Arguments:
 
-1. `cnobj` - The relative copy-number object we've been using throughout all these vignettes.
-2. `acnmethod` - The method for scaling. Expects a string. It can be one of: 
+1. `cnobj` - The relative copy-number object we've been using throughout all these vignettes.  
+2. `acnmethod` - The method for scaling. Expects a string. It can be one of:  
     - “maxvaf”: Chooses the solution that aligns with the maximum detected VAF. We assume that to be suggestive of the cellularity according to the formula above
     - A character vector of the genes from which to pull VAFs, where genes are assumed to be in order of decreasing precedence, ex. c(‘TP53’, ‘KRAS’, ‘PTEN’), 
     - “mad”: Chooses the solution with the lowest MAD or RMSD score; in the case of a tie goes with the lower ploidy solution.
