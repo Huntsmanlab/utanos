@@ -94,7 +94,7 @@ dataset using existing signatures (section III). Second, the creation of
 new signatures will be covered (section IV). In either case, to begin, a
 set of samples with segmented copy-number profiles are needed. These
 profiles should be either formatted as a list of named dataframes or
-exist within a QDNAseq object.</p>
+exist within a <code>QDNAseq</code> object.</p>
 <hr>
 </div>
 <div class="section level3">
@@ -141,12 +141,20 @@ utanosmodellingdata.</p>
 <h3 id="ii---extract-cn-features">II - Extract CN-features<a class="anchor" aria-label="anchor" href="#ii---extract-cn-features"></a>
 </h3>
 <hr>
-<p>Step 2: extract copy number features using either the
+<p>Step 2: To model copy-number aberrations in the genome, find trends
+and commonalities (what we will call signatures henceforth), specific
+features within the dataset are pulled out and modeled separately. We
+can extract copy number features using either the
 <code><a href="../reference/ExtractCopyNumberFeatures.html">ExtractCopyNumberFeatures()</a></code> or
-<code><a href="../reference/ExtractRelativeCopyNumberFeatures.html">ExtractRelativeCopyNumberFeatures()</a></code> function. To model
-copy-number aberrations in the genome, find trends and commonalities
-(what we will call signatures henceforth), specific features within the
-dataset are pulled out and modeled separately.</p>
+<code><a href="../reference/ExtractRelativeCopyNumberFeatures.html">ExtractRelativeCopyNumberFeatures()</a></code> functions.</p>
+<div class="section level4">
+<h4 id="ii-1---relative-copy-numbers">II.1 - Relative Copy-Numbers<a class="anchor" aria-label="anchor" href="#ii-1---relative-copy-numbers"></a>
+</h4>
+<p>Section coming soon!</p>
+</div>
+<div class="section level4">
+<h4 id="ii-2---relative-copy-numbers">II.2 - Relative Copy-Numbers<a class="anchor" aria-label="anchor" href="#ii-2---relative-copy-numbers"></a>
+</h4>
 <p>Standard features:</p>
 <ol style="list-style-type: decimal">
 <li>Absolute copy-numbers at each genomic bin (copynumbers)<br>
@@ -179,6 +187,7 @@ hundred samples, this function should run within a few minutes.</p>
 <span>                                         extra_features <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
+</div>
 <div class="section level3">
 <h3 id="iii---determine-cn-signature-exposures">III - Determine CN-signature exposures<a class="anchor" aria-label="anchor" href="#iii---determine-cn-signature-exposures"></a>
 </h3>
@@ -192,7 +201,7 @@ calculate exposures.</p>
 several computational steps in the appropriate order for convenience. A
 user can run each of these separately should they want. For details see
 the docs for
-<code><a href="../reference/ExtractCopyNumberFeatures.html">ExtractCopyNumberFeatures()</a></code>/<code>ExtractRelativeCopyNumberFeatures</code>,
+<code><a href="../reference/ExtractCopyNumberFeatures.html">ExtractCopyNumberFeatures()</a></code>/<code><a href="../reference/ExtractRelativeCopyNumberFeatures.html">ExtractRelativeCopyNumberFeatures()</a></code>,
 <code><a href="../reference/GenerateSampleByComponentMatrix.html">GenerateSampleByComponentMatrix()</a></code>, and
 <code><a href="../reference/QuantifySignatures.html">QuantifySignatures()</a></code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -220,9 +229,10 @@ comparison:</p>
 <span><span class="va">ggp1</span><span class="op">$</span><span class="va">plot</span></span></code></pre></div>
 <p><img src="images/signatures_vignette_02.png" width="100%"></p>
 <p>Interpreting this plot, it is clear the sample subset has higher
-exposures for signatures 1 and 4. These signatures correspond to poor
-overall survival + breakage-fusion bridge events and whole-genome
-duplication + PI3K/AKT signalling inactivation respectively.</p>
+exposures for signatures 1 and 4. Referencing <span class="citation">(Macintyre et al. 2018)</span>, these signatures
+correspond to poor overall survival + breakage-fusion bridge events and
+whole-genome duplication + PI3K/AKT signalling inactivation
+respectively.</p>
 <p><br></p>
 <hr>
 </div>
@@ -304,26 +314,56 @@ this function and then get a snack!</p>
 <p>This dot and line plot contains several metrics from the NMF runs
 over possible ranks that aid in the selection of an optimal number of
 signatures.</p>
-<p>Very brief heuristics for what to look for in the values of each
-metric:<br>
-cophenetic: higher =&gt; better; after the trend begins increasing
-(after 2) choose the max value before it decreases again.<br>
-dispersion: higher =&gt; better, measures the reproducibility<br>
-silhouette: higher =&gt; better, measures consistency between
-clusters<br>
-sparseness: higher =&gt; better, try to choose the maximum sparsity
-which can be achieved without that for the corresponding randomly
-permuted matrix exceeding it</p>
-<p>For a detailed discussions about each of these metrics consult the
-NMF package documentation or other sources online.</p>
-<p>The utanos package defaults for the ChooseNumberSignatures() function
-include running NMF 100 times for each rank. This was to keep the
-default run-time manageable. Package users however are encouraged to
-experiment with more iterations and other run parameter values. The
-<span class="citation">(Macintyre et al. 2018)</span> paper for instance
-used 1000 iterations in estimating the rank (this and a few other
-parameters are the reason this plot differs from the one in the paper
-bitbucket repository).</p>
+<p>Brief heuristics for what to look for in the values of each
+metric:</p>
+<table class="table">
+<colgroup>
+<col width="27%">
+<col width="44%">
+<col width="27%">
+</colgroup>
+<thead><tr class="header">
+<th align="center">Metric</th>
+<th align="center">Description</th>
+<th align="center">Interpretation</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="center">cophenetic</td>
+<td align="center">after the trend begins increasing choose the max
+value before it decreases again.</td>
+<td align="center">higher =&gt; better</td>
+</tr>
+<tr class="even">
+<td align="center">dispersion</td>
+<td align="center">measures the reproducibility</td>
+<td align="center">higher =&gt; better</td>
+</tr>
+<tr class="odd">
+<td align="center">silhouette</td>
+<td align="center">measures consistency between clusters</td>
+<td align="center">higher =&gt; better</td>
+</tr>
+<tr class="even">
+<td align="center">sparseness</td>
+<td align="center">choose the maximum sparsity which can be achieved
+without that for the corresponding randomly permuted matrix exceeding
+it</td>
+<td align="center">higher =&gt; better</td>
+</tr>
+</tbody>
+</table>
+<p>For detailed discussions about each of these metrics consult the <a href="https://renozao.github.io/NMF/devel/index.html" class="external-link">NMF</a> package
+documentation or other sources online.</p>
+<p>The utanos package defaults for the
+<code><a href="../reference/ChooseNumberSignatures.html">ChooseNumberSignatures()</a></code> function include running NMF 100
+times for each rank. This was to keep the default run-time manageable.
+Package users however are encouraged to experiment with more iterations
+and other run parameter values. The <span class="citation">(Macintyre et
+al. 2018)</span> paper for instance used 1000 iterations in estimating
+the rank (this and a few other parameters are the reason this plot
+differs from the one in the paper bitbucket repository).</p>
+<p><br></p>
 </div>
 <div class="section level4">
 <h4 id="iv-2---evaluation">IV.2 - Evaluation<a class="anchor" aria-label="anchor" href="#iv-2---evaluation"></a>
@@ -335,12 +375,12 @@ Some points to consider:</p>
 <li>If the metrics provided above for the input matrices do not appear
 to be outperforming the randomized matrices, you may wish to set more
 restrictive demands on what samples can be used as input data. The
-ability to detect copy number signatures absolutely depends on whether
-each pattern is sufficiently represented in the data, BUT, this signal
-can be obfuscated with lower quality samples that introduce noise.
-Finding a balance of quantity vs. quality is important. The largest
-number of high-quality samples possible used for signature creation (but
-no more) is ideal.</li>
+ability to detect copy number signatures depends heavily on whether each
+pattern is sufficiently represented in the data, BUT, this signal can be
+obfuscated with lower quality samples that introduce noise. Finding a
+balance of quantity vs. quality is important. The largest number of
+high-quality samples possible used for signature creation (but no more)
+is ideal.</li>
 <li>By default utanos suggests using 6 CN features for modelling,
 however it may be desirable to use more/others. There are two more that
 can easily be used by setting the <code>extra_features</code> parameter
@@ -353,8 +393,8 @@ the case that the modelling is not appropriately capturing the
 heterogeneity in the data.</li>
 <li>Examine the consensus matrices (the average connectivity matrix
 across NMF runs) in heatmap form alongside the silhouette track (or
-others) to see how samples cluster together. Are there clear clusters
-emerging?</li>
+others) to see how samples cluster together. Do clear clusters
+emerge?</li>
 </ul>
 <p>Visualize the sample-by-component matrix:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">

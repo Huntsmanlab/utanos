@@ -77,7 +77,7 @@
 <h2 id="i---introduction">I - Introduction<a class="anchor" aria-label="anchor" href="#i---introduction"></a>
 </h2>
 <p>Broadly, this vignette seeks to demonstrate how a user could answer
-the following three questions using <strong>utanos</strong>:</p>
+the following three questions using <strong>Utanos</strong>:</p>
 <ul>
 <li>In my dataset, where do copy-number (CN) gains and losses
 co-occur?</li>
@@ -308,33 +308,63 @@ made.</p>
 <p>To find the optimal ploidy and cellularity, use the
 <code><a href="../reference/FindRascalSolutions.html">FindRascalSolutions()</a></code> function.<br>
 Only the first argument is mandatory, the rest are optional.</p>
-<p>Arguments: 1. <code>cnobj</code> - The relative copy-number object
-we’ve been using throughout all these vignettes. 2.
-<code>min_ploidy</code> &amp; <code>max_ploidy</code> - Determines the
-range of ploidies to search from. 3. <code>ploidy_step</code> - The
-stepwise increment of ploidies along the range. 4.
+<p>Arguments:</p>
+<ol style="list-style-type: decimal">
+<li>
+<code>cnobj</code> - The relative copy-number object we’ve been
+using throughout all these vignettes.<br>
+</li>
+<li>
+<code>min_ploidy</code> &amp; <code>max_ploidy</code> - Determines
+the range of ploidies to search from.<br>
+</li>
+<li>
+<code>ploidy_step</code> - The stepwise increment of ploidies along
+the range.<br>
+</li>
+<li>
 <code>min_cellularity</code> &amp; <code>max_cellularity</code> -
-Determines the range of cellularities to search from. 5.
-<code>cellularity_step</code> - The stepwise increment of cellularities
-along the range. 6. <code>distance_function</code> - The distance
-function to use, “MAD” (mean absolute difference) or “RMSD” (root mean
-square difference). 7. <code>distance_filter_scale_factor</code> - The
-distance threshold above which solutions will be discarded as a multiple
-of the solution with the smallest distance. 8.
+Determines the range of cellularities to search from.<br>
+</li>
+<li>
+<code>cellularity_step</code> - The stepwise increment of
+cellularities along the range.<br>
+</li>
+<li>
+<code>distance_function</code> - The distance function to use, “MAD”
+(mean absolute difference) or “RMSD” (root mean square
+difference).<br>
+</li>
+<li>
+<code>distance_filter_scale_factor</code> - The distance threshold
+above which solutions will be discarded as a multiple of the solution
+with the smallest distance.<br>
+</li>
+<li>
 <code>max_proportion_zero</code> - The maximum proportion of fitted
-absolute copy number values in the zero copy number state. 9.
+absolute copy number values in the zero copy number state.<br>
+</li>
+<li>
 <code>in_proportion_close_to_whole_number</code> - The minimum
 proportion of fitted absolute copy number values sufficiently close to a
-whole number. 10. <code>max_distance_from_whole_number</code> - The
-maximum distance from a whole number that a fitted absolute copy number
-can be to be considered sufficiently close. 11.
-<code>solution_proximity_threshold</code> - How close two solutions can
-be before one will be filtered; reduces the number of best fit solutions
-where there are many minima in close proximity. 12.
-<code>keep_all</code> - <code>TRUE</code> to return all solutions but
-with additional <code>best_fit</code> column to indicate which are the
-local minima that are acceptable solutions (may be useful to avoid
-computing the distance grid twice).</p>
+whole number.<br>
+</li>
+<li>
+<code>max_distance_from_whole_number</code> - The maximum distance
+from a whole number that a fitted absolute copy number can be to be
+considered sufficiently close.<br>
+</li>
+<li>
+<code>solution_proximity_threshold</code> - How close two solutions
+can be before one will be filtered; reduces the number of best fit
+solutions where there are many minima in close proximity.<br>
+</li>
+<li>
+<code>keep_all</code> - <code>TRUE</code> to return all solutions
+but with additional <code>best_fit</code> column to indicate which are
+the local minima that are acceptable solutions (may be useful to avoid
+computing the distance grid twice).</li>
+</ol>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="sc">&gt;</span> solutions <span class="ot">&lt;-</span> <span class="fu">FindRascalSolutions</span>(cnobj)</span></code></pre></div>
 <hr>
 </div>
@@ -352,7 +382,8 @@ function.</p>
 <ol style="list-style-type: decimal">
 <li>
 <code>cnobj</code> - The relative copy-number object we’ve been
-using throughout all these vignettes.</li>
+using throughout all these vignettes.<br>
+</li>
 <li>
 <code>acnmethod</code> - The method for scaling. Expects a string.
 It can be one of:
