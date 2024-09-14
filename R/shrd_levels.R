@@ -7,7 +7,6 @@
 #' @param segments The segments gathered_by_ratio_medians
 #' @param granges_obj A granges object containing the clean ratios file after CleanBamRatios()
 #'
-#' @export
 
 PrepForLevelsInitialization <- function(segments, granges_obj) {
   # SHRD recalculates the ratio_median, by finding the overlap with the original bin-wise ratios per segment and using their median, instead of the segmented value
@@ -50,7 +49,6 @@ PrepForLevelsInitialization <- function(segments, granges_obj) {
 #'
 #' @param segments The segments data frame, gathered by ratio medians.
 #'
-#' @export
 
 ExcludeShortArms <- function(segments) {
   #### Excludes the selected chromosome arms ####
@@ -81,7 +79,6 @@ ExcludeShortArms <- function(segments) {
 #'
 #' @param segments
 #'
-#' @export
 
 GetLargeSegments <- function(segments) {
   result = segments[which(segments[,7] > 2999999),]
@@ -103,7 +100,6 @@ GetLargeSegments <- function(segments) {
 #' @param thr A float: the threshold previously estimated via KDE. Used to determine whether
 #' large segments are merged.
 #'
-#' @export
 
 AssignLevels <- function(segments, thr) {
   segments_copy <- segments
@@ -143,7 +139,6 @@ AssignLevels <- function(segments, thr) {
 #' (i.e. already determined)
 #' @param granges_obj A GRanges object: used to obtain genomic data from regions we're merging.
 #'
-#' @export
 
 GatherSegmentsByLevels <- function(segments, granges_obj) {
   #### Iterate through rows in segments ####

@@ -5,7 +5,6 @@
 #'
 #' @param segments A data frame containing the segment data.
 #'
-#' @export
 
 GetSmallSegments <- function(segments) {
   result = segments[which(segments[,7] > 99999), ]
@@ -22,7 +21,6 @@ GetSmallSegments <- function(segments) {
 #'
 #' @param bam_ratios_frame A data frame: the cleaned-up version of the raw bam ratios file.
 #'
-#' @export
 
 GetGRangesObject <- function(bam_ratios_frame) {
   bam_ratios_frame = bam_ratios_frame[,-1]
@@ -56,7 +54,6 @@ GetGRangesObject <- function(bam_ratios_frame) {
 #' @param large_segments A data frame. Segments with size >= Mb.
 #' @param small_segments A data frame. Segments with 3Mb >= size >= 0.1Mb.
 #'
-#' @export
 
 LargeMissingChrArms <- function(large_segments, small_segments) {
   values = unique(small_segments[,3][!small_segments[,3] %in% large_segments[,3]])
@@ -99,7 +96,6 @@ LargeMissingChrArms <- function(large_segments, small_segments) {
 #' @param large_segments A data frame. Segments with size >= Mb.
 #' @param small_segments A data frame. Segments with 3Mb >= size >= 0.1Mb.
 #'
-#' @export
 
 SmallMissingChrArms <- function(large_segments, small_segments) {
   values = unique(small_segments[,3][!small_segments[,3] %in% large_segments[,3]])
@@ -127,7 +123,6 @@ SmallMissingChrArms <- function(large_segments, small_segments) {
 #' @param granges_obj A GRanges object: is used as reference to check whenever we have
 #' an overlap of segments and get the ratio_median of this overlap.
 #'
-#' @export
 
 InsertSmallSegments <- function(large_segments, small_segments, threshold, granges_obj) {
   output <- InitalizeSmallSegments(large_segments = large_segments,

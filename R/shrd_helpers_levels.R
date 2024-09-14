@@ -9,7 +9,6 @@
 #' @param thr A float: the threshold previously estimated via KDE. Used to determine whether
 #' big segments are merged.
 #'
-#' @export
 
 FindBigSegmentsIndices <- function(segments_copy, thr) {
   # Getting largest segment by size

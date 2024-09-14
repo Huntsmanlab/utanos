@@ -10,7 +10,8 @@ RunShallowHRDFromQDNA(
   num_simulations = 1e+05,
   shrd_save_path = FALSE,
   plot = FALSE,
-  seed = 1337
+  seed = 1337,
+  cores = 1
 )
 }
 \arguments{
@@ -25,6 +26,8 @@ RunShallowHRDFromQDNA(
 \item{plot}{Whether or not to return a plot showing how segments are merged as the algorithm runs.}
 
 \item{seed}{A seed to use for PRNG-dependent functions. Ensures reproduciblity between runs.}
+
+\item{cores}{The number of cores to use for running samples in parallel. If set to 1, no parallel processing will be used.}
 }
 \value{
 A list of ShallowHRD results, with one entry per sample.

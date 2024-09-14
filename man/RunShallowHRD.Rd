@@ -10,9 +10,7 @@ RunShallowHRD(
   include_chr_X = FALSE,
   num_simulations = 1e+05,
   shrd_save_path = FALSE,
-  first_threshold = NULL,
   sample = NULL,
-  second_threshold = NULL,
   seed = 1337,
   plot = FALSE
 )
