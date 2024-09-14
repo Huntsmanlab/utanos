@@ -17,7 +17,7 @@
 #' @param telomere_2_starts An array: contains the start positions of all 23 chromosome's second telomere IN ORDER from 1 to 23.
 #' @param telomere_2_ends An array: contains the end positions of all 23 chromosome's second telomere IN ORDER from 1 to 23.
 #'
-#' @export
+
 RemoveCentromereTelomeres <- function(df, include_chr_X, centromere_starts, centromere_ends, telomere_2_starts, telomere_2_ends) {
   if (include_chr_X == TRUE) {
     n_chr_to_check = 23 # so in for-loop  we look iterate 23 times: we check 23 chromosomes.
@@ -54,7 +54,7 @@ RemoveCentromereTelomeres <- function(df, include_chr_X, centromere_starts, cent
 #' @param include_chr_X A boolean. Whether to set chromosome arms for segments in Chr X/23 or not.
 #' @param centromere_positions An array: the middle positions for each chromosome IN ORDER from 1 to 23.
 #'
-#' @export
+
 AddChromosomeArmHelper <- function(df, include_chr_X, centromere_positions) {
   if (include_chr_X == TRUE) {
     n_chr_to_check = 23 # so in for-loop next we look for the 23rd centromere
@@ -108,7 +108,7 @@ AddChromosomeArmHelper <- function(df, include_chr_X, centromere_positions) {
 #' @param df The Data Frame with segment data: first column is chromosome number, second column is chromosome arm,
 #' third column is start position, fourth is end position, and fifth is the ratio_median.
 #'
-#' @export
+
 GatherSegmentsByRatioMedianHelper <- function(df) {
   N = dim(df)[1]
   gathered_by_ratio_median = matrix(0, ncol=6, nrow=N)

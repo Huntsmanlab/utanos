@@ -14,7 +14,6 @@
 #' @param granges_obj A GRanges object: is used as genomic reference to check whenever we have
 #' an overlap of segments and get the data (specifically the ratio_median) of this overlap.
 #'
-#' @export
 
 InitalizeSmallSegments <- function(large_segments, small_segments, threshold, granges_obj) {
   N_large = dim(large_segments)[1]
@@ -156,7 +155,6 @@ InitalizeSmallSegments <- function(large_segments, small_segments, threshold, gr
 #' @param granges_obj A GRanges object: is used as reference to check whenever we have
 #' an overlap of segments and get the ratio_median of this overlap.
 #'
-#' @export
 
 FinalizeSmallSegments <- function(large_segments, small_segments, threshold, granges_obj) {
   N_small = dim(small_segments)[1]
@@ -498,7 +496,7 @@ FinalizeSmallSegments <- function(large_segments, small_segments, threshold, gra
 #' @param granges_obj A GRanges object: is used as reference to check whenever we have
 #' empty space between segments and get the ratio_median of this missing portion.
 #'
-#' @export
+
 CorrectLeftovers <- function(segments, granges_obj) {
   c = 1
 
@@ -550,7 +548,7 @@ CorrectLeftovers <- function(segments, granges_obj) {
 #' @param small_segment Same as above.
 #' @param threshold A float: the threshold for ratio_median difference previously estimated.
 #'
-#' @export
+
 RatioDiffBelowThreshold <- function(large_segment, small_segment, threshold) {
   output = (abs(small_segment[6] - large_segment[6])) <= threshold
   output
@@ -576,7 +574,7 @@ RatioDiffBelowThreshold <- function(large_segment, small_segment, threshold) {
 #' @param below_thr A boolean: whether large_segment and small_segment ratio_median difference is below the threhsold.
 #' @param end_of_file A boolean: whether there's any large segments after `j`.
 #'
-#' @export
+
 MergeSegmentsTwo <- function(granges_obj, small_segment, large_segments, j, below_thr, end_of_file) {
   N_large = dim(large_segments[1])
   large_segment = as.numeric(large_segments[j,])
@@ -659,7 +657,7 @@ MergeSegmentsTwo <- function(granges_obj, small_segment, large_segments, j, belo
 #' @param below_thr A boolean: whether large_segment and small_segment ratio_median difference is below the threshold
 #' @param end_of_file A boolean: whether there's any large segments after `j`.
 #'
-#' @export
+
 MergeSegmentsFour <- function(granges_obj, small_segment, large_segments, j, below_thr, end_of_file) {
   N_large = dim(large_segments)[1]
   large_segment = as.numeric(large_segments[j,])
@@ -744,7 +742,6 @@ MergeSegmentsFour <- function(granges_obj, small_segment, large_segments, j, bel
 #' @param j An integer/index: the position of the large segment we're comparing with small_segment, within `large_segments`.
 #' @param end_of_file A boolean: whether there's any large segments after `j`.
 #'
-#' @export
 
 MergeSegmentsFiveLargeSmall <- function(granges_obj, small_segment, large_segments, j, end_of_file) {
   N_large = dim(large_segments)[1]
@@ -793,7 +790,6 @@ MergeSegmentsFiveLargeSmall <- function(granges_obj, small_segment, large_segmen
 #' @param j An integer/index: the position of the large segment we're comparing with small_segment, within `large_segments`.
 #' @param end_of_file A boolean: whether there's any large segments after `j`.
 #'
-#' @export
 
 MergeSegmentsFiveSmallNextLarge <- function(granges_obj, small_segment, large_segments, j, end_of_file) {
   N_large = dim(large_segments)[1]

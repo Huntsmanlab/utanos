@@ -13,7 +13,7 @@
 #' @param log_transform A boolean: TRUE if you want to log2 transform the ratio_median column. FALSE otherwise.
 #' If dealing with Controlfreec data, log_transform should be TRUE. If QDNAseq, log_transform should be FALSE.
 #'
-#' @export
+
 CleanBamRatiosFrame <- function(raw_bam_ratios, log_transform) {
   # Cleaning up raw_bam_ratios file
   raw_bam_ratios = raw_bam_ratios[,1:4]
@@ -55,7 +55,7 @@ CleanBamRatiosFrame <- function(raw_bam_ratios, log_transform) {
 #' @param bam_ratios_frame A data frame: a cleaned up version of the original bam_ratios.txt file.
 #' @param include_chr_X A boolean: whether we search for chromosome X or not.
 #'
-#' @export
+
 RemoveSpuriousRegions <- function(bam_ratios_frame, include_chr_X) {
   # Dropping the 'feature' and the 'ratio' column.
   bam_ratios_frame <- bam_ratios_frame[,-1]
@@ -85,7 +85,7 @@ RemoveSpuriousRegions <- function(bam_ratios_frame, include_chr_X) {
 #' this segment data has already had its spurious regions removed.
 #' @param include_chr_X A boolean: True if we include chromosome X/23, False otherwise.
 #'
-#' @export
+
 AddChromosomeArm <- function(bam_ratios_frame, include_chr_X) {
   # Adding the new column and adding new names to the columns
   bam_ratios_frame$chr_arm <- rep(0, nrow(bam_ratios_frame))
@@ -115,7 +115,7 @@ AddChromosomeArm <- function(bam_ratios_frame, include_chr_X) {
 #' @param bam_ratios_frame A data frame: the cleaned up version of the bam_ratios.txt file. In the pipeline,
 #' this segment data has already had its spurious regions removed, and a chromosome arm column has been added/determined.
 #'
-#' @export
+
 GatherSegmentsByRatioMedian <- function(bam_ratios_frame) {
   # Removing segments with a ratio_median = -Inf
   inf_ratio_median_indices = which(bam_ratios_frame$ratio_median == -Inf)

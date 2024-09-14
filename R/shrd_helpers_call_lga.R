@@ -10,7 +10,6 @@
 #' @param threshold A float: threshold for ratio_median difference previously estimated.
 #' @param segments A data frame: segment data.
 #'
-#' @export
 
 GetSegmentID <- function(threshold, segments){
   # Level column
@@ -46,7 +45,6 @@ GetSegmentID <- function(threshold, segments){
 #' @param segments A data frame: segment data.
 #' @param granges_obj A GRanges object.
 #'
-#' @export
 
 ShrinkReprTMP <- function(segments, granges_obj) {
   for (i in 1:(dim(segments)[1]-1)) {
@@ -92,7 +90,6 @@ ShrinkReprTMP <- function(segments, granges_obj) {
 #' @param size_lga An integer: size of the LGA to look for.
 #' @param segments A data frame: segment data.
 #'
-#' @export
 
 DetermineNumberOfLGAs <- function(threshold, size_lga, segments) {
   segments[,1] <- seq(1,dim(segments)[1])

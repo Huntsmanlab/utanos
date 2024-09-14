@@ -7,7 +7,7 @@
 #' @param granges_obj A GRanges object: used to fine genomic data from the specified regions.
 #' @param segmenta A data frame: segment data.
 #'
-#' @export
+
 PrepFirstRound <- function(granges_obj, segments) {
   segments = segments[which(segments$chr != 23),]
   for (i in 1:nrow(segments)) {
@@ -65,9 +65,7 @@ PrepSecondRound <- function(segments) {
 #' of ratio medians (i.e. with updated segments, such as post-merging). Set to False by default.
 #' @param seed A seed to use for random number generation. Ensures reproducibility between runs.
 #'
-#' @export
-#'
-#'
+
 RunThresholdSimulations <- function(num_simulations=100000, all_ratio_differences, second_round=FALSE, seed) {
   list_of_possible_thresholds = c()
   tolerance = 0.10
@@ -134,8 +132,7 @@ RunThresholdSimulations <- function(num_simulations=100000, all_ratio_difference
 #' @param ratio_differences A Data Frame. The estimated density values for the given sampled batch
 #' @param crit_point A string. The critical point to look for: either 'max' or 'min'.
 #'
-#' @export
-#'
+
 GetCriticalPoints <- function(batch_ratio_differences, crit_point) {
   densities = density(batch_ratio_differences)$y
 
@@ -166,7 +163,7 @@ GetCriticalPoints <- function(batch_ratio_differences, crit_point) {
 #'
 #' @param all_ratio_differenves An array: the ratio differences for all pairs of segments.
 #'
-#' @export
+
 NullListOfThresholds <- function(all_ratio_differences) {
   maxima = GetCriticalPoints(all_ratio_differences, 'max')[1]
   first_local_maxima = density(all_ratio_differences)$x[maxima]

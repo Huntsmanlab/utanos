@@ -8,8 +8,7 @@ GenerateSampleByComponentMatrix(
   CN_features,
   all_components = NULL,
   cores = 1,
-  rowIter = 1000,
-  subcores = 2
+  rowIter = 1000
 )
 }
 \arguments{
@@ -21,8 +20,6 @@ Likely the output from \code{FitMixtureModels()}.}
 \item{cores}{Integer. The number of cores to use for parallel processing.}
 
 \item{rowIter}{Integer. Number of rows to ingest per iteration if using multiple cores. Otherwise ignored.}
-
-\item{subcores}{Integer. In parallel mode each CN-feature will be run separately, this is the number for cores to allocate to each of these sub-jobs.}
 }
 \value{
 A sum-of-posteriors probability matrix.

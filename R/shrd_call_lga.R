@@ -160,7 +160,7 @@ BreakSmoothToLGA <- function(threshold, segments, granges_obj) {
 #' ratio file tsv. For second pass: this clean-up segments but merged by ratio_median.
 #' @param granges_obj A GRanges object: used to obtain genomic data from regions we're merging.
 #' @param second_round A boolean: FALSE if first pass, TRUE if second pass.
-#' @export
+
 GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame, granges_obj, second_round) {
   if (second_round == FALSE) {
     # Setting up frame
@@ -237,7 +237,6 @@ GetSegmentationBeforeLGACall <- function(segments, bam_ratios_frame, granges_obj
 #' @param segments A data frame: segment data that's (ideally) already been processed (merging segments,
 #' small ones have been reinserted, and so on)
 #'
-#' @export
 
 CallLGA <- function(threshold, segments) {
   result <- as.data.frame(matrix(0, ncol=2, nrow=9))
@@ -263,7 +262,7 @@ CallLGA <- function(threshold, segments) {
 #' @param size_lga An integer: size of the LGA to look for.
 #' @param segments A data frame: segment data
 #'
-#' @export
+
 GetLGAOfSize <- function(threshold, size_lga, segments) {
   segments_with_LGA <- DetermineNumberOfLGAs(threshold=threshold,
                                              size_lga=size_lga,
@@ -314,6 +313,7 @@ GetLGAOfSize <- function(threshold, size_lga, segments) {
 #'
 #' @returns The HRD status of the sample: TRUE if the number of LGAs >= 10 Mb exceeds 20; FALSE otherwise.
 #'
+
 GetHRDStatus <- function(lga_calls) {
   n_lga <- lga_calls[which(lga_calls$Size_LGA == 10), 2]
 

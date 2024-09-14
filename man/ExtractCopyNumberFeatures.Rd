@@ -8,7 +8,7 @@ ExtractCopyNumberFeatures(
   CN_data,
   genome,
   cores = 1,
-  log_gaussians = FALSE,
+  log_features = FALSE,
   extra_features = FALSE
 )
 }
@@ -27,7 +27,7 @@ Options: 'hg19', 'hg38'}
 
 \item{cores}{Integer. The number of cores to use for parallel processing.}
 
-\item{log_gaussians}{Logical. If TRUE, take the log1p of the extracted CN-features for those being modeled by gaussians. (segsize, changepoint, copynumber)}
+\item{log_features}{FALSE or char vector. If a vector of feature names is provided, take the log1p of these extracted CN-features.}
 
 \item{extra_features}{Logical. If TRUE, extracts CN-feature data for two more features: nc50, and cdist.}
 }
