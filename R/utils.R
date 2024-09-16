@@ -12,7 +12,7 @@
 # GetGRangesFromEnsDb
 #
 # CompareBinCNs
-# removeBlacklist
+# RemoveBlacklist
 # CopyNumberSegments
 # BestRelativeProfile
 # CompareSignatureByComponent
