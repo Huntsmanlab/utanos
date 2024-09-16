@@ -3,29 +3,43 @@
 # The original code can be found here: https://bitbucket.org/britroc/cnsignatures/src/master/
 # The original code was a part of a publication in Nat. Gen. (August 2018)
 
-FitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",
-                       min_prior=0.001,niter=1000,nrep=1,min_comp=2,max_comp=10) {
-    control<-new("FLXcontrol")
-    control@minprior<-min_prior
-    control@iter.max<-niter
-    set.seed(seed)
-    if(dist=="norm") {
-        if(min_comp==max_comp) {
-            fit<-flexmix::flexmix(dat ~ 1,model=flexmix::FLXMCnorm1(),k=min_comp,control=control)
-        } else {
-            fit<-flexmix::stepFlexmix(dat ~ 1,model = flexmix::FLXMCnorm1(),k=min_comp:max_comp,nrep=nrep,control=control)
-            fit<-flexmix::getModel(fit,which=model_selection)
-        }
+FitComponent <- function(dat, dist = "norm", seed = 77777,
+                         model_selection = "BIC",
+                         min_prior = 0.001,
+                         niter = 1000,
+                         nrep = 1,
+                         min_comp = 2, max_comp = 10) {
 
-    }else if(dist=="pois") {
-        if(min_comp==max_comp) {
-            fit<-flexmix::flexmix(dat ~ 1,model=flexmix::FLXMCmvpois(),k=min_comp,control=control)
-        } else {
-            fit<-flexmix::stepFlexmix(dat ~ 1,model = flexmix::FLXMCmvpois(),k=min_comp:max_comp,nrep=nrep,control=control)
-            fit<-flexmix::getModel(fit,which=model_selection)
-        }
+  control <- new("FLXcontrol")
+  control@minprior <- min_prior
+  control@iter.max <- niter
+  set.seed(seed)
+  if (dist == "norm") {
+    if (min_comp == max_comp) {
+      fit <- flexmix::flexmix(dat ~ 1,
+                              model = flexmix::FLXMCnorm1(),
+                              k = min_comp, control = control)
+    } else {
+      fit <- flexmix::stepFlexmix(dat ~ 1,
+                                  model = flexmix::FLXMCnorm1(),
+                                  k = min_comp:max_comp,
+                                  nrep = nrep, control = control)
+      fit <- flexmix::getModel(fit, which = model_selection)
     }
-    fit
+  } else if (dist == "pois") {
+    if (min_comp == max_comp) {
+      fit <- flexmix::flexmix(dat ~ 1,
+                              model = flexmix::FLXMCmvpois(),
+                              k = min_comp, control = control)
+    } else {
+      fit <- flexmix::stepFlexmix(dat ~ 1,
+                                  model = flexmix::FLXMCmvpois(),
+                                  k = min_comp:max_comp,
+                                  nrep = nrep, control = control)
+      fit <- flexmix::getModel(fit, which = model_selection)
+    }
+  }
+  fit
 }
 
 MultiSeedFitComponent<-function(dat,dist="norm",num_seed=100,model_selection="BIC",
@@ -157,16 +171,12 @@ CalculateSumOfPosteriors <- function(CN_feature, components,name,
     lastiter = iters + 1
 
     registerDoMC(cores)
-    curr_posterior = foreach(i=0:iters, .combine=rbind) %dopar% {
-      start = i*rowIter+1
-
-      end <- if (i != lastiter) {
-        (i + 1) * rowIter
-      } else {
-        len
-      }
-
-      flexmix::posterior(components, data.frame(dat=as.numeric(CN_feature[start:end,2])))
+    curr_posterior = foreach(i = 0:iters,
+                             .combine = rbind) %dopar% {
+      start = i * rowIter + 1
+      if (i != lastiter) { end = (i + 1) * rowIter } else { end = len }
+      flexmix::posterior(components,
+                         data.frame(dat = as.numeric(CN_feature[start:end,2])))
     }
 
     # Handle the last chunk if it exists and len is not perfectly divisible by rowiter
@@ -178,14 +188,16 @@ CalculateSumOfPosteriors <- function(CN_feature, components,name,
       curr_posterior <- rbind(curr_posterior, last_chunk)
     }
   } else {
-    curr_posterior <- flexmix::posterior(components, data.frame(dat=as.numeric(CN_feature[,2])))
+    curr_posterior <- flexmix::posterior(components,
+                                         data.frame(dat = as.numeric(CN_feature[,2])))
   }
-  mat <- cbind(CN_feature,curr_posterior)
+  mat <- cbind(CN_feature, curr_posterior)
   posterior_sum <- c()
 
   # note - foreach and parallelization doesn't make the following code faster.
   for (i in unique(mat$ID)) {
-    posterior_sum <- rbind(posterior_sum,colSums(mat[mat$ID==i,c(-1,-2)]))
+      posterior_sum <- rbind(posterior_sum,
+                             colSums(mat[mat$ID == i, c(-1, -2)]))
   }
   params <- flexmix::parameters(components)
 
@@ -200,14 +212,14 @@ CalculateSumOfPosteriors <- function(CN_feature, components,name,
   posterior_sum
 }
 
-GetSegSize <- function(abs_profiles) {
+GetSegSize <- function(cn_profiles) {
   out <- c()
-  samps <- GetSampNames(abs_profiles)
+  samps <- GetSampNames(cn_profiles)
   for (i in samps) {
-    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
-      segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
+    if (inherits(cn_profiles, "QDNAseqCopyNumbers")) {
+      segTab <- GetSegTable(cn_profiles[, which(colnames(cn_profiles) == i)])
     } else {
-      segTab <- abs_profiles[[i]]
+      segTab <- cn_profiles[[i]]
       colnames(segTab)[4] <- "segVal"
     }
     segTab$segVal[as.numeric(segTab$segVal) < 0] <- 0
@@ -220,42 +232,42 @@ GetSegSize <- function(abs_profiles) {
   data.frame(out, stringsAsFactors = F)
 }
 
-GetBPNum <- function(abs_profiles, chrlen) {
-    out <- c()
-    samps <- GetSampNames(abs_profiles)
-    for (i in samps) {
-        if (class(abs_profiles) == "QDNAseqCopyNumbers") {
-            segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
-        } else {
-            segTab <- abs_profiles[[i]]
-            colnames(segTab)[4] <- "segVal"
-        }
-        chrs <- unique(segTab$chromosome)
-        allBPnum <- c()
-        for (c in chrs) {
-            currseg <- segTab[segTab$chromosome == c,]
-            intervals <- seq(1,
-                             chrlen[chrlen[,1] == paste0("chr", c), 2] + 10000000,
-                             10000000)
-            res <- hist(as.numeric(currseg$end[-nrow(currseg)]),
-                        breaks = intervals, plot = FALSE)$counts
-            allBPnum <- c(allBPnum, res)
-        }
-        out <- rbind(out, cbind(ID = rep(i, length(allBPnum)),
-                                value = allBPnum))
+GetBPNum <- function(cn_profiles, chrlen) {
+  out <- c()
+  samps <- GetSampNames(cn_profiles)
+  for (i in samps) {
+    if (inherits(cn_profiles, "QDNAseqCopyNumbers")) {
+      segTab <- GetSegTable(cn_profiles[, which(colnames(cn_profiles) == i)])
+    } else {
+      segTab <- cn_profiles[[i]]
+      colnames(segTab)[4] <- "segVal"
     }
-    rownames(out) <- NULL
-    data.frame(out, stringsAsFactors = F)
+    chrs <- unique(segTab$chromosome)
+    allBPnum <- c()
+    for (c in chrs) {
+      currseg <- segTab[segTab$chromosome == c,]
+      intervals <- seq(1,
+                       chrlen[chrlen[,1] == paste0("chr", c), 2] + 10000000,
+                       10000000)
+      res <- hist(as.numeric(currseg$end[-nrow(currseg)]),
+                  breaks = intervals, plot = FALSE)$counts
+      allBPnum <- c(allBPnum, res)
+    }
+    out <- rbind(out, cbind(ID = rep(i, length(allBPnum)),
+                              value = allBPnum))
+  }
+  rownames(out) <- NULL
+  data.frame(out, stringsAsFactors = F)
 }
 
-GetOscilation <- function(abs_profiles, chrlen) {
+GetOscilation <- function(cn_profiles, chrlen) {
   out <- c()
-  samps <- GetSampNames(abs_profiles)
+  samps <- GetSampNames(cn_profiles)
   for (i in samps) {
-    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
-      segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
+    if (inherits(cn_profiles, "QDNAseqCopyNumbers")) {
+      segTab <- GetSegTable(cn_profiles[, which(colnames(cn_profiles) == i)])
     } else {
-      segTab <- abs_profiles[[i]]
+      segTab <- cn_profiles[[i]]
       colnames(segTab)[4] <- "segVal"
     }
     chrs <- unique(segTab$chromosome)
@@ -293,7 +305,7 @@ GetRelativeOscilation <- function(cn_profiles, chrlen) {
   out <- c()
   samps <- GetSampNames(cn_profiles)
   for (i in samps) {
-    if (class(cn_profiles) == "QDNAseqCopyNumbers") {
+    if (inherits(cn_profiles, "QDNAseqCopyNumbers")) {
       segTab <- GetSegTable(cn_profiles[, which(colnames(cn_profiles) == i)])
     } else {
       segTab <- cn_profiles[[i]]
@@ -335,15 +347,15 @@ GetRelativeOscilation <- function(cn_profiles, chrlen) {
 }
 
 
-GetBPChromArmCounts <- function (abs_profiles, centromeres, chrlen) {
+GetBPChromArmCounts <- function (cn_profiles, centromeres, chrlen) {
   out <- c()
-  samps <- GetSampNames(abs_profiles)
+  samps <- GetSampNames(cn_profiles)
 
   for (i in samps) {
-    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
-      segTab <- GetSegTable(abs_profiles[,which(colnames(abs_profiles) == i)])
+    if (inherits(cn_profiles, "QDNAseqCopyNumbers")) {
+      segTab <- GetSegTable(cn_profiles[,which(colnames(cn_profiles) == i)])
     } else {
-      segTab <- abs_profiles[[i]]
+      segTab <- cn_profiles[[i]]
       colnames(segTab)[4] <- "segVal"
     }
     chrs <- unique(segTab$chromosome)
@@ -385,15 +397,15 @@ GetBPChromArmCounts <- function (abs_profiles, centromeres, chrlen) {
 }
 
 
-GetChangePointCN <- function (abs_profiles) {
+GetChangePointCN <- function (cn_profiles) {
   out <- c()
-  samps <- GetSampNames(abs_profiles)
+  samps <- GetSampNames(cn_profiles)
 
   for (i in samps) {
-    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
-      segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
+    if (inherits(cn_profiles, "QDNAseqCopyNumbers")) {
+      segTab <- GetSegTable(cn_profiles[, which(colnames(cn_profiles) == i)])
     } else {
-      segTab <- abs_profiles[[i]]
+      segTab <- cn_profiles[[i]]
       colnames(segTab)[4] <- "segVal"
     }
     segTab <- segTab[!is.na(segTab$segVal),]
@@ -420,7 +432,7 @@ GetNC50 <- function(cn_profiles) {
   out <- c()
   samps <- GetSampNames(cn_profiles)
   for (i in samps) {
-    if (class(cn_profiles) == "QDNAseqCopyNumbers") {
+    if (inherits(cn_profiles, "QDNAseqCopyNumbers")) {
       segTab <- GetSegTable(cn_profiles[, which(colnames(cn_profiles) == i)])
     } else {
       segTab <- cn_profiles[[i]]
@@ -440,16 +452,16 @@ GetNC50 <- function(cn_profiles) {
 }
 
 
-GetRelativeChangePointCN <- function(abs_profiles) {
+GetRelativeChangePointCN <- function(cn_profiles) {
   out <- c()
-  samps <- GetSampNames(abs_profiles)
+  samps <- GetSampNames(cn_profiles)
   for (i in samps) {
-    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
-      segTab <- GetSegTable(abs_profiles[,which(colnames(abs_profiles) == i)])
+    if (inherits(cn_profiles, "QDNAseqCopyNumbers")) {
+      segTab <- GetSegTable(cn_profiles[,which(colnames(cn_profiles) == i)])
     }
     else {
-      segTab <- abs_profiles[[i]]
-      colnames(segTab)[4]<-"segVal"
+      segTab <- cn_profiles[[i]]
+      colnames(segTab)[4] <- "segVal"
     }
     segTab <- segTab[!is.na(segTab$segVal),]
     segTab$segVal[as.numeric(segTab$segVal) <= 0] <- 0.00001
@@ -470,14 +482,14 @@ GetRelativeChangePointCN <- function(abs_profiles) {
 }
 
 
-GetCN <- function(abs_profiles) {
+GetCN <- function(cn_profiles) {
   out <- c()
-  samps <- GetSampNames(abs_profiles)
+  samps <- GetSampNames(cn_profiles)
   for (i in samps) {
-    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
-      segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles) == i)])
+    if (inherits(cn_profiles, "QDNAseqCopyNumbers")) {
+      segTab <- GetSegTable(cn_profiles[,which(colnames(cn_profiles) == i)])
     } else {
-      segTab <- abs_profiles[[i]]
+      segTab <- cn_profiles[[i]]
       colnames(segTab)[4] <- "segVal"
     }
     segTab <- segTab[!is.na(segTab$segVal),]
@@ -495,7 +507,7 @@ GetRelativeCN <- function(cn_profiles) {
   out <- c()
   samps <- GetSampNames(cn_profiles)
   for (i in samps) {
-    if (class(cn_profiles) == "QDNAseqCopyNumbers") {
+    if (inherits(cn_profiles, "QDNAseqCopyNumbers")) {
       segTab <- GetSegTable(cn_profiles[,which(colnames(cn_profiles) == i)])
     }
     else {
@@ -512,53 +524,56 @@ GetRelativeCN <- function(cn_profiles) {
   data.frame(out, stringsAsFactors = F)
 }
 
-GetSampNames<-function(abs_profiles) {
-  if (class(abs_profiles) == "QDNAseqCopyNumbers") {
-    samps <- colnames(abs_profiles)
+GetSampNames <- function(cn_profiles) {
+  if (inherits(cn_profiles, "QDNAseqCopyNumbers")) {
+    samps <- colnames(cn_profiles)
   } else {
-    samps <- names(abs_profiles)
+    samps <- names(cn_profiles)
   }
   samps
 }
 
-GetSegTable<-function(x)
-{
-    dat<-x
-    sn<-Biobase::assayDataElement(dat,"segmented")
-    fd <- Biobase::fData(dat)
-    fd$use -> use
-    fdfiltfull<-fd[use,]
-    sn<-sn[use,]
-    segTable<-c()
-    for(c in unique(fdfiltfull$chromosome))
-    {
-        snfilt<-sn[fdfiltfull$chromosome==c]
-        fdfilt<-fdfiltfull[fdfiltfull$chromosome==c,]
-        sn.rle<-rle(snfilt)
-        starts <- cumsum(c(1, sn.rle$lengths[-length(sn.rle$lengths)]))
-        ends <- cumsum(sn.rle$lengths)
-        lapply(1:length(sn.rle$lengths), function(s) {
-            from <- fdfilt$start[starts[s]]
-            to <- fdfilt$end[ends[s]]
-            segValue <- sn.rle$value[s]
-            c(fdfilt$chromosome[starts[s]], from, to, segValue)
-        }) -> segtmp
-        segTableRaw <- data.frame(matrix(unlist(segtmp), ncol=4, byrow=T),stringsAsFactors=F)
-        segTable <- rbind(segTable, segTableRaw)
-    }
-    colnames(segTable) <- c("chromosome", "start", "end", "segVal")
-    segTable
+GetSegTable <- function(x) {
+  dat <- x
+  sn <- Biobase::assayDataElement(dat, "segmented")
+  fd <- Biobase::fData(dat)
+  fd$use -> use
+  fdfiltfull <- fd[use,]
+  sn <- sn[use,]
+  segTable <- c()
+
+  for (c in unique(fdfiltfull$chromosome)) {
+    snfilt <- sn[fdfiltfull$chromosome == c]
+    fdfilt <- fdfiltfull[fdfiltfull$chromosome == c,]
+    sn.rle <- rle(snfilt)
+    starts <- cumsum(c(1, sn.rle$lengths[-length(sn.rle$lengths)]))
+    ends <- cumsum(sn.rle$lengths)
+    lapply(1:length(sn.rle$lengths), function(s) {
+      from <- fdfilt$start[starts[s]]
+      to <- fdfilt$end[ends[s]]
+      segValue <- sn.rle$value[s]
+      c(fdfilt$chromosome[starts[s]], from, to, segValue)
+    }) -> segtmp
+    segTableRaw <- data.frame(matrix(unlist(segtmp),
+                                     ncol = 4,
+                                     byrow = T),
+                              stringsAsFactors = F)
+    segTable <- rbind(segTable, segTableRaw)
+  }
+
+  colnames(segTable) <- c("chromosome", "start", "end", "segVal")
+  segTable
 }
 
 
-GetPloidy <- function(abs_profiles) {
+GetPloidy <- function(cn_profiles) {
   out <- c()
-  samps <- GetSampNames(abs_profiles)
+  samps <- GetSampNames(cn_profiles)
   for (i in samps) {
-    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
-      segTab <- GetSegTable(abs_profiles[, which(colnames(abs_profiles) == i)])
+    if (inherits(cn_profiles, "QDNAseqCopyNumbers")) {
+      segTab <- GetSegTable(cn_profiles[, which(colnames(cn_profiles) == i)])
     } else {
-      segTab <- abs_profiles[[i]]
+      segTab <- cn_profiles[[i]]
       colnames(segTab)[4] <- "segVal"
     }
     segLen <- (as.numeric(segTab$end) - as.numeric(segTab$start))
@@ -584,41 +599,41 @@ NormaliseMatrix <- function(signature_by_sample,
 LowerNorm <- function(x, sig_thresh = 0.01) {
   new_x <- x
   for (i in 1:length(x)) {
-    if(x[i] < sig_thresh) {
+    if (x[i] < sig_thresh) {
       new_x[i] <- 0
     }
   }
   new_x
 }
 
-GetDistsFromCentromere <- function(abs_profiles, centromeres, chrlen) {
+GetDistsFromCentromere <- function(cn_profiles, centromeres, chrlen) {
   out <- c()
-  samps <- GetSampNames(abs_profiles)
+  samps <- GetSampNames(cn_profiles)
   for (i in samps) {
-    if (class(abs_profiles) == "QDNAseqCopyNumbers") {
-      segTab<-GetSegTable(abs_profiles[,which(colnames(abs_profiles) == i)])
+    if (inherits(cn_profiles, "QDNAseqCopyNumbers")) {
+      segTab <- GetSegTable(cn_profiles[,which(colnames(cn_profiles) == i)])
     } else {
-      segTab<-abs_profiles[[i]]
-      colnames(segTab)[4]<-"segVal"
+      segTab <- cn_profiles[[i]]
+      colnames(segTab)[4] <- "segVal"
     }
-    chrs<-unique(segTab$chromosome)
-    all_dists<-c()
-    for(c in chrs) {
-      if(nrow(segTab) > 1) {
-        starts <- as.numeric(segTab[segTab$chromosome == c,2])[-1]
-        segstart <- as.numeric(segTab[segTab$chromosome == c,2])[1]
-        ends <- as.numeric(segTab[segTab$chromosome == c,3])
+    chrs <- unique(segTab$chromosome)
+    all_dists <- c()
+    for (c in chrs) {
+      if (nrow(segTab) > 1) {
+        starts <- as.numeric(segTab[segTab$chromosome == c, 2])[-1]
+        segstart <- as.numeric(segTab[segTab$chromosome == c, 2])[1]
+        ends <- as.numeric(segTab[segTab$chromosome == c, 3])
         segend <- ends[length(ends)]
         ends <- ends[-length(ends)]
-        centstart <- as.numeric(centromeres$start[substr(centromeres$chromosome,4,5) == c])
-        centend <- as.numeric(centromeres$end[substr(centromeres$chromosome,4,5) == c])
-        chrend <- chrlen[substr(chrlen[,1],4,5) == c,2]
-        ndist <- cbind(rep(NA,length(starts)),rep(NA,length(starts)))
-        ndist[starts <= centstart,1] <- (centstart-starts[starts<=centstart])/(centstart-segstart)*-1
-        ndist[starts >= centend,1] <- (starts[starts>=centend]-centend)/(segend-centend)
-        ndist[ends <= centstart,2] <- (centstart-ends[ends<=centstart])/(centstart-segstart)*-1
-        ndist[ends >= centend,2] <- (ends[ends>=centend]-centend)/(segend-centend)
-        ndist <- apply(ndist,1,min)
+        centstart <- as.numeric(centromeres$start[substr(centromeres$chromosome, 4, 5) == c])
+        centend <- as.numeric(centromeres$end[substr(centromeres$chromosome, 4, 5) == c])
+        chrend <- chrlen[substr(chrlen[,1], 4, 5) == c, 2]
+        ndist <- cbind(rep(NA, length(starts)), rep(NA, length(starts)))
+        ndist[starts <= centstart,1] <- (centstart - starts[starts <= centstart])/(centstart - segstart) * -1
+        ndist[starts >= centend,1] <- (starts[starts >= centend] - centend)/(segend - centend)
+        ndist[ends <= centstart,2] <- (centstart - ends[ends <= centstart])/(centstart - segstart) * -1
+        ndist[ends >= centend,2] <- (ends[ends >= centend] - centend)/(segend - centend)
+        ndist <- apply(ndist, 1, min)
 
         # If any segments spill over into a centromere an NA is thrown.
         # We don't want to count these seg. ends as breakpoints nor...
@@ -628,13 +643,13 @@ GetDistsFromCentromere <- function(abs_profiles, centromeres, chrlen) {
         ndist <- abs(ndist)
         ndist <- data.frame(ndist)
 
-        all_dists <- rbind(all_dists,ndist)
+        all_dists <- rbind(all_dists, ndist)
       }
     }
-    if(nrow(all_dists) > 0){
-      out <- rbind(out,cbind(ID = i, value = all_dists$ndist))
+    if (nrow(all_dists) > 0) {
+      out <- rbind(out, cbind(ID = i, value = all_dists$ndist))
     }
   }
-  rownames(out)<-NULL
-  data.frame(out,stringsAsFactors = F)
+  rownames(out) <- NULL
+  data.frame(out, stringsAsFactors = F)
 }

@@ -31,6 +31,8 @@ Example: \cr
 
 \item{save_path}{(optional) String. Expects a path to a directory where the plot should be saved. (png)}
 
+\item{rmblacklist}{optional \emph{NULL or character vector}. Filter the plot of blacklist regions from this genome. ex. 'hg19'}
+
 \item{obj_name}{(optional) String. Adds a tag to the end of the filename if saving the image. \cr
 Only used if the save_path parameter is also set.}
 }
