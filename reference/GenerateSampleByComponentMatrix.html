@@ -23,6 +23,7 @@
     <li><a class="dropdown-item" href="../articles/1_samplequality-vignette.html">1. Sample Filtering and Quality Evaluation</a></li>
     <li><a class="dropdown-item" href="../articles/2_cndiversityandscaling-vignette.html">2. Investigating Copy-Number Diversity</a></li>
     <li><a class="dropdown-item" href="../articles/3_cnsignatures-vignette.html">3. Investigating and Creating Copy-Number Signatures</a></li>
+    <li><a class="dropdown-item" href="../articles/4_shallowhrd-vignette.html">4. Predicting Homologous Recombination Deficiency (HRD)</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -48,8 +49,7 @@
 <span>  <span class="va">CN_features</span>,</span>
 <span>  all_components <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cores <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>  rowIter <span class="op">=</span> <span class="fl">1000</span>,</span>
-<span>  subcores <span class="op">=</span> <span class="fl">2</span></span>
+<span>  rowIter <span class="op">=</span> <span class="fl">1000</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -72,10 +72,6 @@ Likely the output from <code><a href="FitMixtureModels.html">FitMixtureModels()<
 
 <dt id="arg-rowiter">rowIter<a class="anchor" aria-label="anchor" href="#arg-rowiter"></a></dt>
 <dd><p>Integer. Number of rows to ingest per iteration if using multiple cores. Otherwise ignored.</p></dd>
-
-
-<dt id="arg-subcores">subcores<a class="anchor" aria-label="anchor" href="#arg-subcores"></a></dt>
-<dd><p>Integer. In parallel mode each CN-feature will be run separately, this is the number for cores to allocate to each of these sub-jobs.</p></dd>
 
 </dl></div>
     <div class="section level2">

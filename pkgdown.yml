@@ -6,8 +6,9 @@ articles:
   1_samplequality-vignette: 1_samplequality-vignette.html
   2_cndiversityandscaling-vignette: 2_cndiversityandscaling-vignette.html
   3_cnsignatures-vignette: 3_cnsignatures-vignette.html
+  4_shallowhrd-vignette: 4_shallowhrd-vignette.html
   utanos: utanos.html
-last_built: 2024-09-13T21:18Z
+last_built: 2024-09-16T21:07Z
 urls:
   reference: https://huntsmanlab.github.io/utanos/reference
   article: https://huntsmanlab.github.io/utanos/articles
