@@ -10,6 +10,7 @@ RCNDiversityPlot(
   cluster = TRUE,
   subset = NULL,
   Xchr = FALSE,
+  rmblacklist = NULL,
   limits = c(-1.5, 1.5),
   breaks = c(2.5, 1, 0.5, 0, -0.5, -1, -2.5),
   genome = "hg19"
@@ -18,9 +19,11 @@ RCNDiversityPlot(
 \arguments{
 \item{order_by}{optional \emph{character vector} containing the order the samples in the heatmap should be in}
 
-\item{cluster}{optional \emph{logical} Do you want to do a row-wise sort of the  heatmap (sort the samples)}
+\item{cluster}{optional \emph{logical} Do a row-wise sort of the heatmap (sort the samples)}
 
 \item{subset}{optional \emph{character vector} A subset of samples that you'd like to plot.}
+
+\item{rmblacklist}{optional \emph{NULL or character vector}. Filter the plot of blacklist regions from this genome. ex. 'hg19'}
 
 \item{limits}{\emph{vector} containing the limits of your colour gradient. Passed to scale_fill_gradientn}
 
