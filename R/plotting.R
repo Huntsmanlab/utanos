@@ -227,8 +227,8 @@ SortHeatmap <- function(slice) {
   return(slice)
 }
 
-#' Create annotation bars 
-#' 
+#' Create annotation bars
+#'
 #' Make a list of coloured annotation bars for each sample provided and their corresponding categories
 #'
 #' @param ann_df A dataframe. Must contain at least `sample_id` and all columns in `cols` \cr
@@ -1082,7 +1082,7 @@ RelToAbsSegPos <- function(chromosomes, rel_start_pos, rel_end_pos, build = "GRC
 #' @export
 AddGenesToPlot <- function(plot, genes, edb = EnsDb.Hsapiens.v75::EnsDb.Hsapiens.v75, ...) {
   # Get the locations of the genes we are interested in.
-  genes_ens <- as.data.frame(ensembldb::genes(edb, filter = ~ gene_name %in% genes, return.type = "DataFrame"))
+  genes_ens <- as.data.frame(ensembldb::genes(edb, filter = ~ gene_name %in% genes & gene_biotype != "LRG_gene", return.type = "DataFrame"))
 
   # We will bin the genes by their midpoint.
   genes_ens <- genes_ens %>%
