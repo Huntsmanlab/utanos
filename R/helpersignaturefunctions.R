@@ -32,6 +32,116 @@ FitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",min_prio
     fit
 }
 
+MultiSeedFitComponent<-function(dat,dist="norm",num_seed=100,model_selection="BIC",min_prior=0.001,niter=1000,nrep=1,min_comp=2,max_comp=10, cores = 1)
+{
+  control<-new("FLXcontrol")
+  control@minprior<-min_prior
+  control@iter.max<-niter
+
+  if (cores > 1) {
+    require(foreach)
+    require(doMC)
+
+    registerDoMC(cores)
+
+    all_bic = foreach(i=1:num_seed) %dopar% {
+      set.seed(i)
+      if(min_comp==max_comp)
+      {
+        if(dist=="pois"){
+          fit<-flexmix::flexmix(dat ~ 1,model=flexmix::FLXMCmvpois(),k=min_comp,control=control)
+        } else{
+          fit<-flexmix::flexmix(dat ~ 1,model=flexmix::FLXMCnorm1(),k=min_comp,control=control)
+        }
+        bic<-t(as.data.frame(BIC(fit)))
+        rownames(bic) <- i
+        bic
+      }else{
+        if(dist=="pois"){
+          fit<-flexmix::stepFlexmix(dat ~ 1,model = flexmix::FLXMCmvpois(),k=min_comp:max_comp,nrep=nrep,control=control)
+        }else{
+          fit<-flexmix::stepFlexmix(dat ~ 1,model = flexmix::FLXMCnorm1(),k=min_comp:max_comp,nrep=nrep,control=control)
+        }
+        bic<-t(as.data.frame(BIC(fit)))
+        rownames(bic) <- i
+        bic
+      }
+    }
+  }else{ #only one core
+    all_bic <- list()
+
+    for (i in 1:num_seed) {
+
+      set.seed(i)
+
+      if (min_comp == max_comp) {
+
+        if (dist == "pois") {
+          fit <- flexmix::flexmix(dat ~ 1, model = flexmix::FLXMCmvpois(), k = min_comp, control = control)
+        } else {
+          fit <- flexmix::flexmix(dat ~ 1, model = flexmix::FLXMCnorm1(), k = min_comp, control = control)
+        }
+
+      } else {
+
+        if (dist == "pois") {
+          fit <- flexmix::stepFlexmix(dat ~ 1, model = flexmix::FLXMCmvpois(), k = min_comp:max_comp, nrep = nrep, control = control)
+        } else {
+          fit <- flexmix::stepFlexmix(dat ~ 1, model = flexmix::FLXMCnorm1(), k = min_comp:max_comp, nrep = nrep, control = control)
+        }
+      }
+
+      bic <- t(as.data.frame(BIC(fit)))
+      rownames(bic) <- i
+      all_bic[[i]] <- bic
+    }
+  }
+  if (min_comp!=max_comp){
+    all_bic <- all_bic[sapply(all_bic, length) == max_comp-min_comp+1]
+  }
+
+  all_bic <- do.call(rbind, all_bic)
+  #choose best seed and number of comp
+  if (min_comp == max_comp){
+    all_bic_df <- as.data.frame(all_bic)
+
+    min_bic_index <- which.min(all_bic_df[, 1])
+
+    best_seed <- rownames(all_bic_df)[min_bic_index]
+    set.seed(best_seed)
+
+    if (dist == "pois") {
+      fit <-flexmix::flexmix(dat ~ 1,model=flexmix::FLXMCmvpois(),k=min_comp,control=control)
+    } else {
+      fit<-flexmix::flexmix(dat ~ 1,model=flexmix::FLXMCnorm1(),k=min_comp,control=control)
+    }
+
+  }else{
+
+    all_bic_df <- as.data.frame(all_bic)
+
+    min_bic_per_seed <- apply(all_bic_df, 1, min)
+
+    min_bic_index <- which.min(min_bic_per_seed)
+
+    best_seed <- rownames(all_bic_df)[min_bic_index]
+
+    best_comp <- names(all_bic_df)[which.min(all_bic_df[min_bic_index, ])]
+
+    best_comp <- as.numeric(best_comp)
+
+    set.seed(best_seed)
+
+    if (dist == "pois") {
+      fit <- flexmix::flexmix(dat ~ 1, model = flexmix::FLXMCmvpois(), k = best_comp, control = control)
+    } else {
+      fit <- flexmix::flexmix(dat ~ 1, model = flexmix::FLXMCnorm1(), k = best_comp, control = control)
+    }
+
+  }
+  fit
+}
+
 CalculateSumOfPosteriors <- function(CN_feature, components,name,
                                      rowIter = 1000, cores = 1) {
   if (cores > 1) {
@@ -39,14 +149,29 @@ CalculateSumOfPosteriors <- function(CN_feature, components,name,
     require(doMC)
 
     len = dim(CN_feature)[1]
-    iters = floor( len / rowIter )
-    lastiter = iters[length(iters)]
+    iters = floor( len / rowIter ) - 1
+    lastiter = iters + 1
 
     registerDoMC(cores)
     curr_posterior = foreach(i=0:iters, .combine=rbind) %dopar% {
       start = i*rowIter+1
-      if (i != lastiter) { end = (i+1)*rowIter } else { end = len }
+
+      end <- if (i != lastiter) {
+        (i + 1) * rowIter
+      } else {
+        len
+      }
+
       flexmix::posterior(components, data.frame(dat=as.numeric(CN_feature[start:end,2])))
+    }
+
+    # Handle the last chunk if it exists and len is not perfectly divisible by rowiter
+    if (len %% rowIter != 0) {
+      start <- lastiter * rowIter + 1
+      end <- len
+
+      last_chunk <- flexmix::posterior(components, data.frame(dat = as.numeric(CN_feature[start:end, 2])))
+      curr_posterior <- rbind(curr_posterior, last_chunk)
     }
   } else {
     curr_posterior <- flexmix::posterior(components, data.frame(dat=as.numeric(CN_feature[,2])))
@@ -56,14 +181,14 @@ CalculateSumOfPosteriors <- function(CN_feature, components,name,
 
   # note - foreach and parallelization doesn't make the following code faster.
   for (i in unique(mat$ID)) {
-      posterior_sum <- rbind(posterior_sum,colSums(mat[mat$ID==i,c(-1,-2)]))
+    posterior_sum <- rbind(posterior_sum,colSums(mat[mat$ID==i,c(-1,-2)]))
   }
   params <- flexmix::parameters(components)
 
   if (!is.null(nrow(params))) {
-      posterior_sum <- posterior_sum[, order(params[1,])]
+    posterior_sum <- posterior_sum[, order(params[1,])]
   } else {
-      posterior_sum <- posterior_sum[, order(params)]
+    posterior_sum <- posterior_sum[, order(params)]
   }
 
   colnames(posterior_sum) <- paste0(name, 1:ncol(posterior_sum))
