@@ -75,6 +75,17 @@ MixtureModelPlots <- function(signatures, components, sig_of_interest = 1) {
   all_plots[["breakpointsarm"]] <- PoissonsMixturePlot(signatures, components,
                                                        sig_of_interest,
                                                        component = 'bpchrarm')
+  if("nc50" %in% names(components)){
+    all_plots[["nc50"]] <- PoissonsMixturePlot(signatures, components,
+                                                         sig_of_interest,
+                                                         component = 'nc50')
+  }
+  if("cdist" %in% names(components)){
+    all_plots[["cdist"]] <- GaussiansMixturePlot(signatures, components,
+                                               sig_of_interest,
+                                               component = 'cdist')
+  }
+
 
   return(all_plots)
 }
@@ -131,8 +142,12 @@ GaussiansMixturePlot <- function(signatures, components,
   plotbreaks <- c(10^(digits-1), (10^digits)/2, 10^digits)
   plotbreaks <- plotbreaks[xmax > plotbreaks]
 
+  plotparam_df <- as.data.frame(t(plotparam))
+  colnames(plotparam_df) <- c("mean", "sd") # Adjust based on the actual structure
+  plotparam_df$component <- factor(1:nrow(plotparam_df)) # Create a component column
+
   # Make the main plot
-  main_plot <- ggplot2::ggplot(data = data.frame(x = c(1,xmax)),
+  main_plot <- ggplot2::ggplot(data = data.frame(x = c(0,xmax)),
                                ggplot2::aes(x)) +
     ggplot2::ylab("") +
     ggplot2::xlab(paste0(component, " mixture components")) +
@@ -145,14 +160,29 @@ GaussiansMixturePlot <- function(signatures, components,
 
   for (i in 1:ncol(plotparam)) {
     main_plot <- main_plot +
-                      ggplot2::geom_area(stat = "function",
-                                         fun = dnorm,
-                                         args = list(mean = plotparam[1,i],
-                                                     sd = plotparam[2,i]),
-                                         color = "black",
-                                         size = 0.05,
-                                         fill = segpalette[i],
-                                         alpha = shading[i])
+      ggplot2::geom_line(stat = "function",
+                         fun = dnorm,
+                         args = list(mean = plotparam[1,i],
+                                     sd = plotparam[2,i]),
+                         size = 1,
+                         color = segpalette[i],
+                         alpha = shading[i])+
+      ggplot2::geom_vline(xintercept = plotparam[1, i],
+                          color = segpalette[i],
+                          linetype = "dashed",
+                          alpha = shading[i])+
+      ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],  # Ensure it's treated as a data frame
+                         ggplot2::aes(x = mean, y = -1, label = round(mean, 3)),
+                         angle = 90,
+                         vjust = if (i == 1) {
+                           -0.5
+                         } else if (round(plotparam_df[i, ][[1]],3) - round(plotparam_df[i-1, ][[1]],3)<0.01) {
+                           1.5
+                         } else {
+                           -0.5
+                         },
+                         color = segpalette[i],
+                         alpha = shading[i])
   }
   final_plot <- main_plot
 
@@ -172,26 +202,45 @@ GaussiansMixturePlot <- function(signatures, components,
     digits <- nchar(as.character(round(xmax/2)))
     plotbreaks <- c(10^(digits-1), (10^digits)/2, 10^digits)
     plotbreaks <- plotbreaks[xmax > plotbreaks]
-    inlay_plot <- ggplot2::ggplot(data = data.frame(x = c(1, xmax)),
+    inlay_plot <- ggplot2::ggplot(data = data.frame(x = c(0, xmax)),
                                   ggplot2::aes(x)) +
-                    ggplot2::ylab("") + ggplot2::xlab("") +
-                    ggplot2::theme_bw() +
-                    ggplot2::theme(axis.text = ggplot2::element_text(size = 8),
-                                   axis.title = ggplot2::element_text(size = 8),
-                                   panel.grid.minor = ggplot2::element_blank(),
-                                   panel.grid.major = ggplot2::element_blank()) +
-                    ggplot2::scale_x_continuous(breaks = plotbreaks)
+      ggplot2::ylab("") + ggplot2::xlab("") +
+      ggplot2::theme_bw() +
+      ggplot2::theme(axis.text = ggplot2::element_text(size = 8),
+                     axis.title = ggplot2::element_text(size = 8),
+                     panel.grid.minor = ggplot2::element_blank(),
+                     panel.grid.major = ggplot2::element_blank()) +
+      ggplot2::scale_x_continuous(breaks = plotbreaks)
+
+    plotparam_df <- as.data.frame(t(plotparam2))
+    colnames(plotparam_df) <- c("mean", "sd") # Adjust based on the actual structure
+    plotparam_df$component <- factor(1:nrow(plotparam_df)) # Create a component column
 
     for (i in 1:ncol(plotparam2)) {
       inlay_plot <- inlay_plot +
-                      ggplot2::geom_area(stat = "function",
-                                         fun = dnorm,
-                                         args = list(mean = plotparam2[1,i],
-                                                     sd = plotparam2[2,i]),
-                                         color = "black",
-                                         size = 0.05,
-                                         fill = segpalette[i],
-                                         alpha = shading2[i])
+        ggplot2::geom_line(stat = "function",
+                           fun = dnorm,
+                           args = list(mean = plotparam2[1,i],
+                                       sd = plotparam2[2,i]),
+                           size = 1,
+                           color = segpalette[i],
+                           alpha = shading2[i])+
+        ggplot2::geom_vline(xintercept = plotparam2[1, i],
+                            color = segpalette[i],
+                            linetype = "dashed",
+                            alpha = shading[i])+
+        ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],  # Ensure it's treated as a data frame
+                           ggplot2::aes(x = mean, y = -2, label = round(mean, 3)),
+                           angle = 90,
+                           vjust = if (i == 1) {
+                             -0.5
+                           } else if (round(plotparam_df[i, ][[1]],3) - round(plotparam_df[i-1, ][[1]],3)<0.05) {
+                             1.5
+                           } else {
+                             -0.5
+                           },
+                           color = segpalette[i],
+                           alpha = shading[i])
     }
     # Overwrite earlier final plot with inset plot version
     final_plot <-
@@ -252,20 +301,44 @@ PoissonsMixturePlot <- function(signatures, components,
     xlabel <- 'breakpoints per chr arm'
   }
 
+  plotparam_df <- as.data.frame((plotparam))
+  colnames(plotparam_df) <- c("lambda") # Adjust based on the actual structure
+  plotparam_df$mean <- plotparam_df$lambda
+
   main_plot <- ggplot2::ggplot(data = data.frame(x = c(0,round(xmax))),
                                ggplot2::aes(x = x)) +
-              ggplot2::labs(y = "", x = paste0("Number of ", xlabel)) +
-              ggplot2::theme_bw() +
-              ggplot2::theme(axis.text = ggplot2::element_text(size = 10),
-                             axis.title = ggplot2::element_text(size = 12),
-                             panel.grid.minor = ggplot2::element_blank(),
-                             panel.grid.major = ggplot2::element_blank())
+    ggplot2::labs(y = "", x = paste0("Number of ", xlabel)) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(axis.text = ggplot2::element_text(size = 10),
+                   axis.title = ggplot2::element_text(size = 12),
+                   panel.grid.minor = ggplot2::element_blank(),
+                   panel.grid.major = ggplot2::element_blank())
+
+
+
   for (i in 1:length(plotparam)) {
     main_plot <- main_plot +
-           ggplot2::stat_function(geom = "area", n = round(xmax) + 1,
-                                  fun = dpois, args = list(lambda = plotparam[i]),
-                                  color = "black", size = 0.05,
-                                  fill = cbPalette[i], alpha = shading[i])
+      ggplot2::stat_function(geom = "line", n = round(xmax) + 1,
+                             fun = dpois, args = list(lambda = plotparam[i]), size = 1,
+                             color = cbPalette[i], alpha = shading[i])+
+      ggplot2::geom_vline(xintercept = plotparam[i],
+                          color = cbPalette[i],
+                          linetype = "dashed",
+                          alpha = shading[i]
+      )+
+      ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],  # Ensure it's treated as a data frame
+                         ggplot2::aes(x = lambda, y = 0, label = round(lambda, 3)),
+                         angle = 90,
+                         vjust = if (i == 1) {
+                           -0.5
+                         } else if (round(plotparam_df[1]$lambda[i],3) - round(plotparam_df[1]$lambda[i-1],3)<0.01) {
+                           1.5
+                         } else {
+                           -0.5
+                         },
+                         color = cbPalette[i],
+                         alpha = shading[i])
+
   }
   return(main_plot)
 }
