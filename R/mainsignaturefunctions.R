@@ -387,7 +387,7 @@ FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2,
                              multi_seed = FALSE, num_seed=100) {
 
   if (cores > 1) {
-    if (multi_seed ==FALSE){
+    if (multi_seed == FALSE){
       require(foreach)
       doMC::registerDoMC(cores)
       temp_list <- foreach(i=1:length(CN_features)) %dopar% {
