@@ -3,28 +3,24 @@
 # The original code can be found here: https://bitbucket.org/britroc/cnsignatures/src/master/
 # The original code was a part of a publication in Nat. Gen. (August 2018)
 
-FitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",min_prior=0.001,niter=1000,nrep=1,min_comp=2,max_comp=10)
-{
+FitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",
+                       min_prior=0.001,niter=1000,nrep=1,min_comp=2,max_comp=10) {
     control<-new("FLXcontrol")
     control@minprior<-min_prior
     control@iter.max<-niter
     set.seed(seed)
-    if(dist=="norm")
-    {
-        if(min_comp==max_comp)
-        {
+    if(dist=="norm") {
+        if(min_comp==max_comp) {
             fit<-flexmix::flexmix(dat ~ 1,model=flexmix::FLXMCnorm1(),k=min_comp,control=control)
-        }else{
+        } else {
             fit<-flexmix::stepFlexmix(dat ~ 1,model = flexmix::FLXMCnorm1(),k=min_comp:max_comp,nrep=nrep,control=control)
             fit<-flexmix::getModel(fit,which=model_selection)
         }
 
-    }else if(dist=="pois")
-    {
-        if(min_comp==max_comp)
-        {
+    }else if(dist=="pois") {
+        if(min_comp==max_comp) {
             fit<-flexmix::flexmix(dat ~ 1,model=flexmix::FLXMCmvpois(),k=min_comp,control=control)
-        }else{
+        } else {
             fit<-flexmix::stepFlexmix(dat ~ 1,model = flexmix::FLXMCmvpois(),k=min_comp:max_comp,nrep=nrep,control=control)
             fit<-flexmix::getModel(fit,which=model_selection)
         }
@@ -32,114 +28,122 @@ FitComponent<-function(dat,dist="norm",seed=77777,model_selection="BIC",min_prio
     fit
 }
 
-MultiSeedFitComponent<-function(dat,dist="norm",num_seed=100,model_selection="BIC",min_prior=0.001,niter=1000,nrep=1,min_comp=2,max_comp=10, cores = 1)
-{
+MultiSeedFitComponent<-function(dat,dist="norm",num_seed=100,model_selection="BIC",
+                                min_prior=0.001,niter=1000,nrep=1,min_comp=2,max_comp=10, cores = 1) {
   control<-new("FLXcontrol")
   control@minprior<-min_prior
   control@iter.max<-niter
-
   if (cores > 1) {
     require(foreach)
     require(doMC)
 
     registerDoMC(cores)
 
-    all_bic = foreach(i=1:num_seed) %dopar% {
+    all_bic = foreach(i = 1:num_seed) %dopar% {
       set.seed(i)
-      if(min_comp==max_comp)
-      {
-        if(dist=="pois"){
-          fit<-flexmix::flexmix(dat ~ 1,model=flexmix::FLXMCmvpois(),k=min_comp,control=control)
-        } else{
-          fit<-flexmix::flexmix(dat ~ 1,model=flexmix::FLXMCnorm1(),k=min_comp,control=control)
+
+      # Use tryCatch to handle errors
+      fit <- tryCatch({
+        if (min_comp == max_comp) {
+          if (dist == "pois") {
+            flexmix::flexmix(dat ~ 1, model = flexmix::FLXMCmvpois(), k = min_comp, control = control)
+          } else {
+            flexmix::flexmix(dat ~ 1, model = flexmix::FLXMCnorm1(), k = min_comp, control = control)
+          }
+        } else {
+          if (dist == "pois") {
+            flexmix::stepFlexmix(dat ~ 1, model = flexmix::FLXMCmvpois(), k = min_comp:max_comp, nrep = nrep, control = control)
+          } else {
+            flexmix::stepFlexmix(dat ~ 1, model = flexmix::FLXMCnorm1(), k = min_comp:max_comp, nrep = nrep, control = control)
+          }
         }
-        bic<-t(as.data.frame(BIC(fit)))
-        rownames(bic) <- i
+      }, error = function(e) {
+        message(paste("Error occurred during fitting for seed", i, ":", e$message))
+        return(NULL)  # Return NULL if an error occurs
+      })
+
+      # Check if fitting was successful
+      if (!is.null(fit)) {
+        bic <- t(as.data.frame(BIC(fit)))
+        rownames(bic) <- as.character(i)
         bic
-      }else{
-        if(dist=="pois"){
-          fit<-flexmix::stepFlexmix(dat ~ 1,model = flexmix::FLXMCmvpois(),k=min_comp:max_comp,nrep=nrep,control=control)
-        }else{
-          fit<-flexmix::stepFlexmix(dat ~ 1,model = flexmix::FLXMCnorm1(),k=min_comp:max_comp,nrep=nrep,control=control)
-        }
-        bic<-t(as.data.frame(BIC(fit)))
-        rownames(bic) <- i
+      } else {
+        bic <- NA
+        rownames(bic) <- as.character(i)
         bic
       }
     }
-  }else{ #only one core
+  } else { #only one core
     all_bic <- list()
-
     for (i in 1:num_seed) {
-
       set.seed(i)
-
-      if (min_comp == max_comp) {
-
-        if (dist == "pois") {
-          fit <- flexmix::flexmix(dat ~ 1, model = flexmix::FLXMCmvpois(), k = min_comp, control = control)
+      fit <- tryCatch({
+        if (min_comp == max_comp) {
+          if (dist == "pois") {
+            flexmix::flexmix(dat ~ 1, model = flexmix::FLXMCmvpois(), k = min_comp, control = control)
+          } else {
+            flexmix::flexmix(dat ~ 1, model = flexmix::FLXMCnorm1(), k = min_comp, control = control)
+          }
         } else {
-          fit <- flexmix::flexmix(dat ~ 1, model = flexmix::FLXMCnorm1(), k = min_comp, control = control)
+          if (dist == "pois") {
+            flexmix::stepFlexmix(dat ~ 1, model = flexmix::FLXMCmvpois(), k = min_comp:max_comp, nrep = nrep, control = control)
+          } else {
+            flexmix::stepFlexmix(dat ~ 1, model = flexmix::FLXMCnorm1(), k = min_comp:max_comp, nrep = nrep, control = control)
+          }
         }
+      }, error = function(e) {
+        message(paste("Error occurred during fitting for seed", i, ":", e$message))
+        return(NULL)  # Return NULL or an alternative value if an error occurs
+      })
 
-      } else {
-
-        if (dist == "pois") {
-          fit <- flexmix::stepFlexmix(dat ~ 1, model = flexmix::FLXMCmvpois(), k = min_comp:max_comp, nrep = nrep, control = control)
-        } else {
-          fit <- flexmix::stepFlexmix(dat ~ 1, model = flexmix::FLXMCnorm1(), k = min_comp:max_comp, nrep = nrep, control = control)
-        }
+      # Check if fitting was successful
+      if (!is.null(fit)) {
+        bic <- t(as.data.frame(BIC(fit)))
+        rownames(bic) <- as.character(i)
+        all_bic[[i]] <- bic
       }
-
-      bic <- t(as.data.frame(BIC(fit)))
-      rownames(bic) <- i
-      all_bic[[i]] <- bic
+      else {
+        all_bic[[i]] <- NA  # Or another placeholder value if fitting failed
+      }
     }
   }
-  if (min_comp!=max_comp){
+  if (min_comp!=max_comp) {
     all_bic <- all_bic[sapply(all_bic, length) == max_comp-min_comp+1]
   }
-
   all_bic <- do.call(rbind, all_bic)
   #choose best seed and number of comp
-  if (min_comp == max_comp){
+  if (min_comp == max_comp) {
     all_bic_df <- as.data.frame(all_bic)
-
     min_bic_index <- which.min(all_bic_df[, 1])
-
     best_seed <- rownames(all_bic_df)[min_bic_index]
+    best_comp <- as.integer(best_comp)
+    best_seed <- as.integer(best_seed)
     set.seed(best_seed)
-
     if (dist == "pois") {
       fit <-flexmix::flexmix(dat ~ 1,model=flexmix::FLXMCmvpois(),k=min_comp,control=control)
     } else {
       fit<-flexmix::flexmix(dat ~ 1,model=flexmix::FLXMCnorm1(),k=min_comp,control=control)
     }
 
-  }else{
-
+  } else {
     all_bic_df <- as.data.frame(all_bic)
-
     min_bic_per_seed <- apply(all_bic_df, 1, min)
-
     min_bic_index <- which.min(min_bic_per_seed)
-
     best_seed <- rownames(all_bic_df)[min_bic_index]
-
     best_comp <- names(all_bic_df)[which.min(all_bic_df[min_bic_index, ])]
-
-    best_comp <- as.numeric(best_comp)
-
+    best_comp <- as.integer(best_comp)
+    best_seed <- as.integer(best_seed)
     set.seed(best_seed)
-
     if (dist == "pois") {
       fit <- flexmix::flexmix(dat ~ 1, model = flexmix::FLXMCmvpois(), k = best_comp, control = control)
     } else {
       fit <- flexmix::flexmix(dat ~ 1, model = flexmix::FLXMCnorm1(), k = best_comp, control = control)
     }
-
   }
-  fit
+  colnames(all_bic_df) <- paste0("component_", colnames(all_bic_df))
+  rownames(all_bic_df) <- paste0("seed_", rownames(all_bic_df))
+
+  return(list(fit, all_bic_df))
 }
 
 CalculateSumOfPosteriors <- function(CN_feature, components,name,

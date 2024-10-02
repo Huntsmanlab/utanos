@@ -376,130 +376,359 @@ ExtractRelativeCopyNumberFeatures <- function(CN_data,
 #' @param niter Integer. (flexmix param) The maximum number of iterations for the EM-algorithm.
 #' @param cores Integer. The number of cores to use for parallel processing.
 #' @param featsToFit Integer vector. The CN-features to fit.
+#' @param multi_seed Logical. If TRUE, the function is run multiple times over different seeds to find the best mixtures. It is highly recommended to use multiple cores.
+#' @param num_seed Integer. The number of seeds to use when `multi_seed = TRUE`.
 #'
-#' @returns A list of flexmix objects. One for each CN-feature.
-#'
+#' @returns A list containing `flexmix` objects for each CN-feature. If `multi_seed = TRUE`, the function will return a nested list with two components: one containing the `flexmix` objects and the other containing BIC values for each CN-feature. The BIC values are organized such that the rows represent different seeds and the columns represent the number of components. This structure allows for easy identification of the optimal seed and component configuration.
 #' @export
 FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2,
                              max_comp = 10, min_prior = 0.001, model_selection = "BIC",
-                             nrep = 1, niter = 1000, cores = 1, featsToFit = seq(1, 6)) {
+                             nrep = 1, niter = 1000, cores = 1, featsToFit = seq(1, 6),
+                             multi_seed = FALSE, num_seed=100) {
 
   if (cores > 1) {
+    if (multi_seed ==FALSE){
+      require(foreach)
+      doMC::registerDoMC(cores)
+      temp_list <- foreach(i=1:length(CN_features)) %dopar% {
+        if (i == 1 & i %in% featsToFit ) {
+          dat<-as.numeric(CN_features[["segsize"]][,2])
+          list( segsize = FitComponent(dat,seed=seed,model_selection=model_selection,
+              min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
-    require(foreach)
-    doMC::registerDoMC(cores)
+        } else if (i == 2 & i %in% featsToFit ) {
+          dat<-as.numeric(CN_features[["bp10MB"]][,2])
+          list( bp10MB = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+              min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
-    temp_list <- foreach(i=1:length(CN_features)) %dopar% {
-      if (i == 1 & i %in% featsToFit ) {
-        dat<-as.numeric(CN_features[["segsize"]][,2])
-        list( segsize = FitComponent(dat,seed=seed,model_selection=model_selection,
-            min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+        } else if (i == 3 & i %in% featsToFit ) {
+          dat<-as.numeric(CN_features[["osCN"]][,2])
+          list( osCN = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+              min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
 
-      } else if (i == 2 & i %in% featsToFit ) {
+        } else if (i == 4 & i %in% featsToFit ) {
+          dat<-as.numeric(CN_features[["bpchrarm"]][,2])
+          list( bpchrarm = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+              min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+
+        } else if (i == 5 & i %in% featsToFit ) {
+          dat<-as.numeric(CN_features[["changepoint"]][,2])
+          list( changepoint = FitComponent(dat,seed=seed,model_selection=model_selection,
+              min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+
+        } else if (i == 6 & i %in% featsToFit) {
+          dat <- as.numeric(CN_features[["copynumber"]][,2])
+          list(copynumber = FitComponent(dat, seed = seed, model_selection = model_selection,
+              nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000) )
+
+        } else if (i == 7 & i %in% featsToFit) {
+          dat <- as.numeric(CN_features[["nc50"]][,2])
+          list( nc50 = FitComponent(dat, dist = "pois", seed = seed,
+                                    model_selection = model_selection,
+                                    min_prior = min_prior, niter = niter,
+                                    nrep = nrep, min_comp = min_comp,
+                                    max_comp = max_comp) )
+
+        } else {
+          dat <- as.numeric(CN_features[["cdist"]][,2])
+          list( cdist = FitComponent(dat, seed = seed,
+                                     model_selection = model_selection,
+                                     min_prior = min_prior, niter = niter,
+                                     nrep = nrep, min_comp = min_comp,
+                                     max_comp = max_comp) )
+        }
+      }
+
+      output <- unlist(temp_list, recursive = FALSE)
+
+    } else {
+      # Multiple Core and Multiple Seeds
+      require(foreach)
+      doMC::registerDoMC(cores)
+      subcores <- max(1, cores %/% length(CN_features))
+
+      # Initialize lists to hold fits and bic_dfs separately
+      fit_list <- list()
+      bic_df_list <- list()
+
+      temp_list <- foreach(i=1:length(CN_features)) %dopar% {
+        if (i == 1 & i %in% featsToFit ) {
+          dat <- as.numeric(CN_features[["segsize"]][,2])
+          result <- MultiSeedFitComponent(dat, model_selection=model_selection,
+                                          min_prior=min_prior, niter=niter, nrep=nrep,
+                                          min_comp=min_comp, max_comp=max_comp,
+                                          num_seed=num_seed, cores=subcores)
+          list(segsize = result[[1]], segsize_bic_df = result[[2]])
+
+        } else if (i == 2 & i %in% featsToFit ) {
+          dat <- as.numeric(CN_features[["bp10MB"]][,2])
+          result <- MultiSeedFitComponent(dat, dist="pois", model_selection=model_selection,
+                                          min_prior=min_prior, niter=niter, nrep=nrep,
+                                          min_comp=min_comp, max_comp=max_comp,
+                                          num_seed=num_seed, cores=subcores)
+          list(bp10MB = result[[1]], bp10MB_bic_df = result[[2]])
+
+        } else if (i == 3 & i %in% featsToFit ) {
+          dat <- as.numeric(CN_features[["osCN"]][,2])
+          result <- MultiSeedFitComponent(dat, dist="pois", model_selection=model_selection,
+                                          min_prior=min_prior, niter=niter, nrep=nrep,
+                                          min_comp=min_comp, max_comp=max_comp,
+                                          num_seed=num_seed, cores=subcores)
+          list(osCN = result[[1]], osCN_bic_df = result[[2]])
+
+        } else if (i == 4 & i %in% featsToFit ) {
+          dat <- as.numeric(CN_features[["bpchrarm"]][,2])
+          result <- MultiSeedFitComponent(dat, dist="pois", model_selection=model_selection,
+                                          min_prior=min_prior, niter=niter, nrep=nrep,
+                                          min_comp=min_comp, max_comp=max_comp,
+                                          num_seed=num_seed, cores=subcores)
+          list(bpchrarm = result[[1]], bpchrarm_bic_df = result[[2]])
+
+        } else if (i == 5 & i %in% featsToFit ) {
+          dat <- as.numeric(CN_features[["changepoint"]][,2])
+          result <- MultiSeedFitComponent(dat, model_selection=model_selection,
+                                          min_prior=min_prior, niter=niter, nrep=nrep,
+                                          min_comp=min_comp, max_comp=max_comp,
+                                          num_seed=num_seed, cores=subcores)
+          list(changepoint = result[[1]], changepoint_bic_df = result[[2]])
+
+        } else if (i == 6 & i %in% featsToFit) {
+          dat <- as.numeric(CN_features[["copynumber"]][,2])
+          result <- MultiSeedFitComponent(dat, model_selection=model_selection,
+                                          nrep=nrep, min_comp=min_comp, max_comp=max_comp,
+                                          min_prior=0.005, niter=2000, num_seed=num_seed, cores=subcores)
+          list(copynumber = result[[1]], copynumber_bic_df = result[[2]])
+
+        } else if (i == 7 & i %in% featsToFit) {
+          dat <- as.numeric(CN_features[["nc50"]][,2])
+          result <- MultiSeedFitComponent(dat, dist = "pois", model_selection = model_selection,
+                                          min_prior = min_prior, niter = niter, nrep = nrep,
+                                          min_comp = min_comp, max_comp = max_comp,
+                                          num_seed = num_seed, cores = subcores)
+          list(nc50 = result[[1]], nc50_bic_df = result[[2]])
+
+        } else {
+          dat <- as.numeric(CN_features[["cdist"]][,2])
+          result <- MultiSeedFitComponent(dat, model_selection = model_selection,
+                                 min_prior = min_prior, niter = niter, nrep = nrep,
+                                 min_comp = min_comp, max_comp = max_comp,
+                                 num_seed = num_seed, cores = subcores)
+          list(cdist = result[[1]],  cdist_bic_df = result[[2]])
+        }
+      }
+      output <- unlist(temp_list, recursive = FALSE)
+      fit_list <- list()
+      bic_df_list <- list()
+
+      # Loop through the list and categorize the objects
+      for (name in names(output)) {
+        if (grepl("bic_df$", name)) {
+          # If the name ends with "bic_df", add to bic_df_list
+          bic_df_list[[name]] <- output[[name]]
+        } else {
+          # Otherwise, add to fit_list
+          fit_list[[name]] <- output[[name]]
+        }
+      }
+
+      # Re-order components
+      gaussians <- as.logical(lapply(fit_list, function(x) {
+        stringr::str_detect(x@model[[1]]@name, "Gaussian")}))
+      fit_list[gaussians] <- lapply(fit_list[gaussians], function(x) {
+        flexmix::relabel(x, by = "model", which = "mean")})
+      fit_list[!gaussians] <- lapply(fit_list[!gaussians], function(x) {
+        flexmix::relabel(x, by = order(flexmix::parameters(x)))})
+
+      # Combine the two lists into a list of lists
+      output <- list(fit = fit_list, bic_df = bic_df_list)
+      }
+    } else {
+      # Only 1 Core
+      if (multi_seed ==FALSE){
+        output <- list()
+        if (1 %in% featsToFit){
+          dat<-as.numeric(CN_features[["segsize"]][,2])
+          segsize_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
+                                   min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
+          output[["segsize"]] <- segsize_mm
+        }
+
+        if (2 %in% featsToFit){
         dat<-as.numeric(CN_features[["bp10MB"]][,2])
-        list( bp10MB = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-            min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+        bp10MB_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+                                min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
+        output[["bp10MB"]] <- bp10MB_mm
+        }
 
-      } else if (i == 3 & i %in% featsToFit ) {
+        if (3 %in% featsToFit){
         dat<-as.numeric(CN_features[["osCN"]][,2])
-        list( osCN = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-            min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+        osCN_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+                              min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
+        output[["osCN"]] <- osCN_mm
+        }
 
-      } else if (i == 4 & i %in% featsToFit ) {
+        if (4 %in% featsToFit){
         dat<-as.numeric(CN_features[["bpchrarm"]][,2])
-        list( bpchrarm = FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-            min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+        bpchrarm_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
+                                  min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
+        output[["bpchrarm"]] <- bpchrarm_mm
+        }
 
-      } else if (i == 5 & i %in% featsToFit ) {
+        if (5 %in% featsToFit){
         dat<-as.numeric(CN_features[["changepoint"]][,2])
-        list( changepoint = FitComponent(dat,seed=seed,model_selection=model_selection,
-            min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp) )
+        changepoint_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
+                                     min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
+        output[["changepoint"]] <- changepoint_mm
+        }
 
-      } else if (i == 6 & i %in% featsToFit) {
-        dat <- as.numeric(CN_features[["copynumber"]][,2])
-        list(copynumber = FitComponent(dat, seed = seed, model_selection = model_selection,
-            nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000) )
+        if (6 %in% featsToFit){
+        dat<-as.numeric(CN_features[["copynumber"]][,2])
+        copynumber_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
+                                    nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000)
+        output[["copynumber"]] <- copynumber_mm
+        }
 
-      } else if (i == 7 & i %in% featsToFit) {
-        dat <- as.numeric(CN_features[["nc50"]][,2])
-        list( nc50 = FitComponent(dat, dist = "pois", seed = seed,
+        if (exists("nc50", CN_features) & 7 %in% featsToFit) {
+          dat <- as.numeric(CN_features[["nc50"]][,2])
+          nc50_mm <- FitComponent(dat, dist="pois", seed = seed,
                                   model_selection = model_selection,
                                   min_prior = min_prior, niter = niter,
                                   nrep = nrep, min_comp = min_comp,
-                                  max_comp = max_comp) )
+                                  max_comp = max_comp)
+          output[["nc50"]] <- nc50_mm
+        }
 
-      } else {
-        dat <- as.numeric(CN_features[["cdist"]][,2])
-        list( cdist = FitComponent(dat, seed = seed,
+        if (exists("cdist", CN_features) & 8 %in% featsToFit) {
+          dat <- as.numeric(CN_features[["cdist"]][,2])
+          cdist_mm <- FitComponent(dat, seed = seed,
                                    model_selection = model_selection,
                                    min_prior = min_prior, niter = niter,
                                    nrep = nrep, min_comp = min_comp,
-                                   max_comp = max_comp) )
+                                   max_comp = max_comp)
+          output[["cdist"]] <- cdist_mm
+        }
+        # Re-order components
+        gaussians <- as.logical(lapply(output, function(x) {
+          stringr::str_detect(x@model[[1]]@name, "Gaussian")}))
+        output[gaussians] <- lapply(output[gaussians], function(x) {
+          flexmix::relabel(x, by = "model", which = "mean")})
+        output[!gaussians] <- lapply(output[!gaussians], function(x) {
+          flexmix::relabel(x, by = order(flexmix::parameters(x)))})
+      } else {
+        # Only 1 Core and Multiple Seeds
+          subcores <- 1
+          fit_list <- list()
+          bic_df_list <- list()
+
+          if (1 %in% featsToFit) {
+          dat <- as.numeric(CN_features[["segsize"]][,2])
+          result <- MultiSeedFitComponent(dat, model_selection=model_selection,
+                                          min_prior=min_prior, niter=niter, nrep=nrep,
+                                          min_comp=min_comp, max_comp=max_comp,
+                                          num_seed=num_seed, cores=subcores)
+          segsize <- result[[1]]
+          segsize_bic_df <- result[[2]]
+          fit_list[["segsize"]] <- segsize
+          bic_df_list[["segsize_bic_df"]] <- segsize_bic_df
+          }
+
+          if (2 %in% featsToFit) {
+          dat <- as.numeric(CN_features[["bp10MB"]][,2])
+          result <- MultiSeedFitComponent(dat, dist="pois", model_selection=model_selection,
+                                          min_prior=min_prior, niter=niter, nrep=nrep,
+                                          min_comp=min_comp, max_comp=max_comp,
+                                          num_seed=num_seed, cores=subcores)
+          bp10MB <- result[[1]]
+          bp10MB_bic_df <- result[[2]]
+          fit_list[["bp10MB"]] <- bp10MB
+          bic_df_list[["bp10MBe_bic_df"]] <- bp10MB_bic_df
+          }
+
+          if (3 %in% featsToFit) {
+          dat <- as.numeric(CN_features[["osCN"]][,2])
+          result <- MultiSeedFitComponent(dat, dist="pois", model_selection=model_selection,
+                                          min_prior=min_prior, niter=niter, nrep=nrep,
+                                          min_comp=min_comp, max_comp=max_comp,
+                                          num_seed=num_seed, cores=subcores)
+          osCN <- result[[1]]
+          osCN_bic_df <- result[[2]]
+          fit_list[["osCN"]] <- osCN
+          bic_df_list[["osCN_bic_df"]] <- osCN_bic_df
+          }
+
+          if (4 %in% featsToFit) {
+          dat <- as.numeric(CN_features[["bpchrarm"]][,2])
+          result <- MultiSeedFitComponent(dat, dist="pois", model_selection=model_selection,
+                                          min_prior=min_prior, niter=niter, nrep=nrep,
+                                          min_comp=min_comp, max_comp=max_comp,
+                                          num_seed=num_seed, cores=subcores)
+          bpchrarm <- result[[1]]
+          bpchrarm_bic_df <- result[[2]]
+          fit_list[["bpchrarm"]] <- bpchrarm
+          bic_df_list[["bpchrarm_bic_df"]] <- bpchrarm_bic_df
+          }
+
+          if (5 %in% featsToFit) {
+          dat <- as.numeric(CN_features[["changepoint"]][,2])
+          result <- MultiSeedFitComponent(dat, model_selection=model_selection,
+                                          min_prior=min_prior, niter=niter, nrep=nrep,
+                                          min_comp=min_comp, max_comp=max_comp,
+                                          num_seed=num_seed, cores=subcores)
+          changepoint <- result[[1]]
+          changepoint_bic_df <- result[[2]]
+          fit_list[["changepoint"]] <- changepoint
+          bic_df_list[["changepoint_bic_df"]] <- changepoint_bic_df
+          }
+
+          if (6 %in% featsToFit) {
+          dat <- as.numeric(CN_features[["copynumber"]][,2])
+          result <- MultiSeedFitComponent(dat, model_selection=model_selection,
+                                          nrep=nrep, min_comp=min_comp, max_comp=max_comp,
+                                          min_prior=0.005, niter=2000, num_seed=num_seed, cores=subcores)
+
+          copynumber <- result[[1]]
+          copynumber_bic_df <- result[[2]]
+          fit_list[["copynumber"]] <- copynumber
+          bic_df_list[["copynumber_bic_df"]] <- copynumber_bic_df
+          }
+
+          if (exists("nc50", CN_features) & 7 %in% featsToFit) {
+          dat <- as.numeric(CN_features[["nc50"]][,2])
+          result <- MultiSeedFitComponent(dat, dist = "pois", model_selection = model_selection,
+                                          min_prior = min_prior, niter = niter, nrep = nrep,
+                                          min_comp = min_comp, max_comp = max_comp,
+                                          num_seed = num_seed, cores = subcores)
+          nc50 = result[[1]]
+          nc50_bic_df = result[[2]]
+          fit_list[["nc50"]] <- nc50
+          bc_df_list[["nc50_bic_df"]]<- nc50_bic_df
+          }
+
+          if (exists("cdist", CN_features) & 8 %in% featsToFit) {
+          dat <- as.numeric(CN_features[["cdist"]][,2])
+          result <- MultiSeedFitComponent(dat, model_selection = model_selection,
+                                          min_prior = min_prior, niter = niter, nrep = nrep,
+                                          min_comp = min_comp, max_comp = max_comp,
+                                          num_seed = num_seed, cores = subcores)
+          cdist = result[[1]]
+          cdist_bic_df = result[[2]]
+          fit_list[["cdist"]] <- cdist
+          bc_df_list[["cdist_bic_df"]]<- cdist_bic_df
+        }
+
+      # Re-order components
+      gaussians <- as.logical(lapply(fit_list, function(x) {
+        stringr::str_detect(x@model[[1]]@name, "Gaussian")}))
+      fit_list[gaussians] <- lapply(fit_list[gaussians], function(x) {
+        flexmix::relabel(x, by = "model", which = "mean")})
+      fit_list[!gaussians] <- lapply(fit_list[!gaussians], function(x) {
+        flexmix::relabel(x, by = order(flexmix::parameters(x)))})
+
+      output <- list(fit = fit_list, bic_df = bic_df_list)
       }
+      return(output)
     }
-
-    output <- unlist(temp_list, recursive = FALSE)
-
-  } else {
-      dat<-as.numeric(CN_features[["segsize"]][,2])
-      segsize_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
-                       min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
-
-      dat<-as.numeric(CN_features[["bp10MB"]][,2])
-      bp10MB_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-                              min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
-
-      dat<-as.numeric(CN_features[["osCN"]][,2])
-      osCN_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-                            min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
-
-      dat<-as.numeric(CN_features[["bpchrarm"]][,2])
-      bpchrarm_mm<-FitComponent(dat,dist="pois",seed=seed,model_selection=model_selection,
-                                min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
-
-      dat<-as.numeric(CN_features[["changepoint"]][,2])
-      changepoint_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
-                                   min_prior=min_prior,niter=niter,nrep=nrep,min_comp=min_comp,max_comp=max_comp)
-
-      dat<-as.numeric(CN_features[["copynumber"]][,2])
-      copynumber_mm<-FitComponent(dat,seed=seed,model_selection=model_selection,
-                              nrep=nrep,min_comp=min_comp,max_comp=max_comp,min_prior=0.005,niter=2000)
-
-      output <- list(segsize = segsize_mm, bp10MB = bp10MB_mm, osCN = osCN_mm,
-                     bpchrarm = bpchrarm_mm, changepoint = changepoint_mm,
-                     copynumber = copynumber_mm)
-
-      if (exists("nc50", CN_features)) {
-        dat <- as.numeric(CN_features[["nc50"]][,2])
-        nc50_mm <- FitComponent(dat, dist="pois", seed = seed,
-                                model_selection = model_selection,
-                                min_prior = min_prior, niter = niter,
-                                nrep = nrep, min_comp = min_comp,
-                                max_comp = max_comp)
-        output[["nc50"]] <- nc50_mm
-      }
-
-      if (exists("cdist", CN_features)) {
-        dat <- as.numeric(CN_features[["cdist"]][,2])
-        cdist_mm <- FitComponent(dat, seed = seed,
-                                model_selection = model_selection,
-                                min_prior = min_prior, niter = niter,
-                                nrep = nrep, min_comp = min_comp,
-                                max_comp = max_comp)
-        output[["cdist"]] <- cdist_mm
-      }
   }
-
-  # Re-order components
-  gaussians <- as.logical(lapply(output, function(x) {
-    stringr::str_detect(x@model[[1]]@name, "Gaussian")}))
-  output[gaussians] <- lapply(output[gaussians], function(x) {
-    flexmix::relabel(x, by = "model", which = "mean")})
-  output[!gaussians] <- lapply(output[!gaussians], function(x) {
-    flexmix::relabel(x, by = order(flexmix::parameters(x)))})
-
-  return(output)
-}
 
 
 #' Generate sum-of-posteriors probability matrix
