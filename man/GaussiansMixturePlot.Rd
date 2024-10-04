@@ -9,7 +9,8 @@ GaussiansMixturePlot(
   components,
   sig_of_interest = 1,
   component = "segsize",
-  inlay_flag = TRUE
+  inlay_flag = TRUE,
+  threshold = 0.3
 )
 }
 \arguments{
