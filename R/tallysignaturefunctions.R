@@ -36,6 +36,24 @@ tally_components <- function(df, feature, cn_feature_setting) {
     data.table::as.data.table()
 }
 
+#' Extract Copy Number Tally Matrix
+#'
+#' Computes a tally matrix based on copy number (CN) data, either in absolute or relative terms.
+#' The function supports the inclusion of additional CN features and allows filtering by specific feature subsets.
+#'
+#' @param CN_data A list of CN features. Typically, this should be the output from functions like `ExtractCopyNumberFeatures()`
+#'   or `ExtractRelativeCopyNumberFeatures()`.
+#' @param genome A character string specifying the genome build (default: 'hg19').
+#'   This parameter is currently unused but can be included for compatibility with future updates.
+#' @param relative A logical value. Set to TRUE if using relative copy number data (default: FALSE).
+#'   If TRUE, the function will use relative feature settings.
+#' @param extra_features A logical value indicating whether to include extra CN features in the tally (default: FALSE).
+#'   When set to TRUE, additional feature settings are applied.
+#' @param subset_features A character vector specifying feature names to include in the result.
+#'   If not NULL, only columns corresponding to these features will be returned.
+#'
+#' @return A matrix where rows represent components (samples) and columns represent CN features.
+#'   If `subset_features` is provided, only the specified features are included in the matrix.
 #' @export
 GetCNTally <- function(CN_data, genome = 'hg19', relative=FALSE, extra_features= FALSE, subset_features = NULL){
   if(relative){
@@ -75,6 +93,20 @@ GetCNTally <- function(CN_data, genome = 'hg19', relative=FALSE, extra_features=
   return(cn_matrix)
 }
 
+#' Plot Copy Number Tally Signature Contributions
+#'
+#' This function visualizes copy number signature contributions across different components.
+#' It generates a bar plot where the x-axis represents component bins (e.g., copy number categories),
+#' and the y-axis shows the normalized contributions of each signature to the components.
+#'
+#' @param signatures An NMF object containing the copy number signature data, typically the output of a
+#'   non-negative matrix factorization (NMF) process. The function extracts the basis matrix from the NMF object.
+#' @param extra_features A logical value indicating whether extra features are included (default: FALSE).
+#'
+#' @return A `ggplot2` plot object visualizing the contribution of each signature to copy number components.
+#'   The plot consists of faceted bar charts, where each facet represents a signature and the x-axis
+#'   corresponds to component bins (e.g., specific copy number ranges).
+#'
 #' @export
 PlotCNTallySig <- function(signatures, extra_features = FALSE){
   sig_matrix <- NMF::basis(signatures)
