@@ -21,7 +21,6 @@
 DlpToQDNAseq <- function(input_path, bin_size = 500000, genome = 'hg19', Xincluded = FALSE) {
   # Construct the file pattern
   file_pattern <- file.path(input_path, "hmmcopy", "*_segments.csv.gz")
-  print(file_pattern)
 
   # List files matching the pattern
   segment_files <- list.files(path = dirname(file_pattern),
@@ -60,6 +59,8 @@ DlpToQDNAseq <- function(input_path, bin_size = 500000, genome = 'hg19', Xinclud
                                     genome = genome,
                                     Xincluded = Xincluded)
 
+  long_segs <- long_segs[, c("chromosome", "start", "end", "segmented", "sample_id")]
+
   # Set column names
   colnames(long_segs) <- c("chromosome", "start", "end", "state", "sample_id")
 
@@ -94,7 +95,7 @@ DlpToQDNAseq <- function(input_path, bin_size = 500000, genome = 'hg19', Xinclud
   copyNumbers <- new('QDNAseqCopyNumbers',
                      bins = bins,
                      copynumber = as.matrix(rcn_matrix),
-                     phenoData = Biobase::AnnotatedDataFrame(data.frame(
+                     phenodata = Biobase::AnnotatedDataFrame(data.frame(
                        sampleNames = colnames(rcn_matrix),
                        row.names = colnames(rcn_matrix)
                      ))

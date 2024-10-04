@@ -14,7 +14,9 @@ FitMixtureModels(
   nrep = 1,
   niter = 1000,
   cores = 1,
-  featsToFit = seq(1, 6)
+  featsToFit = seq(1, 6),
+  multi_seed = FALSE,
+  num_seed = 100
 )
 }
 \arguments{
@@ -37,9 +39,13 @@ FitMixtureModels(
 \item{cores}{Integer. The number of cores to use for parallel processing.}
 
 \item{featsToFit}{Integer vector. The CN-features to fit.}
+
+\item{multi_seed}{Logical. If TRUE, the function is run multiple times over different seeds to find the best mixtures. It is highly recommended to use multiple cores.}
+
+\item{num_seed}{Integer. The number of seeds to use when \code{multi_seed = TRUE}.}
 }
 \value{
-A list of flexmix objects. One for each CN-feature.
+A list containing \code{flexmix} objects for each CN-feature. If \code{multi_seed = TRUE}, the function will return a nested list with two components: one containing the \code{flexmix} objects and the other containing BIC values for each CN-feature. The BIC values are organized such that the rows represent different seeds and the columns represent the number of components. This structure allows for easy identification of the optimal seed and component configuration.
 }
 \description{
 Perform mixture modelling on CN-features using either a mixture of gaussians or poissons.
