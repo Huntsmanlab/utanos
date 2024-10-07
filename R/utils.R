@@ -60,6 +60,8 @@ AnnotationCr <- function(queryset, targetset) {
 #' @returns A dataframe of per-bin copy numbers (bounded for each sample).
 #'
 #' @export
+#' @importFrom data.table .N
+#' @importFrom data.table :=
 SegmentsToCopyNumber <- function(segs, bin_size,
                                  genome = 'hg19', Xincluded = FALSE) {
 
@@ -70,6 +72,7 @@ SegmentsToCopyNumber <- function(segs, bin_size,
     stopifnot("start" %in% names(segs[[1]]), is.numeric(segs[[1]]$start))
     stopifnot("end" %in% names(segs[[1]]), is.numeric(segs[[1]]$end))
     stopifnot("segVal" %in% names(segs[[1]]), is.numeric(segs[[1]]$segVal))
+
   } else if (is.data.frame(segs)) {
     stopifnot(dim(segs)[1] != 0)
     stopifnot("sample_id" %in% colnames(segs))
@@ -77,52 +80,64 @@ SegmentsToCopyNumber <- function(segs, bin_size,
     stopifnot("start" %in% colnames(segs), is.numeric(segs$start))
     stopifnot("end" %in% colnames(segs), is.numeric(segs$end))
     stopifnot("segVal" %in% colnames(segs), is.numeric(segs$segVal))
-    segslist <- list()
-    for (samplename in unique(segs$sample_id)) {
-      tempvar <- segs %>% dplyr::filter(sample_id == samplename) %>%
-                    dplyr::select(-sample_id)
-      segslist[[samplename]] <- as.data.frame(tempvar)
-    }
-    segs <- segslist
+    setDT(segs)
+    segs <- split(segs, by = "sample_id")
+
   } else {
     stop("Please provide either a list of dataframes or a single dataframe of
          copy-numbers on which to perform this transformation.")
   }
 
   # Create template binned genome
+  # Use data.table operations and modify objects in place.
   chroms <- GetBinnedChromosomes(genome, Xincluded, bin_size)
-  genome_template <- data.frame(chromosome = rep(chroms$chrom, chroms$nbins),
-                                start = rep(rep(1,dim(chroms)[1]), chroms$nbins),
-                                end = rep(chroms$size, chroms$nbins)) %>%
-    dplyr::group_by(chromosome,start,end) %>%
-    dplyr::mutate(id = 1:dplyr::n()) %>%
-    dplyr::mutate(start = start + ((id-1) * bin_size),
-                  end = start + bin_size - 1) %>%
-    dplyr::select(-id) %>%
-    dplyr::ungroup()
+  chroms1 <- as.data.table(chroms)
+  genome_template1 <- data.table(chromosome = rep(chroms1$chrom, chroms1$nbins),
+                                 start = rep(rep(1,dim(chroms1)[1]), chroms1$nbins),
+                                 end = rep(chroms1$size, chroms1$nbins),
+                                 id = rep(chroms1$size, chroms1$nbins))
+  genome_template1[, id := seq_len(.N), by = .(chromosome)]
+  genome_template1[, `:=`(start = start + (id - 1) * bin_size),
+                             by = .(chromosome)]
+  genome_template1[, `:=`(end = ifelse(1:.N == .N, chroms1$size[.GRP], start + bin_size - 1)),
+                             by = .(chromosome)]
+  genome_template1[, id := NULL]
 
-  # Build dataframe of per-bin copy numbers
-  out <- c()
-  for (name in names(segs)) {
-    sample <- segs[[name]] %>% dplyr::mutate(size = end - start + 1) %>%
-      dplyr::mutate(nbins = size/bin_size)
-    sample <- as.data.frame(lapply(sample, rep, sample$nbins)) %>%
-      dplyr::group_by(chromosome,start,end,segVal) %>%
-      dplyr::mutate(id = 1:dplyr::n()) %>%
-      dplyr::mutate(chromosome = as.character(chromosome),
-                    start = (floor(start/bin_size) * bin_size + 1) + ((id-1) * bin_size),
-                    end = start + bin_size - 1) %>%
-      dplyr::select(-c(size,nbins,id)) %>%
-      dplyr::ungroup()
-    per_bin_copy_numbers <- dplyr::left_join(genome_template, sample,
-                                             by = c('chromosome', 'start', 'end'))
-    per_bin_copy_numbers$sample_id <- name
-    out <- rbind(out, per_bin_copy_numbers)
+  # Build data.frame of per-bin copy numbers
+  out <- rbindlist(replicate(length(segs), genome_template1, simplify = FALSE))
+  out[, `:=`(segVal = NA_real_, sample_id = NA_character_)]
+
+  for (i in 1:length(segs)) {
+    sample <- as.data.table(segs[[i]])
+    sample[, `:=`(size = end - start + 1)]
+    sample[, `:=`(nbins = floor(size / bin_size),
+                  seg_id = seq_len(.N)), by = chromosome]
+    sample <- sample[rep(seq_len(.N), nbins)]
+    sample[, bin_id := seq_len(.N), by = .(chromosome, segVal)]
+    sample[, `:=`(
+      chromosome = as.character(chromosome),
+      start = (floor(start / bin_size) * bin_size + 1) + ((bin_id - 1) * bin_size)),
+      by = .(chromosome)]
+    sample[, `:=`(end = start + bin_size - 1)]
+    cols_to_drop <- setdiff(names(sample), c("chromosome", "start", "end", "segVal"))
+    sample[, (cols_to_drop) := NULL]
+    per_bin_cns <- merge(genome_template1, sample,
+                         by = c('chromosome', 'start', 'end'),
+                         all.x = TRUE,
+                         sort = FALSE)
+
+    # Calculate indices for block reassignment
+    i1 <- 1+((i-1)*nrow(genome_template1))
+    i2 <- i*nrow(genome_template1)
+
+    out[i1:i2, `:=`(segVal = per_bin_cns$segVal,
+                    sample_id = names(segs)[i])]
   }
 
   names(out) <- c("chromosome", "start", "end", "segmented", "sample_id")
   return(out)
 }
+
 
 GetBinnedChromosomes <- function(genome, Xincluded = FALSE, bin_size) {
 
@@ -670,3 +685,4 @@ RoundToNearest <- function(value, x) {
   rounded_value <- round(value / x) * x
   return(rounded_value)
 }
+

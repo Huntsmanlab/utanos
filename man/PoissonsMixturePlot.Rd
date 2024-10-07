@@ -8,7 +8,8 @@ PoissonsMixturePlot(
   signatures,
   components,
   sig_of_interest = 1,
-  component = "bp10MB"
+  component = "bp10MB",
+  threshold = 0.3
 )
 }
 \arguments{

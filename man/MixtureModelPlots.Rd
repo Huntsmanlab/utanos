@@ -4,7 +4,7 @@
 \alias{MixtureModelPlots}
 \title{Plot Mixture Model Components by Signature}
 \usage{
-MixtureModelPlots(signatures, components, sig_of_interest = 1)
+MixtureModelPlots(signatures, components, sig_of_interest = 1, threshold = 0.3)
 }
 \arguments{
 \item{signatures}{A dataframe with components along the y-axis and signatures along the x.}

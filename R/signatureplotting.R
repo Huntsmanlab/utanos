@@ -45,7 +45,7 @@ TwoFeatureScatterPlot <- function(featA, featB) {
 #'
 #'
 #' @export
-MixtureModelPlots <- function(signatures, components, sig_of_interest = 1) {
+MixtureModelPlots <- function(signatures, components, sig_of_interest = 1, threshold = 0.3) {
 
   # Validate input
   stopifnot("Components argument must be a list of flexmix objects." =
@@ -59,22 +59,41 @@ MixtureModelPlots <- function(signatures, components, sig_of_interest = 1) {
   all_plots <- list()
   all_plots[["segmentsize"]] <- GaussiansMixturePlot(signatures, components,
                                                      sig_of_interest,
-                                                     component = 'segsize')
+                                                     component = 'segsize',
+                                                     threshold = threshold)
   all_plots[["breakpoint10MB"]] <- PoissonsMixturePlot(signatures, components,
                                                        sig_of_interest,
-                                                       component = 'bp10MB')
+                                                       component = 'bp10MB',
+                                                       threshold = threshold)
   all_plots[["oscillating"]] <- PoissonsMixturePlot(signatures, components,
                                                     sig_of_interest,
-                                                    component = 'osCN')
+                                                    component = 'osCN',
+                                                    threshold = threshold)
   all_plots[["changepoint"]] <- GaussiansMixturePlot(signatures, components,
                                                      sig_of_interest,
-                                                     component = 'changepoint')
+                                                     component = 'changepoint',
+                                                     threshold = threshold)
   all_plots[["copynumber"]] <- GaussiansMixturePlot(signatures, components,
                                                     sig_of_interest,
-                                                    component = 'copynumber')
+                                                    component = 'copynumber',
+                                                    threshold = threshold)
   all_plots[["breakpointsarm"]] <- PoissonsMixturePlot(signatures, components,
                                                        sig_of_interest,
-                                                       component = 'bpchrarm')
+                                                       component = 'bpchrarm',
+                                                       threshold = threshold)
+  if("nc50" %in% names(components)){
+    all_plots[["nc50"]] <- PoissonsMixturePlot(signatures, components,
+                                                         sig_of_interest,
+                                                         component = 'nc50',
+                                               threshold = threshold)
+  }
+  if("cdist" %in% names(components)){
+    all_plots[["cdist"]] <- GaussiansMixturePlot(signatures, components,
+                                               sig_of_interest,
+                                               component = 'cdist',
+                                               threshold = threshold)
+  }
+
 
   return(all_plots)
 }
@@ -103,7 +122,7 @@ MixtureModelPlots <- function(signatures, components, sig_of_interest = 1) {
 #' @export
 GaussiansMixturePlot <- function(signatures, components,
                                  sig_of_interest = 1, component = 'segsize',
-                                 inlay_flag = TRUE) {
+                                 inlay_flag = TRUE, threshold = 0.3) {
 
   # Palette for plotting
   cbPalette <- c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02",
@@ -131,6 +150,10 @@ GaussiansMixturePlot <- function(signatures, components,
   plotbreaks <- c(10^(digits-1), (10^digits)/2, 10^digits)
   plotbreaks <- plotbreaks[xmax > plotbreaks]
 
+  plotparam_df <- as.data.frame(t(plotparam))
+  colnames(plotparam_df) <- c("mean", "sd") # Adjust based on the actual structure
+  plotparam_df$component <- factor(1:nrow(plotparam_df)) # Create a component column
+
   # Make the main plot
   main_plot <- ggplot2::ggplot(data = data.frame(x = c(1,xmax)),
                                ggplot2::aes(x)) +
@@ -143,20 +166,36 @@ GaussiansMixturePlot <- function(signatures, components,
                    panel.grid.major = ggplot2::element_blank()) +
     ggplot2::scale_x_continuous(breaks = plotbreaks)
 
+  x_vals <- seq(1, xmax, length.out = 1000)  # Increase the number of points for a smoother line
   for (i in 1:ncol(plotparam)) {
+    y_vals <- dnorm(x_vals, mean = plotparam[1, i], sd = plotparam[2, i])
+
     main_plot <- main_plot +
-                      ggplot2::geom_area(stat = "function",
-                                         fun = dnorm,
-                                         args = list(mean = plotparam[1,i],
-                                                     sd = plotparam[2,i]),
-                                         color = "black",
-                                         size = 0.05,
-                                         fill = segpalette[i],
-                                         alpha = shading[i])
+      ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals),
+                         ggplot2::aes(x = x, y = y),
+                         size = 1,
+                         color = ifelse(shading[i] < threshold, "grey", segpalette[i]),
+                         alpha = ifelse(shading[i] < threshold, 0.5, shading[i]))+
+      ggplot2::geom_vline(xintercept = plotparam[1, i],
+                          color = ifelse(shading[i] < threshold, "grey", segpalette[i]),
+                          linetype = "dashed",
+                          alpha = ifelse(shading[i] < threshold, 0.5, shading[i]))+
+      ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],
+                         ggplot2::aes(x = mean, y = -1, label = round(mean, 3)),
+                         angle = 90,
+                         vjust = if (i == 1) {
+                           -0.5
+                         } else if (round(plotparam_df[i, ][[1]],3) - round(plotparam_df[i-1, ][[1]],3)<0.01) {
+                           1.5
+                         } else {
+                           -0.5
+                         },
+                         color = ifelse(shading[i] < threshold, "grey", segpalette[i]),
+                         alpha = ifelse(shading[i] < threshold, 0.5, shading[i]))
   }
   final_plot <- main_plot
 
-  # Make an inlay plot of the 'important' components if...
+  # Make an inlay plot of the 'important' components if..
   # 1. Some components have been 'squashed' down
   # 2. There are any. - i.e. at least 1 weight > 0.05
   if ((plotparam[1,dim(plotparam)[2]]/plotparam[1,1] > 20) &&
@@ -172,26 +211,45 @@ GaussiansMixturePlot <- function(signatures, components,
     digits <- nchar(as.character(round(xmax/2)))
     plotbreaks <- c(10^(digits-1), (10^digits)/2, 10^digits)
     plotbreaks <- plotbreaks[xmax > plotbreaks]
-    inlay_plot <- ggplot2::ggplot(data = data.frame(x = c(1, xmax)),
+    inlay_plot <- ggplot2::ggplot(data = data.frame(x = c(0, xmax)),
                                   ggplot2::aes(x)) +
-                    ggplot2::ylab("") + ggplot2::xlab("") +
-                    ggplot2::theme_bw() +
-                    ggplot2::theme(axis.text = ggplot2::element_text(size = 8),
-                                   axis.title = ggplot2::element_text(size = 8),
-                                   panel.grid.minor = ggplot2::element_blank(),
-                                   panel.grid.major = ggplot2::element_blank()) +
-                    ggplot2::scale_x_continuous(breaks = plotbreaks)
+      ggplot2::ylab("") + ggplot2::xlab("") +
+      ggplot2::theme_bw() +
+      ggplot2::theme(axis.text = ggplot2::element_text(size = 8),
+                     axis.title = ggplot2::element_text(size = 8),
+                     panel.grid.minor = ggplot2::element_blank(),
+                     panel.grid.major = ggplot2::element_blank()) +
+      ggplot2::scale_x_continuous(breaks = plotbreaks)
 
+    plotparam_df <- as.data.frame(t(plotparam2))
+    colnames(plotparam_df) <- c("mean", "sd")
+    plotparam_df$component <- factor(1:nrow(plotparam_df))
+
+    x_vals <- seq(0, xmax, length.out = 1000)  # Increase the number of points for a smoother line
     for (i in 1:ncol(plotparam2)) {
+      y_vals <- dnorm(x_vals, mean = plotparam[1, i], sd = plotparam[2, i])
       inlay_plot <- inlay_plot +
-                      ggplot2::geom_area(stat = "function",
-                                         fun = dnorm,
-                                         args = list(mean = plotparam2[1,i],
-                                                     sd = plotparam2[2,i]),
-                                         color = "black",
-                                         size = 0.05,
-                                         fill = segpalette[i],
-                                         alpha = shading2[i])
+        ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals),
+                           ggplot2::aes(x = x, y = y),
+                           size = 1,
+                           color = ifelse(shading2[i] < threshold, "grey", segpalette[i]),
+                           alpha = ifelse(shading2[i] < threshold, 0.5, shading2[i]))+
+        ggplot2::geom_vline(xintercept = plotparam2[1, i],
+                            linetype = "dashed",
+                            color = ifelse(shading2[i] < threshold, "grey", segpalette[i]),
+                            alpha = ifelse(shading2[i] < threshold, 0.5, shading2[i]))+
+        ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],
+                           ggplot2::aes(x = mean, y = -2, label = round(mean, 3)),
+                           angle = 90,
+                           vjust = if (i == 1) {
+                             -0.5
+                           } else if (round(plotparam_df[i, ][[1]],3) - round(plotparam_df[i-1, ][[1]],3)<0.05) {
+                             1.5
+                           } else {
+                             -0.5
+                           },
+                           color = ifelse(shading2[i] < threshold, "grey", segpalette[i]),
+                           alpha = ifelse(shading2[i] < threshold, 0.5, shading2[i]))
     }
     # Overwrite earlier final plot with inset plot version
     final_plot <-
@@ -221,7 +279,7 @@ GaussiansMixturePlot <- function(signatures, components,
 #'
 #' @export
 PoissonsMixturePlot <- function(signatures, components,
-                                sig_of_interest = 1, component = 'bp10MB') {
+                                sig_of_interest = 1, component = 'bp10MB', threshold = 0.3) {
 
   # Palette for plotting
   cbPalette <- c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02",
@@ -242,7 +300,7 @@ PoissonsMixturePlot <- function(signatures, components,
   plotparam <- plotparam[order(plotparam)]
   shading <- weights[mask]
   max_comp <- plotparam[which(plotparam == max(plotparam))]
-  xmax <- max_comp[1] + (sqrt(max_comp[1])*3)
+  xmax <- max_comp[1] + (sqrt(max_comp[1])*1.75)
 
   if (component == 'bp10MB') {
     xlabel <- 'breakpoints per 10MB'
@@ -252,20 +310,48 @@ PoissonsMixturePlot <- function(signatures, components,
     xlabel <- 'breakpoints per chr arm'
   }
 
+  plotparam_df <- as.data.frame((plotparam))
+  colnames(plotparam_df) <- c("lambda") # Adjust based on the actual structure
+  plotparam_df$mean <- plotparam_df$lambda
+
   main_plot <- ggplot2::ggplot(data = data.frame(x = c(0,round(xmax))),
                                ggplot2::aes(x = x)) +
-              ggplot2::labs(y = "", x = paste0("Number of ", xlabel)) +
-              ggplot2::theme_bw() +
-              ggplot2::theme(axis.text = ggplot2::element_text(size = 10),
-                             axis.title = ggplot2::element_text(size = 12),
-                             panel.grid.minor = ggplot2::element_blank(),
-                             panel.grid.major = ggplot2::element_blank())
+    ggplot2::labs(y = "", x = paste0("Number of ", xlabel)) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(axis.text = ggplot2::element_text(size = 10),
+                   axis.title = ggplot2::element_text(size = 12),
+                   panel.grid.minor = ggplot2::element_blank(),
+                   panel.grid.major = ggplot2::element_blank())
+
+
+  x_vals <- round(seq(0, xmax, length.out = 1000))  # Increase the number of points for a smoother line
+
   for (i in 1:length(plotparam)) {
+    y_vals <- dpois(x = x_vals, lambda = plotparam[i])
     main_plot <- main_plot +
-           ggplot2::stat_function(geom = "area", n = round(xmax) + 1,
-                                  fun = dpois, args = list(lambda = plotparam[i]),
-                                  color = "black", size = 0.05,
-                                  fill = cbPalette[i], alpha = shading[i])
+      ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals),
+                         ggplot2::aes(x = x, y = y),
+                         size = 1,
+                         color = ifelse(shading[i] < threshold, "grey", cbPalette[i]),
+                         alpha = ifelse(shading[i] < threshold, 0.5, shading[i]))+
+      ggplot2::geom_vline(xintercept = plotparam[i],
+                          linetype = "dashed",
+                          color = ifelse(shading[i] < threshold, "grey", cbPalette[i]),
+                          alpha = ifelse(shading[i] < threshold, 0.5, shading[i])
+      )+
+      ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],  # Ensure it's treated as a data frame
+                         ggplot2::aes(x = lambda, y = 0, label = round(lambda, 3)),
+                         angle = 90,
+                         vjust = if (i == 1) {
+                           -0.5
+                         } else if (round(plotparam_df[1]$lambda[i],3) - round(plotparam_df[1]$lambda[i-1],3)<0.01) {
+                           1.5
+                         } else {
+                           -0.5
+                         },
+                         hjust = 1,
+                         color = ifelse(shading[i] < threshold, "grey", cbPalette[i]),
+                         alpha = ifelse(shading[i] < threshold, 0.5, shading[i]))
   }
   return(main_plot)
 }
