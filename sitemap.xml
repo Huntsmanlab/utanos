@@ -33,6 +33,7 @@
 <url><loc>https://huntsmanlab.github.io/utanos/reference/CopySegFlat.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/CorrectLeftovers.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/DetermineNumberOfLGAs.html</loc></url>
+<url><loc>https://huntsmanlab.github.io/utanos/reference/DlpToQDNAseq.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/ExcludeShortArms.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/ExportBinsQDNAObj.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/ExtractCopyNumberFeatures.html</loc></url>
@@ -52,6 +53,7 @@
 <url><loc>https://huntsmanlab.github.io/utanos/reference/GenHumanReadableRcnProfile.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/GenerateSampleByComponentMatrix.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/GenerateSignatures.html</loc></url>
+<url><loc>https://huntsmanlab.github.io/utanos/reference/GetCNTally.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/GetCriticalPoints.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/GetGRangesObject.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/GetHRDStatus.html</loc></url>
@@ -76,6 +78,7 @@
 <url><loc>https://huntsmanlab.github.io/utanos/reference/MixtureModelPlots.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/NullListOfThresholds.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/PlotAnnotationBars.html</loc></url>
+<url><loc>https://huntsmanlab.github.io/utanos/reference/PlotCNTallySig.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/PlotSegmentChanges.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/PoissonsMixturePlot.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/PrepFirstRound.html</loc></url>

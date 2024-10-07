@@ -150,7 +150,7 @@ loss probability across multiple samples. <strong>Utanos</strong>
 contains a modified version of this plotting function and it can be
 generated like so…</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">SummaryCNPlot</span>(rcn.obj, <span class="at">maskaberr =</span> <span class="fl">0.1</span>, <span class="at">maskprob =</span> <span class="fl">0.2</span>)</span></code></pre></div>
-<p><img src="images/cndiversity_vignette_01.png" width="100%"></p>
+<p><img src="images%2Fcndiversity_vignette_01.png" width="100%"></p>
 <p>Notes:</p>
 <ul>
 <li>The ‘maskaberr’ parameter - Default Value: 0.1. This parameter
@@ -177,7 +177,7 @@ highlight trends in the data. This is a simple hierarchical
 clustering.</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="sc">&gt;</span> rcn.plot <span class="ot">&lt;-</span> <span class="fu">RCNDiversityPlot</span>(rcn.obj, <span class="at">Xchr =</span> <span class="cn">TRUE</span>, <span class="at">cluster =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="sc">&gt;</span> rcn.plot</span></code></pre></div>
-<p><img src="images/cndiversity_vignette_02.png" width="100%"></p>
+<p><img src="images%2Fcndiversity_vignette_02.png" width="100%"></p>
 </div>
 </div>
 <div class="section level2">
@@ -528,13 +528,13 @@ compared to the ‘mad’ solution.</p>
 <span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>                 <span class="at">min_copy_number =</span> <span class="dv">0</span>, </span>
 <span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a>                 <span class="at">max_copy_number =</span> <span class="fl">12.5</span>, </span>
 <span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a>                 <span class="at">copy_number_breaks =</span> <span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>))</span></code></pre></div>
-<p><img src="images/cndiversity_vignette_03.png" width="100%"></p>
+<p><img src="images%2Fcndiversity_vignette_03.png" width="100%"></p>
 <div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">CNSegmentsPlot</span>(mad_outputs<span class="sc">$</span>acn.obj, </span>
 <span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>                 <span class="at">sample =</span> <span class="st">"CC-CHM-1341"</span>, </span>
 <span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>                 <span class="at">min_copy_number =</span> <span class="dv">0</span>, </span>
 <span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>                 <span class="at">max_copy_number =</span> <span class="fl">12.5</span>, </span>
 <span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>                 <span class="at">copy_number_breaks =</span> <span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>))</span></code></pre></div>
-<p><img src="images/cndiversity_vignette_04.png" width="100%"></p>
+<p><img src="images%2Fcndiversity_vignette_04.png" width="100%"></p>
 <p>The scaling using the ‘mad’ set the sample ploidy to around 4 whereas
 the ‘maxvaf’ option instead preferred a ploidy of 2.</p>
 </div>
@@ -575,7 +575,7 @@ option (ex. <code>outputs$acn_segment_tables</code>).</p>
 <span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>                                    <span class="at">Xincluded =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">colnames</span>(long_segs) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"chromosome"</span>, <span class="st">"start"</span>, <span class="st">"end"</span>, <span class="st">"state"</span>, <span class="st">"sample_id"</span>)</span>
 <span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a><span class="sc">&gt;</span> <span class="fu">ACNDiversityPlot</span>(<span class="at">long_segments =</span> long_segs)</span></code></pre></div>
-<p><img src="images/cndiversity_vignette_05.png" width="100%"></p>
+<p><img src="images%2Fcndiversity_vignette_05.png" width="100%"></p>
 </div>
 </div>
 </div>
@@ -590,7 +590,7 @@ option (ex. <code>outputs$acn_segment_tables</code>).</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
 </div>
 
     </footer>

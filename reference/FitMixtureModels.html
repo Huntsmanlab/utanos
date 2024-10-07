@@ -55,7 +55,9 @@
 <span>  nrep <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  niter <span class="op">=</span> <span class="fl">1000</span>,</span>
 <span>  cores <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>  featsToFit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">6</span><span class="op">)</span></span>
+<span>  featsToFit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">6</span><span class="op">)</span>,</span>
+<span>  multi_seed <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  num_seed <span class="op">=</span> <span class="fl">100</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -102,10 +104,18 @@
 <dt id="arg-featstofit">featsToFit<a class="anchor" aria-label="anchor" href="#arg-featstofit"></a></dt>
 <dd><p>Integer vector. The CN-features to fit.</p></dd>
 
+
+<dt id="arg-multi-seed">multi_seed<a class="anchor" aria-label="anchor" href="#arg-multi-seed"></a></dt>
+<dd><p>Logical. If TRUE, the function is run multiple times over different seeds to find the best mixtures. It is highly recommended to use multiple cores.</p></dd>
+
+
+<dt id="arg-num-seed">num_seed<a class="anchor" aria-label="anchor" href="#arg-num-seed"></a></dt>
+<dd><p>Integer. The number of seeds to use when <code>multi_seed = TRUE</code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list of flexmix objects. One for each CN-feature.</p>
+    <p>A list containing <code>flexmix</code> objects for each CN-feature. If <code>multi_seed = TRUE</code>, the function will return a nested list with two components: one containing the <code>flexmix</code> objects and the other containing BIC values for each CN-feature. The BIC values are organized such that the rows represent different seeds and the columns represent the number of components. This structure allows for easy identification of the optimal seed and component configuration.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -123,7 +133,7 @@ Mixture modelling is done using the FlexMix package.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
 </div>
 
     </footer></div>
