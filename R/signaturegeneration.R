@@ -29,7 +29,7 @@
 #' @param data_path String. The path where to find signatures objects and component models.
 #' @param plot_savepath (optional) String. The path where to save a sample-by-component heatmap. Please provide a directory.
 #' @param sigs_savepath (optional) String. The path where to save a csv of the calculated signature exposures. Please provide a directory.
-#' @param relativeCN_data (optional) Logical. If using relative Copy-Number data as input, set to true. Otherwise, ignore.
+#' @param relative (optional) Logical. If using relative Copy-Number data as input, set to TRUE. Otherwise, ignore.
 #' @param refgenome (optional) String. The reference genome used. (ex. 'hg19', or 'hg38')
 #' @returns A dataframe of the exposures for each sample to each signature.
 #' @details
@@ -42,33 +42,42 @@
 CallSignatureExposures <- function (copy_numbers_input,
                                     component_models = NULL,
                                     signatures = NULL,
+                                    cores = 1,
+                                    log_features = FALSE,
+                                    extra_features = FALSE,
                                     plot_savepath = NULL,
                                     sigs_savepath = NULL,
-                                    relativeCN_data = FALSE,
+                                    relative = FALSE,
                                     refgenome = 'hg19') {
 
   stopifnot(!is.null(component_models))                                         # Make sure the user explicitly declares the components they intend to use
   stopifnot(!is.null(signatures))                                               # Make sure the user explicitly declares the signatures they intend to use
   datetoday <- Sys.Date()
 
-  if (relativeCN_data) {
+  if (relative) {
     CN_features <- ExtractRelativeCopyNumberFeatures(copy_numbers_input,
                                                      genome = refgenome,
-                                                     log_gaussians = FALSE)
+                                                     cores = cores,
+                                                     log_features = log_features,
+                                                     extra_features = extra_features)
   } else {
     CN_features <- ExtractCopyNumberFeatures(copy_numbers_input,
                                              genome = refgenome,
-                                             log_gaussians = FALSE)
+                                             cores = cores,
+                                             log_features = log_features,
+                                             extra_features = extra_features)
   }
 
   if ( is.character(component_models)) {
     if (file.exists(component_models)) {
       sample_by_component <- GenerateSampleByComponentMatrix(CN_features,
-                                                             component_models)
+                                                             component_models,
+                                                             cores = cores)
     } else { stop("Component models path isn't valid, file does not exist.") }
   } else {
     sample_by_component <- GenerateSampleByComponentMatrix(CN_features,
-                                                           component_models)
+                                                           component_models,
+                                                           cores = cores)
   }
 
   if ( is.character(signatures)) {
