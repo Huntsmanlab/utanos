@@ -3,11 +3,94 @@
 ###########################
 ### Functions
 ###########################
+# StackedExposuresPlot
 # TwoFeatureScatterPlot
 # MixtureModelPlots
 # GaussiansMixturePlot
 # PoissonsMixturePlot
 # WassDistancePlot
+
+
+#' Create a Stacked Bar-plot of Signature Exposures
+#'
+#' @description
+#' Converts signature-per-sample data into a ggplot2 stacked bar plot and returns that object.
+#' Samples are sorted by signature exposure (default is the first row).
+#' This can be changed to a different row, or a char vector or sample names can be supplied for a custom ordering.
+#' The turbo viridis colour-scheme is used.
+#'
+#' @param input_matrix A dataframe/matrix/datatable with signatures in the rows and samples in the columns..
+#' @param user_colours (optional) A vector of colours for the signatures, one per signature.
+#' @param orderbyrow (optional) An integer. Single integer corresponding to the row by which to sort.
+#' @param orderbyname (optional) NULL or a character vector of sample names.
+#' @param do_transpose (optional) Logical. If TRUE then flip bars horizontal.
+#' @returns A ggplot2 object.
+#'
+#' @export
+StackedExposuresPlot <- function (input_matrix,
+                                  user_colours = NULL,
+                                  orderbyrow = 1,
+                                  orderbyname = NULL,
+                                  do_transpose = FALSE) {
+
+  # Convert input matrix to data.table
+  dt <- as.data.table(input_matrix, keep.rownames = TRUE)
+  signames <- factor(dt$rn, levels = dt$rn)
+  dt[, rn := NULL]
+
+  if (orderbyrow > nrow(input_matrix) || orderbyrow < 1) {
+    stop("The order_row must be between 1 and the number of rows in the matrix.")
+  }
+
+  # Order samples
+  if (is.null(orderbyname)) {
+    column_order <- order(input_matrix[orderbyrow, ], decreasing = TRUE)
+  } else {
+    if (!all(orderbyname %in% colnames(input_matrix))) {
+      stop("All elements of orderbyname must match the column names of the input matrix.")
+    }
+    column_order <- match(orderbyname, colnames(input_matrix))
+  }
+  dt <- dt[, ..column_order]
+  colnames(dt) <- colnames(input_matrix)[column_order]
+
+  # Convert to long
+  dt[, row_id := signames]
+  dt_melted <- melt(dt, variable.name = "Category", value.name = "Value", id.vars = "row_id")
+  dt_melted[, normalized_value := Value / sum(Value), by = Category]
+
+  # Assign colours - use user-supplied colours if provided
+  if (is.null(user_colours)) {
+    user_colours <- viridis::turbo(nrow(input_matrix))
+  } else if (length(user_colours) != nrow(input_matrix)) {
+    stop("The length of user_colors must match the number of rows in the matrix")
+  }
+
+  # Create the plot
+  p <- ggplot2::ggplot(dt_melted, ggplot2::aes(x = Category,
+                                               y = normalized_value,
+                                               fill = row_id)) +
+    ggplot2::geom_bar(stat = "identity", position = "stack", width = 1) +
+    ggplot2::scale_fill_manual(values = user_colours) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(axis.text.x = ggplot2::element_blank(),
+                   panel.grid = ggplot2::element_blank(),
+                   panel.border = ggplot2::element_blank(),
+                   panel.background = ggplot2::element_blank(),
+                   axis.ticks.x = ggplot2::element_blank()) +
+    ggplot2::scale_y_continuous(expand = c(0, 0)) +
+    ggplot2::labs(x = "Samples", y = "Exposures", fill = "Signatures")
+  p
+  if (do_transpose) {
+    p <- p + ggplot2::coord_flip() +
+      ggplot2::theme(axis.text.y = ggplot2::element_blank(),
+                     axis.text.x = ggplot2::element_text(),
+                     axis.ticks.y = ggplot2::element_blank(),
+                     axis.ticks.x = ggplot2::element_line())
+  }
+
+  return(p)
+}
 
 
 
