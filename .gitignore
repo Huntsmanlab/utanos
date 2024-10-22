@@ -9,3 +9,4 @@ vignettes/*.R
 /plots
 inst/doc
 docs
+NMF*/
