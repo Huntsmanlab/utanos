@@ -59,17 +59,19 @@ GetCNTally <- function(CN_data, genome = 'hg19', relative=FALSE, extra_features=
   if(relative){
     if(extra_features){
       feature_setting <- utanos::feature_relative_extra
+    }else{
+      feature_setting <- utanos::feature_relative_default
+      CN_data <- CN_data[!(names(CN_data) %in% c("nc50", "cdist"))]
     }
-    feature_setting <- utanos::feature_relative_default
   }
   else{
     if(extra_features){
       feature_setting <- utanos::feature_absolute_extra
+    } else {
+      feature_setting <- utanos::feature_absolute_default
+      CN_data <- CN_data[!(names(CN_data) %in% c("nc50", "cdist"))]
     }
-    feature_setting <- utanos::feature_absolute_default
-
   }
-
   cn_components <- purrr::map2(CN_data, names(CN_data),
                                tally_components,
                                cn_feature_setting = feature_setting
