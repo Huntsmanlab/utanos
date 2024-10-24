@@ -447,16 +447,17 @@ FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2,
                                     nrep = nrep, min_comp = min_comp,
                                     max_comp = max_comp) )
 
-        } else {
+        } else if (i == 8 & i %in% featsToFit) {
           dat <- as.numeric(CN_features[["cdist"]][,2])
           list( cdist = FitComponent(dat, seed = seed,
                                      model_selection = model_selection,
                                      min_prior = min_prior, niter = niter,
                                      nrep = nrep, min_comp = min_comp,
                                      max_comp = max_comp) )
+        } else {
+          return(NULL)  # Skip unselected features, returning NULL to maintain foreach structure
         }
       }
-
       output <- unlist(temp_list, recursive = FALSE)
       # Re-order components
       gaussians <- as.logical(lapply(output, function(x) {
@@ -532,14 +533,17 @@ FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2,
                                           num_seed = num_seed, cores = subcores)
           list(nc50 = result[[1]], nc50_bic_df = result[[2]])
 
-        } else {
+        } else if (i == 8 & i %in% featsToFit) {
           dat <- as.numeric(CN_features[["cdist"]][,2])
           result <- MultiSeedFitComponent(dat, model_selection = model_selection,
                                  min_prior = min_prior, niter = niter, nrep = nrep,
                                  min_comp = min_comp, max_comp = max_comp,
                                  num_seed = num_seed, cores = subcores)
           list(cdist = result[[1]],  cdist_bic_df = result[[2]])
+        } else {
+          return(NULL)  # Skip unselected features, returning NULL to maintain foreach structure
         }
+
       }
       output <- unlist(temp_list, recursive = FALSE)
       fit_list <- list()
@@ -597,7 +601,7 @@ FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2,
                                 model_selection = model_selection,
                                 min_prior = min_prior, niter = niter,
                                 nrep = nrep, min_comp = min_comp,
-                                max_comp = max_comp)         
+                                max_comp = max_comp)
           output[["osCN"]] <- osCN_mm
         }
 
@@ -794,7 +798,7 @@ FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2,
 #' @export
 GenerateSampleByComponentMatrix <- function (CN_features, all_components = NULL,
                                              cores = 1, rowIter = 1000) {
-                                              
+
   if ((inherits(all_components, "character")) && (file.exists(all_components))) {
     all_components<-readRDS(file = all_components)
   } else if (inherits(all_components, "character")) {

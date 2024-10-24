@@ -135,6 +135,10 @@ MixtureModelPlots <- function(signatures, components, sig_of_interest = 1, thres
               typeof(components) == 'list')
   stopifnot("Components argument must be a list of flexmix objects." =
               typeof(components[[1]]) == 'S4')
+  stopifnot("Signatures argument must be tabular in the form of a matrix/dataframe/datatable." =
+              (inherits(signatures, 'matrix') |
+                 inherits(signatures, 'data.frame') |
+                 inherits(signatures, 'data.table')))
   stopifnot("The indicated signature (sig_of_interest parameter) must be an
             integer less than or equal to the # of columns in 'signatures'." =
               dim(signatures) >= sig_of_interest)
