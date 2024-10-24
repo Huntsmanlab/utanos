@@ -114,6 +114,10 @@ SignatureExposuresPlot <- function (signatures,
 #' @param ret_order (optional) Logical. If set to TRUE the function returns the order in which samples were plotted.
 #' @param save_path (optional) String. Expects a path to a directory where the plot should be saved. (png)
 #' @param rmblacklist optional *NULL or character vector*. Filter the plot of blacklist regions from this genome. ex. 'hg19'
+#' @param addtitle (optional) Logical. If set to TRUE add a basic title to the plot.
+#' @param sample_labels (optional) Logical. If set to TRUE, display sample names and y-axis ticks.
+#' @param ann_df (optional) Dataframe. Expects the same sample ids as passed to long_segments param. \cr
+#' See the roxygen docs for `PlotAnnotationBars()` for more details.
 #' @param obj_name (optional) String. Adds a tag to the end of the filename if saving the image. \cr
 #' Only used if the save_path parameter is also set.
 #' @return A ggplot2 object or a list of a ggplot2 object and vector of the ordered sample names.
@@ -125,6 +129,7 @@ ACNDiversityPlot <- function(long_segments = data.frame(),
                              save_path = FALSE,
                              rmblacklist = NULL,
                              addtitle = NULL,
+                             sample_labels = FALSE,
                              ann_df = NULL,
                              obj_name = "version1") {
 
@@ -184,11 +189,18 @@ ACNDiversityPlot <- function(long_segments = data.frame(),
                    plot.title = ggplot2::element_text(size = 22, hjust = 0.5),
                    axis.title = ggplot2::element_text(size = 12),
                    legend.title = ggplot2::element_text(size = 14),
-                   legend.text = ggplot2::element_text(size = 12)) +
+                   legend.text = ggplot2::element_text(size = 12),
+                   axis.text.y = ggplot2::element_blank(),
+                   axis.ticks.y = ggplot2::element_blank()) +
     ggplot2::labs(x = "Chromosomes", y = "Samples", fill = "Copy Number")
 
   if (!is.null(addtitle)) {
     g <- g + ggplot2::ggtitle("Absolute copy number calls across the genome")
+  }
+
+  if (isTRUE(sample_labels)) {
+    g <- g + ggplot2::theme(axis.text.y = ggplot2::element_text(),
+                            axis.ticks.y = ggplot2::element_line())
   }
 
   output[["plot"]] <- g
@@ -257,7 +269,7 @@ PlotAnnotationBars <- function(ann_df, cols, colors = LETTERS[1:length(cols)], o
 
     ggplot2::ggplot(ann_df, ggplot2::aes(x = !!col,
                                         y = sample_id)) +
-      ggplot2::geom_tile(ggplot2::aes(fill = get(col)), color = "white") +
+      ggplot2::geom_tile(ggplot2::aes(fill = get(col)), color = NA) +
       ggplot2::scale_fill_manual(values = category_colors, name = col) +
       ggplot2::theme_minimal() +
       ggplot2::theme(

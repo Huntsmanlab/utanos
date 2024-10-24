@@ -91,11 +91,10 @@ SegmentsToCopyNumber <- function(segs, bin_size,
   # Create template binned genome
   # Use data.table operations and modify objects in place.
   chroms <- GetBinnedChromosomes(genome, Xincluded, bin_size)
-  chroms1 <- as.data.table(chroms)
-  genome_template1 <- data.table(chromosome = rep(chroms1$chrom, chroms1$nbins),
-                                 start = rep(rep(1,dim(chroms1)[1]), chroms1$nbins),
-                                 end = rep(chroms1$size, chroms1$nbins),
-                                 id = rep(chroms1$size, chroms1$nbins))
+  chroms1 <- data.table::as.data.table(chroms)
+  genome_template1 <- data.table::data.table(chromosome = rep(chroms1$chrom, chroms1$nbins),
+                                             start = rep(rep(1,dim(chroms1)[1]), chroms1$nbins),
+                                             id = rep(chroms1$size, chroms1$nbins))
   genome_template1[, id := seq_len(.N), by = .(chromosome)]
   genome_template1[, `:=`(start = start + (id - 1) * bin_size),
                              by = .(chromosome)]
@@ -113,7 +112,7 @@ SegmentsToCopyNumber <- function(segs, bin_size,
     sample[, `:=`(nbins = floor(size / bin_size),
                   seg_id = seq_len(.N)), by = chromosome]
     sample <- sample[rep(seq_len(.N), nbins)]
-    sample[, bin_id := seq_len(.N), by = .(chromosome, segVal)]
+    sample[, bin_id := seq_len(.N), by = .(chromosome, seg_id)]
     sample[, `:=`(
       chromosome = as.character(chromosome),
       start = (floor(start / bin_size) * bin_size + 1) + ((bin_id - 1) * bin_size)),
