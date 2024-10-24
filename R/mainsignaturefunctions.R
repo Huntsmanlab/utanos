@@ -68,7 +68,7 @@ GenerateSignatures <- function(sample_by_component, nsig,
                                seed = 77777, nmfalg="brunet",
                                nruns = 1000, cores = 4) {
 
-    sample_by_component <- sample_by_component + 1e-50 #prevent NMF error
+    sample_by_component <- sample_by_component + 1e-12 #prevent NMF error
 
     NMF::nmf(t(sample_by_component), nsig, seed = seed, nrun = nruns,
              method = nmfalg,.opt = paste0("p", cores) )
@@ -101,7 +101,7 @@ ChooseNumberSignatures <- function(sample_by_component,
                                    nmfalg = "brunet",
                                    seed = 77777) {
 
-  sample_by_component <- sample_by_component + 1e-50 #prevent NMF error
+  sample_by_component <- sample_by_component + 1e-12 #prevent NMF error
 
   estim.r <- NMF::nmfEstimateRank(t(sample_by_component), min_sig:max_sig,
                                   seed = seed, nrun = iter, verbose = FALSE,
