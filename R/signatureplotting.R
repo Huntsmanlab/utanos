@@ -401,6 +401,10 @@ PoissonsMixturePlot <- function(signatures, components,
     xlabel <- 'oscillating CN regions'
   } else if (component == 'bpchrarm') {
     xlabel <- 'breakpoints per chr arm'
+  } else if (component == 'nc50') {
+    xlabel <- ' chromosomes that account for 50% of breakpoints'
+  } else {
+    stop(paste0(component, ' copy-number feature not recognized.'))
   }
 
   plotparam_df <- as.data.frame((plotparam))
@@ -472,20 +476,35 @@ PoissonsMixturePlot <- function(signatures, components,
 #' @export
 WassDistancePlot <- function(cm_a, cm_b, component) {
 
-  # Pull component parameters out of the mixture model
-  x <- flexmix::parameters(cm_a[[component]])
-  y <- flexmix::parameters(cm_b[[component]])
+  # Get model params
+  params <- list()
+  mmodels <- list(cm_a = cm_a, cm_b = cm_b)
+  for (i in c(1:length(mmodels))) {
+    if (inherits(mmodels[[i]][[1]], "data.frame") | inherits(mmodels[[i]][[1]], "matrix")) {
+      params[[names(mmodels[i])]] <- as.data.frame(mmodels[[i]][[component]])
+    } else if (inherits(mmodels[[i]][[1]], "flexmix")) {
+      if (grepl("FLXMCnorm1",
+                as.character(mmodels[[i]][[component]]@call$model),
+                fixed = TRUE)) {
+        params[[names(mmodels[i])]] <- as.data.frame(flexmix::parameters(mmodels[[i]][[component]]))
+      } else if (grepl("FLXMCmvpois",
+                  as.character(mmodels[[i]][[component]]@call$model),
+                  fixed = TRUE)) {
+        params[[names(mmodels[i])]] <- as.data.frame(t(flexmix::parameters(mmodels[[i]][[component]])))
+      } else {
+        stop("Unsuported flexmixmixture model(s) used.
+             Please use either normals OR poissons ('flexmix::FLXMCnorm1()' or 'flexmix::FLXMCmvpois()')")
+      }
+    } else {
+      stop("Input format not recognized, please provide dataframes/matrices/flexmix objects. \n
+           See function docs.")
+    }
+  }
 
   # Calculate Wasserstein distances
-  if (grepl("FLXMCnorm1", as.character(cm_a[[component]]@call$model),
-            fixed = TRUE) &&
-      grepl("FLXMCnorm1", as.character(cm_b[[component]]@call$model),
-            fixed = TRUE)) {
-
-    x <- as.data.frame(x)
-    x <- x[, order(apply(x, 2, function(a) a[1]))]
-    y <- as.data.frame(y)
-    y <- y[, order(apply(y, 2, function(a) a[1]))]
+  if (dim(params$cm_a)[1] == 2) {
+    x <- params$cm_a[, order(apply(params$cm_a, 2, function(a) a[1]))]
+    y <- params$cm_b[, order(apply(params$cm_b, 2, function(a) a[1]))]
     dist_matrix <- matrix(0, nrow = ncol(x), ncol = ncol(y))
     for (i in 1:ncol(x)) {
       for (j in 1:ncol(y)) {
@@ -496,15 +515,9 @@ WassDistancePlot <- function(cm_a, cm_b, component) {
     }
     dist_df <- expand.grid(x = 1:dim(x)[2], y = 1:dim(y)[2])
 
-  } else if (grepl("FLXMCmvpois", as.character(cm_a[[component]]@call$model),
-                   fixed = TRUE) &&
-             grepl("FLXMCmvpois", as.character(cm_b[[component]]@call$model),
-                   fixed = TRUE)) {
-
-    x <- as.data.frame(t(x))
-    x <- x[, order(apply(x, 2, function(a) a[1]))]
-    y <- as.data.frame(t(y))
-    y <- y[, order(apply(y, 2, function(a) a[1]))]
+  } else if (dim(params$cm_a)[1] == 1) {
+    x <- params$cm_a[, order(apply(params$cm_a, 2, function(a) a[1]))]
+    y <- params$cm_b[, order(apply(params$cm_b, 2, function(a) a[1]))]
     dist_matrix <- matrix(0, nrow = length(x), ncol = length(y))
     for (i in 1:length(x)) {
       for (j in 1:length(y)) {
@@ -516,8 +529,8 @@ WassDistancePlot <- function(cm_a, cm_b, component) {
     dist_df <- expand.grid(x = 1:length(x), y = 1:length(y))
 
   } else {
-    stop("Unsuported mixture model(s) used.
-       Please use either normals OR poissons ('flexmix::FLXMCnorm1()' or 'flexmix::FLXMCmvpois()')")
+    stop("Unsuported mixture model parameter format provided.
+         Double check input dataframes.")
   }
 
   # Build Heatmap
@@ -535,8 +548,7 @@ WassDistancePlot <- function(cm_a, cm_b, component) {
                                 name = "Similarity",
                                 breaks = seq(0, 1, by = 0.2),
                                 labels = c("", "Low", "", "", "High", "")) +
-    ggplot2::labs(title = paste0("Heatmap of ",
-                                 component,
+    ggplot2::labs(title = paste0(component,
                                  " component-wise wasserstein distance"),
                   x = "A - components", y = "B - components")
 
