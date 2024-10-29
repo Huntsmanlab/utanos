@@ -253,7 +253,7 @@ GaussiansMixturePlot <- function(signatures, components,
                    panel.grid.major = ggplot2::element_blank()) +
     ggplot2::scale_x_continuous(breaks = plotbreaks)
 
-  x_vals <- seq(1, xmax, length.out = 1000)  # Increase the number of points for a smoother line
+  x_vals <- seq(0, xmax, length.out = 1000)  # Increase the number of points for a smoother line
   for (i in 1:ncol(plotparam)) {
     y_vals <- dnorm(x_vals, mean = plotparam[1, i], sd = plotparam[2, i])
 
@@ -268,7 +268,10 @@ GaussiansMixturePlot <- function(signatures, components,
                           linetype = "dashed",
                           alpha = ifelse(shading[i] < threshold, 0.5, shading[i]))+
       ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],
-                         ggplot2::aes(x = mean, y = -1, label = round(mean, 3)),
+                         ggplot2::aes(x = mean, y = -1,
+                                      label = if (mean > 10) {
+                                        round(mean)
+                                        } else { round(mean, 3)} ),
                          angle = 90,
                          vjust = if (i == 1) {
                            -0.5
@@ -326,7 +329,10 @@ GaussiansMixturePlot <- function(signatures, components,
                             color = ifelse(shading2[i] < threshold, "grey", segpalette[i]),
                             alpha = ifelse(shading2[i] < threshold, 0.5, shading2[i]))+
         ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],
-                           ggplot2::aes(x = mean, y = -2, label = round(mean, 3)),
+                           ggplot2::aes(x = mean, y = -2,
+                                        label = if (mean > 10) {
+                                          round(mean)
+                                        } else { round(mean, 3)} ),
                            angle = 90,
                            vjust = if (i == 1) {
                              -0.5
@@ -427,7 +433,10 @@ PoissonsMixturePlot <- function(signatures, components,
                           alpha = ifelse(shading[i] < threshold, 0.5, shading[i])
       )+
       ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],  # Ensure it's treated as a data frame
-                         ggplot2::aes(x = lambda, y = 0, label = round(lambda, 3)),
+                         ggplot2::aes(x = lambda, y = 0,
+                                      label = if (lambda > 10) {
+                                        round(lambda)
+                                      } else { round(lambda, 3)} ),
                          angle = 90,
                          vjust = if (i == 1) {
                            -0.5
