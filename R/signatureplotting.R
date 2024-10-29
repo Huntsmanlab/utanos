@@ -120,21 +120,25 @@ TwoFeatureScatterPlot <- function(featA, featB) {
 #' Each plot visualizes the mixture models used for each feature.
 #' All mixture components are plotted, but those elevated for S are shaded.
 #'
-#' @param signatures A dataframe with components along the y-axis and signatures along the x.
 #' @param components A list of S4 objects belonging to the class 'flexmix'.
+#' @param signatures (optional) A dataframe with components along the x-axis and signatures along the y.
 #' @param sig_of_interest (optional) A single integer corresponding the signature for which to make plots. \cr
 #' In the absence of any value passed in for this parameter, plots for just the first signature will be returned.
 #' @returns A list of ggplots.
 #'
 #'
 #' @export
-MixtureModelPlots <- function(signatures, components, sig_of_interest = 1, threshold = 0.3) {
+MixtureModelPlots <- function(components,
+                              signatures,
+                              sig_of_interest = 1,
+                              threshold = 0.3) {
 
   # Validate input
-  stopifnot("Components argument must be a list of flexmix objects." =
-              typeof(components) == 'list')
-  stopifnot("Components argument must be a list of flexmix objects." =
-              typeof(components[[1]]) == 'S4')
+  stopifnot("Components argument must be a list of flexmix objects or tables." =
+              inherits(components, 'list'))
+  stopifnot("Components argument must be a list of flexmix objects or tables." =
+              (inherits(components[[1]], 'flexmix') |
+                 inherits(components[[1]], 'data.frame')))
   stopifnot("Signatures argument must be tabular in the form of a matrix/dataframe/datatable." =
               (inherits(signatures, 'matrix') |
                  inherits(signatures, 'data.frame') |
@@ -144,41 +148,41 @@ MixtureModelPlots <- function(signatures, components, sig_of_interest = 1, thres
               dim(signatures) >= sig_of_interest)
 
   all_plots <- list()
-  all_plots[["segmentsize"]] <- GaussiansMixturePlot(signatures, components,
+  all_plots[["segmentsize"]] <- GaussiansMixturePlot(components, signatures,
                                                      sig_of_interest,
                                                      component = 'segsize',
                                                      threshold = threshold)
-  all_plots[["breakpoint10MB"]] <- PoissonsMixturePlot(signatures, components,
+  all_plots[["breakpoint10MB"]] <- PoissonsMixturePlot(components, signatures,
                                                        sig_of_interest,
                                                        component = 'bp10MB',
                                                        threshold = threshold)
-  all_plots[["oscillating"]] <- PoissonsMixturePlot(signatures, components,
+  all_plots[["oscillating"]] <- PoissonsMixturePlot(components, signatures,
                                                     sig_of_interest,
                                                     component = 'osCN',
                                                     threshold = threshold)
-  all_plots[["changepoint"]] <- GaussiansMixturePlot(signatures, components,
+  all_plots[["changepoint"]] <- GaussiansMixturePlot(components, signatures,
                                                      sig_of_interest,
                                                      component = 'changepoint',
                                                      threshold = threshold)
-  all_plots[["copynumber"]] <- GaussiansMixturePlot(signatures, components,
+  all_plots[["copynumber"]] <- GaussiansMixturePlot(components, signatures,
                                                     sig_of_interest,
                                                     component = 'copynumber',
                                                     threshold = threshold)
-  all_plots[["breakpointsarm"]] <- PoissonsMixturePlot(signatures, components,
+  all_plots[["breakpointsarm"]] <- PoissonsMixturePlot(components, signatures,
                                                        sig_of_interest,
                                                        component = 'bpchrarm',
                                                        threshold = threshold)
   if("nc50" %in% names(components)){
-    all_plots[["nc50"]] <- PoissonsMixturePlot(signatures, components,
-                                                         sig_of_interest,
-                                                         component = 'nc50',
+    all_plots[["nc50"]] <- PoissonsMixturePlot(components, signatures,
+                                               sig_of_interest,
+                                               component = 'nc50',
                                                threshold = threshold)
   }
   if("cdist" %in% names(components)){
-    all_plots[["cdist"]] <- GaussiansMixturePlot(signatures, components,
-                                               sig_of_interest,
-                                               component = 'cdist',
-                                               threshold = threshold)
+    all_plots[["cdist"]] <- GaussiansMixturePlot(components, signatures,
+                                                 sig_of_interest,
+                                                 component = 'cdist',
+                                                 threshold = threshold)
   }
 
 
@@ -197,8 +201,8 @@ MixtureModelPlots <- function(signatures, components, sig_of_interest = 1, thres
 #' 1. Some components have been 'squashed' down \cr
 #' 2. There are any. - i.e. at least 1 weight > 0.05 \cr
 #'
-#' @param signatures A dataframe with components along the y-axis and signatures along the x.
 #' @param components A list of S4 objects belonging to the class 'flexmix'.
+#' @param signatures (optional) A dataframe with components in the rows and signatures in the columns.
 #' @param sig_of_interest (optional) A single integer or a vector of integers corresponding the signatures for which to make plots. \cr
 #' In the absence of any value passed in for this parameter, plots for just the first signature will be returned.
 #' @param component (optional) Which component to draw the gaussian curves for. (options: segsize, changepoint, copynumber)
@@ -207,39 +211,69 @@ MixtureModelPlots <- function(signatures, components, sig_of_interest = 1, thres
 #'
 #'
 #' @export
-GaussiansMixturePlot <- function(signatures, components,
-                                 sig_of_interest = 1, component = 'segsize',
-                                 inlay_flag = TRUE, threshold = 0.3) {
+GaussiansMixturePlot <- function(components,
+                                 signatures = NULL,
+                                 sig_of_interest = 1,
+                                 log_flag = FALSE,
+                                 component = 'segsize',
+                                 inlay_flag = TRUE,
+                                 threshold = 0.3) {
 
-  # Palette for plotting
-  cbPalette <- c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02",
-                 "#A6761D", "#666666", "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
-                 "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999", "black")
+  # Validate input
+  stopifnot("Components argument must be a list of flexmix objects or tables." =
+              inherits(components, 'list'))
+  stopifnot("Components argument must be a list of flexmix objects or tables." =
+              (inherits(components[[1]], 'flexmix') |
+                 inherits(components[[1]], 'data.frame') |
+                 inherits(components[[1]], 'matrix')))
 
-  norm_const <- apply(signatures, 1, sum)
-  sig_mat_norm <- data.frame(apply(signatures,
-                                   2,
-                                   function(x){x/norm_const}))
-  weights <- as.numeric(sig_mat_norm[,sig_of_interest])
+  # Extract components for a cn-feature and sort in ascending order
+  if (inherits(components[[1]], "data.frame") | inherits(components[[1]], "matrix")) {
+    plotparam <- components[[component]]
+  } else if (inherits(components[[1]], "flexmix")) {
+    plotparam <- flexmix::parameters(components[[component]])
+  } else {
+    stop("Input format not recognized for component models, please provide a dataframes/matrix/flexmix object. \n
+         See function docs.")
+  }
+  plotparam <- as.data.frame(plotparam[,order(plotparam[1,])])
 
-  # plotting prep work
-  mask <- grepl(component, rownames(sig_mat_norm), fixed=TRUE)
-  plotparam <- flexmix::parameters(components[[component]])
-  # CalculateSumOfPosteriors reorders its matrix on output...
-  # So the signature components are correspondingly in ascending order of their means...
-  # So this reordering is then necessary to correspond to those weights
-  plotparam <- plotparam[,order(plotparam[1,])]
-  segpalette <- cbPalette[1:sum(mask)]
-  shading <- weights[mask]
+  # Log-transform if needed
+  if (log_flag) {
+    plotparam[2,] <- plotparam[2,]/plotparam[1,]
+    plotparam[1,] <- log(plotparam[1,])
+  }
+
+  # If signatures provided, then shade by weight, otherwise set to uniform opacity
+  if (!is.null(signatures)) {
+    stopifnot("Signatures argument must be tabular in the form of a matrix/dataframe/datatable." =
+                (inherits(signatures, 'matrix') |
+                   inherits(signatures, 'data.frame') |
+                   inherits(signatures, 'data.table')))
+    norm_const <- apply(signatures, 2, sum)
+    sig_mat_norm <- sweep(signatures, 2, norm_const, "/")
+    weights <- as.numeric(sig_mat_norm[,sig_of_interest])
+    mask <- grepl(component, rownames(sig_mat_norm), fixed=TRUE)
+    shading <- weights[mask]
+    segpalette <- viridis::turbo(ncol(plotparam))
+
+  } else {
+    shading <- rep(1,ncol(plotparam))
+    segpalette <- viridis::turbo(ncol(plotparam))
+  }
+
+  # Define plot layout
   max_comp <- plotparam[,which(plotparam[1,] == max(plotparam[1,]))]
-  xmax <- max_comp[1] + (max_comp[2]*1.75)
+  min_comp <- plotparam[,which(plotparam[1,] == min(plotparam[1,]))]
+  xmax <- max_comp[1] + (max_comp[2]*3)
+  xmin <- pmax(min_comp[1] - (min_comp[2]*3), 0)
   digits <- nchar(as.character(round(xmax/2)))
   plotbreaks <- c(10^(digits-1), (10^digits)/2, 10^digits)
   plotbreaks <- plotbreaks[xmax > plotbreaks]
-
   plotparam_df <- as.data.frame(t(plotparam))
-  colnames(plotparam_df) <- c("mean", "sd") # Adjust based on the actual structure
-  plotparam_df$component <- factor(1:nrow(plotparam_df)) # Create a component column
+  colnames(plotparam_df) <- c("mean", "sd")
+  plotparam_df$component <- factor(1:nrow(plotparam_df))
+  x_vals <- seq(xmin, xmax, length.out = 1000)  # Increase the number of points for a smoother line
 
   # Make the main plot
   main_plot <- ggplot2::ggplot(data = data.frame(x = c(1,xmax)),
@@ -253,40 +287,50 @@ GaussiansMixturePlot <- function(signatures, components,
                    panel.grid.major = ggplot2::element_blank()) +
     ggplot2::scale_x_continuous(breaks = plotbreaks)
 
-  x_vals <- seq(1, xmax, length.out = 1000)  # Increase the number of points for a smoother line
   for (i in 1:ncol(plotparam)) {
+    if (shading[i] < threshold) {
+      linecolour <- "grey"
+      linealpha <- 0.4
+    } else {
+      linecolour <- segpalette[i]
+      linealpha <- ifelse(shading[i] < 0.5, 0.5, shading[i])
+    }
     y_vals <- dnorm(x_vals, mean = plotparam[1, i], sd = plotparam[2, i])
 
     main_plot <- main_plot +
       ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals),
                          ggplot2::aes(x = x, y = y),
                          size = 1,
-                         color = ifelse(shading[i] < threshold, "grey", segpalette[i]),
-                         alpha = ifelse(shading[i] < threshold, 0.5, shading[i]))+
+                         color = linecolour,
+                         alpha = linealpha) +
       ggplot2::geom_vline(xintercept = plotparam[1, i],
-                          color = ifelse(shading[i] < threshold, "grey", segpalette[i]),
                           linetype = "dashed",
-                          alpha = ifelse(shading[i] < threshold, 0.5, shading[i]))+
+                          color = linecolour,
+                          alpha = linealpha) +
       ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],
-                         ggplot2::aes(x = mean, y = -1, label = round(mean, 3)),
+                         ggplot2::aes(x = mean, y = -1,
+                                      label = if (mean > 10) {
+                                        round(mean)
+                                        } else { round(mean, 3)} ),
                          angle = 90,
                          vjust = if (i == 1) {
                            -0.5
-                         } else if (round(plotparam_df[i, ][[1]],3) - round(plotparam_df[i-1, ][[1]],3)<0.01) {
+                         } else if (round(plotparam_df[i, ][[1]],3) -
+                                    round(plotparam_df[i-1, ][[1]], 3) < 0.01) {
                            1.5
                          } else {
                            -0.5
                          },
-                         color = ifelse(shading[i] < threshold, "grey", segpalette[i]),
-                         alpha = ifelse(shading[i] < threshold, 0.5, shading[i]))
+                         color = linecolour,
+                         alpha = linealpha)
   }
   final_plot <- main_plot
 
   # Make an inlay plot of the 'important' components if..
   # 1. Some components have been 'squashed' down
   # 2. There are any. - i.e. at least 1 weight > 0.05
-  if ((plotparam[1,dim(plotparam)[2]]/plotparam[1,1] > 20) &&
-      (sum(shading > 0.05) >= 1)) {
+  if ((plotparam[1, dim(plotparam)[2]]/plotparam[1,1] > 20) &&
+      (sum(shading > 0.05) >= 1) && inlay_flag) {
     mask <- shading > 0.05
     plotparam2 <- plotparam[,mask, drop = FALSE]
     shading2 <- shading[mask]
@@ -326,7 +370,10 @@ GaussiansMixturePlot <- function(signatures, components,
                             color = ifelse(shading2[i] < threshold, "grey", segpalette[i]),
                             alpha = ifelse(shading2[i] < threshold, 0.5, shading2[i]))+
         ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],
-                           ggplot2::aes(x = mean, y = -2, label = round(mean, 3)),
+                           ggplot2::aes(x = mean, y = -2,
+                                        label = if (mean > 10) {
+                                          round(mean)
+                                        } else { round(mean, 3)} ),
                            angle = 90,
                            vjust = if (i == 1) {
                              -0.5
@@ -356,8 +403,8 @@ GaussiansMixturePlot <- function(signatures, components,
 #' This function plots the mixture models for a component that is composed of poisson distributions.
 #' All mixture components are plotted, but those elevated for the specified signature are shaded.
 #'
-#' @param signatures A dataframe with components along the y-axis and signatures along the x.
 #' @param components A list of S4 objects belonging to the class 'flexmix'.
+#' @param signatures (optional) A dataframe with components in the rows and signatures in the columns.
 #' @param sig_of_interest (optional) A single integer or a vector of integers corresponding the signatures for which to make plots. \cr
 #' In the absence of any value passed in for this parameter, plots for just the first signature will be returned.
 #' @param component (optional) Which component to draw the poisson 'curves' for. (options: bp10MB, osCN, bpchrarm)
@@ -365,81 +412,113 @@ GaussiansMixturePlot <- function(signatures, components,
 #'
 #'
 #' @export
-PoissonsMixturePlot <- function(signatures, components,
-                                sig_of_interest = 1, component = 'bp10MB', threshold = 0.3) {
+PoissonsMixturePlot <- function(components,
+                                signatures = NULL,
+                                sig_of_interest = 1,
+                                log_flag = FALSE,
+                                component = 'bp10MB',
+                                threshold = 0.3) {
 
-  # Palette for plotting
-  cbPalette <- c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02",
-                 "#A6761D", "#666666", "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
-                 "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999", "black")
+  # Validate input
+  stopifnot("Components argument must be a list of flexmix objects or tables." =
+              inherits(components, 'list'))
+  stopifnot("Components argument must be a list of flexmix objects or tables." =
+              (inherits(components[[1]], 'flexmix') |
+                 inherits(components[[1]], 'data.frame') |
+                 inherits(components[[1]], 'matrix')))
 
-  norm_const <- apply(signatures, 1, sum)
-  sig_mat_norm <- data.frame(apply(signatures,
-                                   2,
-                                   function(x){x/norm_const}))
-  weights <- as.numeric(sig_mat_norm[,sig_of_interest])
-  mask <- grepl(component, rownames(sig_mat_norm), fixed=TRUE)
-  plotparam <- flexmix::parameters(components[[component]])
-
-  # CalculateSumOfPosteriors reorders its matrix on output...
-  # So the signature components are correspondingly in ascending order of their means...
-  # So this reordering is then necessary to correspond to those weights
+  # Extract components for a cn-feature and sort in ascending order
+  if (inherits(components[[1]], "data.frame") |
+      inherits(components[[1]], "matrix")) {
+    plotparam <- components[[component]]
+  } else if (inherits(components[[1]], "flexmix")) {
+    plotparam <- flexmix::parameters(t(components[[component]]))
+  } else {
+    stop("Input format not recognized for component models, please provide a dataframes/matrix/flexmix object. \n
+         See function docs.")
+  }
   plotparam <- plotparam[order(plotparam)]
-  shading <- weights[mask]
-  max_comp <- plotparam[which(plotparam == max(plotparam))]
-  xmax <- max_comp[1] + (sqrt(max_comp[1])*1.75)
 
-  if (component == 'bp10MB') {
-    xlabel <- 'breakpoints per 10MB'
-  } else if (component == 'osCN') {
-    xlabel <- 'oscillating CN regions'
-  } else if (component == 'bpchrarm') {
-    xlabel <- 'breakpoints per chr arm'
+  # Log-transform if needed
+  if (log_flag) {
+    plotparam <- log(plotparam)
   }
 
-  plotparam_df <- as.data.frame((plotparam))
-  colnames(plotparam_df) <- c("lambda") # Adjust based on the actual structure
-  plotparam_df$mean <- plotparam_df$lambda
+  # If signatures provided, then shade by weight, otherwise set to uniform opacity
+  if (!is.null(signatures)) {
+    stopifnot("Signatures argument must be tabular in the form of a matrix/dataframe/datatable." =
+                (inherits(signatures, 'matrix') |
+                   inherits(signatures, 'data.frame') |
+                   inherits(signatures, 'data.table')))
+    norm_const <- apply(signatures, 2, sum)
+    sig_mat_norm <- sweep(signatures, 2, norm_const, "/")
+    weights <- as.numeric(sig_mat_norm[,sig_of_interest])
+    mask <- grepl(component, rownames(sig_mat_norm), fixed=TRUE)
+    shading <- weights[mask]
+    segpalette <- viridis::turbo(length(plotparam))
 
+  } else {
+    shading <- rep(1, length(plotparam))
+    segpalette <- viridis::turbo(length(plotparam))
+  }
+
+  # Define plot layout
+  max_comp <- max(plotparam)
+  min_comp <- min(plotparam)
+  xmax <- max_comp + 3*sqrt(max_comp)
+  xmin <- pmax(min_comp - 3*sqrt(min_comp), 0)
+  plotparam_df <- as.data.frame(plotparam)
+  colnames(plotparam_df) <- c("lambda")
+  x_vals <- round(seq(0, xmax, length.out = 1000))  # Increase the number of points for a smoother line
+
+  # Make the main plot
   main_plot <- ggplot2::ggplot(data = data.frame(x = c(0,round(xmax))),
                                ggplot2::aes(x = x)) +
-    ggplot2::labs(y = "", x = paste0("Number of ", xlabel)) +
+    ggplot2::labs(y = "", x = paste0(component, " mixture components")) +
     ggplot2::theme_bw() +
     ggplot2::theme(axis.text = ggplot2::element_text(size = 10),
                    axis.title = ggplot2::element_text(size = 12),
                    panel.grid.minor = ggplot2::element_blank(),
                    panel.grid.major = ggplot2::element_blank())
 
-
-  x_vals <- round(seq(0, xmax, length.out = 1000))  # Increase the number of points for a smoother line
-
   for (i in 1:length(plotparam)) {
+    if (shading[i] < threshold) {
+      linecolour <- "grey"
+      linealpha <- 0.4
+    } else {
+      linecolour <- segpalette[i]
+      linealpha <- ifelse(shading[i] < 0.5, 0.5, shading[i])
+    }
     y_vals <- dpois(x = x_vals, lambda = plotparam[i])
     main_plot <- main_plot +
       ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals),
                          ggplot2::aes(x = x, y = y),
                          size = 1,
-                         color = ifelse(shading[i] < threshold, "grey", cbPalette[i]),
-                         alpha = ifelse(shading[i] < threshold, 0.5, shading[i]))+
+                         color = linecolour,
+                         alpha = linealpha) +
       ggplot2::geom_vline(xintercept = plotparam[i],
                           linetype = "dashed",
-                          color = ifelse(shading[i] < threshold, "grey", cbPalette[i]),
-                          alpha = ifelse(shading[i] < threshold, 0.5, shading[i])
-      )+
+                          color = linecolour,
+                          alpha = linealpha) +
       ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],  # Ensure it's treated as a data frame
-                         ggplot2::aes(x = lambda, y = 0, label = round(lambda, 3)),
+                         ggplot2::aes(x = lambda, y = 0,
+                                      label = if (lambda > 10) {
+                                        round(lambda)
+                                      } else { round(lambda, 3)} ),
                          angle = 90,
                          vjust = if (i == 1) {
                            -0.5
-                         } else if (round(plotparam_df[1]$lambda[i],3) - round(plotparam_df[1]$lambda[i-1],3)<0.01) {
+                         } else if (round(plotparam_df$lambda[i], 3) -
+                                    round(plotparam_df$lambda[i - 1], 3) < 0.01) {
                            1.5
                          } else {
                            -0.5
                          },
                          hjust = 1,
-                         color = ifelse(shading[i] < threshold, "grey", cbPalette[i]),
-                         alpha = ifelse(shading[i] < threshold, 0.5, shading[i]))
+                         color = linecolour,
+                         alpha = linealpha)
   }
+
   return(main_plot)
 }
 
@@ -463,20 +542,35 @@ PoissonsMixturePlot <- function(signatures, components,
 #' @export
 WassDistancePlot <- function(cm_a, cm_b, component) {
 
-  # Pull component parameters out of the mixture model
-  x <- flexmix::parameters(cm_a[[component]])
-  y <- flexmix::parameters(cm_b[[component]])
+  # Get model params
+  params <- list()
+  mmodels <- list(cm_a = cm_a, cm_b = cm_b)
+  for (i in c(1:length(mmodels))) {
+    if (inherits(mmodels[[i]][[1]], "data.frame") | inherits(mmodels[[i]][[1]], "matrix")) {
+      params[[names(mmodels[i])]] <- as.data.frame(mmodels[[i]][[component]])
+    } else if (inherits(mmodels[[i]][[1]], "flexmix")) {
+      if (grepl("FLXMCnorm1",
+                as.character(mmodels[[i]][[component]]@call$model),
+                fixed = TRUE)) {
+        params[[names(mmodels[i])]] <- as.data.frame(flexmix::parameters(mmodels[[i]][[component]]))
+      } else if (grepl("FLXMCmvpois",
+                  as.character(mmodels[[i]][[component]]@call$model),
+                  fixed = TRUE)) {
+        params[[names(mmodels[i])]] <- as.data.frame(t(flexmix::parameters(mmodels[[i]][[component]])))
+      } else {
+        stop("Unsuported flexmixmixture model(s) used.
+             Please use either normals OR poissons ('flexmix::FLXMCnorm1()' or 'flexmix::FLXMCmvpois()')")
+      }
+    } else {
+      stop("Input format not recognized, please provide dataframes/matrices/flexmix objects. \n
+           See function docs.")
+    }
+  }
 
   # Calculate Wasserstein distances
-  if (grepl("FLXMCnorm1", as.character(cm_a[[component]]@call$model),
-            fixed = TRUE) &&
-      grepl("FLXMCnorm1", as.character(cm_b[[component]]@call$model),
-            fixed = TRUE)) {
-
-    x <- as.data.frame(x)
-    x <- x[, order(apply(x, 2, function(a) a[1]))]
-    y <- as.data.frame(y)
-    y <- y[, order(apply(y, 2, function(a) a[1]))]
+  if (dim(params$cm_a)[1] == 2) {
+    x <- params$cm_a[, order(apply(params$cm_a, 2, function(a) a[1]))]
+    y <- params$cm_b[, order(apply(params$cm_b, 2, function(a) a[1]))]
     dist_matrix <- matrix(0, nrow = ncol(x), ncol = ncol(y))
     for (i in 1:ncol(x)) {
       for (j in 1:ncol(y)) {
@@ -487,15 +581,9 @@ WassDistancePlot <- function(cm_a, cm_b, component) {
     }
     dist_df <- expand.grid(x = 1:dim(x)[2], y = 1:dim(y)[2])
 
-  } else if (grepl("FLXMCmvpois", as.character(cm_a[[component]]@call$model),
-                   fixed = TRUE) &&
-             grepl("FLXMCmvpois", as.character(cm_b[[component]]@call$model),
-                   fixed = TRUE)) {
-
-    x <- as.data.frame(t(x))
-    x <- x[, order(apply(x, 2, function(a) a[1]))]
-    y <- as.data.frame(t(y))
-    y <- y[, order(apply(y, 2, function(a) a[1]))]
+  } else if (dim(params$cm_a)[1] == 1) {
+    x <- params$cm_a[, order(apply(params$cm_a, 2, function(a) a[1]))]
+    y <- params$cm_b[, order(apply(params$cm_b, 2, function(a) a[1]))]
     dist_matrix <- matrix(0, nrow = length(x), ncol = length(y))
     for (i in 1:length(x)) {
       for (j in 1:length(y)) {
@@ -507,8 +595,8 @@ WassDistancePlot <- function(cm_a, cm_b, component) {
     dist_df <- expand.grid(x = 1:length(x), y = 1:length(y))
 
   } else {
-    stop("Unsuported mixture model(s) used.
-       Please use either normals OR poissons ('flexmix::FLXMCnorm1()' or 'flexmix::FLXMCmvpois()')")
+    stop("Unsuported mixture model parameter format provided.
+         Double check input dataframes.")
   }
 
   # Build Heatmap
@@ -526,8 +614,7 @@ WassDistancePlot <- function(cm_a, cm_b, component) {
                                 name = "Similarity",
                                 breaks = seq(0, 1, by = 0.2),
                                 labels = c("", "Low", "", "", "High", "")) +
-    ggplot2::labs(title = paste0("Heatmap of ",
-                                 component,
+    ggplot2::labs(title = paste0(component,
                                  " component-wise wasserstein distance"),
                   x = "A - components", y = "B - components")
 
