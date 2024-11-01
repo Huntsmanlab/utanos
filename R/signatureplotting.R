@@ -3,12 +3,168 @@
 ###########################
 ### Functions
 ###########################
+# SignatureExposuresPlot
+# ComponentSignaturesHeatmap
 # StackedExposuresPlot
-# TwoFeatureScatterPlot
 # MixtureModelPlots
 # GaussiansMixturePlot
 # PoissonsMixturePlot
 # WassDistancePlot
+# SEAlluvialPlot
+
+
+
+#' Create Heatmap of Signature Exposures
+#'
+#' Converts signature-per-sample data to a heatmap, optionally saves it as a png, and returns the ggplot.
+#' Samples are sorted for display based on their maximum signature exposure.
+#' Heatmap is plotted in the viridis colour-scheme.
+#'
+#' @param signatures Dataframe. Expects a dataframe of signature exposures (rows) by samples (columns).
+#' @param order (optional) Character vector. Defines the order in which samples will be plotted. \cr
+#' This is particularly useful when plotting more than 1 heatmap next to one another. \cr
+#' Allows samples to line-up horizontally. \cr
+#' Example: \cr
+#' `c("CC-CHM-1341", "CC-CHM-1347", "CC-CHM-1355", CC-CHM-1361", "CC-HAM-0369", "CC-HAM-0374", "CC-HAM-0379", "CC-HAM-0383", "CC-HAM-0385")`
+#' @param transpose (optional) Logical. If set to TRUE the function returns the order in which samples were plotted.
+#' @param colour_scheme (optional) Character. Value passed to the `viridis::scale_fill_viridis` option parameter. ex. 'A' or 'B'
+#' @param colour_dir (optional) Either 1 OR -1. Value passed to the `viridis::scale_fill_viridis` direction parameter.
+#' @param cm_begin (optional) Float. Value within range [0,1]. Value passed to the `viridis::scale_fill_viridis` direction parameter.
+#' @param title (optional) String or TRUE. Pass in a title for the plot or set to TRUE and one will be generated.
+#' @param obj_name (optional) String. Adds a tag to the end of the filename if saving the image. \cr
+#' Only used if the save_path parameter is also set.
+#' @return A list of a ggplot2 object and vector of the ordered sample names.
+#'
+#' @export
+SignatureExposuresPlot <- function (signatures,
+                                    order = FALSE,
+                                    transpose = FALSE,
+                                    colour_scheme = 'D',
+                                    colour_dir = 1,
+                                    cm_begin = 0,
+                                    addtitle = NULL,
+                                    obj_name = 'sig_exposures_obj') {
+
+  # If columns don't sum to 1, scale
+  if (!all(colSums(signatures) == 1)) {
+    signatures <- NormaliseMatrix(signatures)
+  }
+  # Convert data to long format and add column for max. sig. exposure
+  signatures <- as.data.frame(signatures)
+  nsigs <- nrow(signatures)
+  long_data <- tidyr::gather(signatures)
+  long_data$max_sig <- rep(apply(signatures, 2, function(x) which.max(x)),
+                           times = 1,
+                           each = nsigs)
+  long_data$sigs <- rep(1:nsigs,dim(signatures)[2])
+  colnames(long_data) <- c('X', 'Z', 'max_sig', 'Y')
+  long_data <- long_data %>% dplyr::arrange(max_sig)
+  long_data$X <- factor(long_data$X, levels = unique(long_data$X))
+
+  if (!isFALSE(order)) {
+    long_data$X <- factor(long_data$X, levels = order)
+  }
+
+  # Build Plot
+  g <- ggplot2::ggplot(long_data, ggplot2::aes(X, Y, fill = Z)) +
+    ggplot2::geom_tile() +
+    viridis::scale_fill_viridis(discrete = FALSE,
+                                option = colour_scheme,
+                                direction = colour_dir,
+                                begin = cm_begin) +
+    ggplot2::theme(plot.title = ggplot2::element_text(size = 20),
+                   axis.ticks.x = ggplot2::element_blank(),
+                   # axis.text.x = element_text(size = 15, angle = 75, vjust = 0.5, hjust=0.5),
+                   axis.text.x = ggplot2::element_blank(),
+                   axis.title.x = ggplot2::element_text(size = 14),
+                   axis.text.y = ggplot2::element_text(size = 14),
+                   legend.title = ggplot2::element_text(size = 16)) +
+    ggplot2::labs(fill = 'Signature \nExposure', x = "Samples", y = " ") +
+    ggplot2::scale_y_discrete(limits = paste0('S', 1:dim(signatures)[1]))
+
+  if (transpose != FALSE) {
+    g <- g + ggplot2::theme(plot.title = ggplot2::element_text(size = 20),
+                            axis.ticks.y = ggplot2::element_blank(),
+                            axis.text.x = ggplot2::element_text(size = 14),
+                            axis.title.x = ggplot2::element_text(size = 14),
+                            axis.text.y = ggplot2::element_blank(),
+                            legend.title = ggplot2::element_text(size = 16)) +
+      ggplot2::coord_flip()
+  }
+
+  if (!is.null(addtitle)) {
+    if (isTRUE(title)) {title <- "Signature exposures called per sample"}
+    g <- g + ggplot2::ggtitle(title)
+  }
+
+  output <- list(plot = g, ordering = levels(long_data$X))
+  return(output)
+}
+
+
+#' Create Heatmap of Component loadings per Signature
+#'
+#' Converts Components-per-signature data to a heatmap, and returns the ggplot object.
+#' Components and Signatures are sorted for display according to the order provided.
+#' Heatmap is plotted using the viridis colour-schemes.
+#'
+#' @param signatures Dataframe. Expects a dataframe of signature exposures (rows) by samples (columns).
+#' @param transpose (optional) Logical. If set to TRUE the function returns the order in which samples were plotted.
+#' @param colour_scheme (optional) Character. Value passed to the `viridis::scale_fill_viridis` option parameter. ex. 'A' or 'B'
+#' @param colour_dir (optional) Either 1 OR -1. Value passed to the `viridis::scale_fill_viridis` direction parameter.
+#' @param cm_begin (optional) Float. Value within range [0,1]. Value passed to the `viridis::scale_fill_viridis` direction parameter.
+#'
+#' @return A ggplot2 object.
+#'
+#' @export
+ComponentSignaturesHeatmap <- function(signatures,
+                                       transpose = FALSE,
+                                       colour_scheme = 'C',
+                                       colour_dir = 1,
+                                       cm_begin = 0) {
+
+  sigs <- as.data.frame(signatures)
+  # If columns don't sum to 1, scale
+  if (!all(colSums(sigs) == 1)) {
+    sigs <- sweep(sigs, 2, colSums(sigs), FUN = "/")
+  }
+  ncomp <- ncol(sigs)
+  colnames(sigs) <- paste0('S', c(1:ncomp))
+  sigs$components <- factor(rownames(sigs), levels = rev(rownames(sigs)))
+  sigs <- sigs[,c(ncomp+1, 1:ncomp)]
+  long_data <- tidyr::gather(sigs, signature, exposure, -1)
+  long_data$signature <- factor(long_data$signature,
+                                levels = paste0('S', c(1:ncomp)))
+
+  # Build Plot
+  g <- ggplot2::ggplot(long_data, ggplot2::aes(x = signature,
+                                               y = components,
+                                               fill = exposure)) +
+    ggplot2::geom_tile() +
+    viridis::scale_fill_viridis(discrete = FALSE,
+                                option = colour_scheme,
+                                direction = -1,
+                                begin = cm_begin) +
+    ggplot2::theme(axis.ticks.x = ggplot2::element_blank(),
+                   axis.text.x = ggplot2::element_text(size = 12),
+                   axis.title.x = ggplot2::element_text(size = 14),
+                   axis.ticks.y = ggplot2::element_blank(),
+                   axis.text.y = ggplot2::element_text(size = 12),
+                   axis.title.y = ggplot2::element_text(size = 14),
+                   legend.position = "none") +
+    ggplot2::labs(x = "Signatures", y = "Components")
+  g
+
+  if (transpose != FALSE) {
+    g <- g + ggplot2::coord_flip() +
+      ggplot2::theme(axis.ticks.x = ggplot2::element_blank(),
+                     axis.text.x = ggplot2::element_text(size = 12,
+                                                         angle = 90,
+                                                         hjust = 1))
+  }
+
+  return(g)
+}
 
 
 #' Create a Stacked Bar-plot of Signature Exposures
@@ -93,43 +249,30 @@ StackedExposuresPlot <- function (input_matrix,
 }
 
 
-
-#' Make a two-way scatterplot of two CN-features
-#'
-#' @description
-#'
-#' This function makes a two-way scatterplot of two CN-features.
-#' It then draws contour lines for density.
-#'
-#'
-#'
-#' @export
-TwoFeatureScatterPlot <- function(featA, featB) {
-
-  pp <- 'test'
-
-  return(pp)
-}
-
-
 #' Plot Mixture Model Components by Signature
 #'
 #' @description
 #'
-#' This function (MixtureModelPlots), for an indicated CN-Signature (S), returns a list of six ggplots.
-#' Each plot visualizes the mixture models used for each feature.
-#' All mixture components are plotted, but those elevated for S are shaded.
+#' This wrapper function (MixtureModelPlots), for an indicated CN-Signature (), returns a list of six ggplots.
+#' Each plot visualizes the mixture model used for each feature.
+#' All mixture components are plotted. \cr
+#' Optionally, the user can provide a matrix of components by signatures and indicate a `sig_of_interest`.
+#' This will result in the lower-weight components (the curves) for the indicated signature being greyed out. \cr
+#' The threshold for this grey-shading functionality can be changed using the `threshold` parameter.
 #'
-#' @param components A list of S4 objects belonging to the class 'flexmix'.
+#' @param components A list of either matrices/dataframes containing the relevant distribution parameters or S4 objects belonging to the class 'flexmix'. \cr
+#' If providing dataframes, place parameters in rows and each component along the columns. \cr
+#' If gaussians, mean in row 1, and sd in row 2.
 #' @param signatures (optional) A dataframe with components along the x-axis and signatures along the y.
-#' @param sig_of_interest (optional) A single integer corresponding the signature for which to make plots. \cr
-#' In the absence of any value passed in for this parameter, plots for just the first signature will be returned.
+#' @param sig_of_interest (optional) Integer. A single integer corresponding the column from the signatures input param.
+#' @param threshold (optional) Numeric. If signatures are provided, the cut-off to use in grey-shading vs. colouring the most important components.
+#'
 #' @returns A list of ggplots.
 #'
 #'
 #' @export
 MixtureModelPlots <- function(components,
-                              signatures,
+                              signatures = NULL,
                               sig_of_interest = 1,
                               threshold = 0.3) {
 
@@ -138,53 +281,76 @@ MixtureModelPlots <- function(components,
               inherits(components, 'list'))
   stopifnot("Components argument must be a list of flexmix objects or tables." =
               (inherits(components[[1]], 'flexmix') |
-                 inherits(components[[1]], 'data.frame')))
-  stopifnot("Signatures argument must be tabular in the form of a matrix/dataframe/datatable." =
-              (inherits(signatures, 'matrix') |
-                 inherits(signatures, 'data.frame') |
-                 inherits(signatures, 'data.table')))
-  stopifnot("The indicated signature (sig_of_interest parameter) must be an
-            integer less than or equal to the # of columns in 'signatures'." =
-              dim(signatures) >= sig_of_interest)
+                 inherits(components[[1]], 'data.frame') |
+                 inherits(signatures, 'matrix')))
+  if (!is.null(signatures)) {
+    stopifnot("Signatures argument must be tabular in the form of a matrix/dataframe/datatable." =
+                (inherits(signatures, 'matrix') |
+                   inherits(signatures, 'data.frame')))
+    stopifnot("The indicated signature (sig_of_interest parameter) must be an
+              integer less than or equal to the # of columns in 'signatures'." =
+                dim(signatures) >= sig_of_interest)
+  }
 
+  # Make plots
   all_plots <- list()
-  all_plots[["segmentsize"]] <- GaussiansMixturePlot(components, signatures,
-                                                     sig_of_interest,
-                                                     component = 'segsize',
-                                                     threshold = threshold)
-  all_plots[["breakpoint10MB"]] <- PoissonsMixturePlot(components, signatures,
+  if ("segsize" %in% names(components)) {
+    all_plots[["segmentsize"]] <- GaussiansMixturePlot(components,
+                                                       signatures,
                                                        sig_of_interest,
-                                                       component = 'bp10MB',
-                                                       threshold = threshold)
-  all_plots[["oscillating"]] <- PoissonsMixturePlot(components, signatures,
-                                                    sig_of_interest,
-                                                    component = 'osCN',
-                                                    threshold = threshold)
-  all_plots[["changepoint"]] <- GaussiansMixturePlot(components, signatures,
-                                                     sig_of_interest,
-                                                     component = 'changepoint',
-                                                     threshold = threshold)
-  all_plots[["copynumber"]] <- GaussiansMixturePlot(components, signatures,
-                                                    sig_of_interest,
-                                                    component = 'copynumber',
-                                                    threshold = threshold)
-  all_plots[["breakpointsarm"]] <- PoissonsMixturePlot(components, signatures,
+                                                       component = 'segsize',
+                                                       threshold = threshold,
+                                                       log_flag = TRUE)
+  }
+  if ("bp10MB" %in% names(components)) {
+    all_plots[["breakpoint10MB"]] <- PoissonsMixturePlot(components,
+                                                         signatures,
+                                                         sig_of_interest,
+                                                         component = 'bp10MB',
+                                                         threshold = threshold)
+  }
+  if ("osCN" %in% names(components)) {
+    all_plots[["oscillating"]] <- PoissonsMixturePlot(components,
+                                                      signatures,
+                                                      sig_of_interest,
+                                                      component = 'osCN',
+                                                      threshold = threshold)
+  }
+  if ("changepoint" %in% names(components)) {
+    all_plots[["changepoint"]] <- GaussiansMixturePlot(components,
+                                                       signatures,
                                                        sig_of_interest,
-                                                       component = 'bpchrarm',
+                                                       component = 'changepoint',
                                                        threshold = threshold)
-  if("nc50" %in% names(components)){
-    all_plots[["nc50"]] <- PoissonsMixturePlot(components, signatures,
+  }
+  if ("copynumber" %in% names(components)) {
+    all_plots[["copynumber"]] <- GaussiansMixturePlot(components,
+                                                      signatures,
+                                                      sig_of_interest,
+                                                      component = 'copynumber',
+                                                      threshold = threshold)
+  }
+  if ("bpchrarm" %in% names(components)) {
+    all_plots[["breakpointsarm"]] <- PoissonsMixturePlot(components,
+                                                         signatures,
+                                                         sig_of_interest,
+                                                         component = 'bpchrarm',
+                                                         threshold = threshold)
+  }
+  if ("nc50" %in% names(components)) {
+    all_plots[["nc50"]] <- PoissonsMixturePlot(components,
+                                               signatures,
                                                sig_of_interest,
                                                component = 'nc50',
                                                threshold = threshold)
   }
-  if("cdist" %in% names(components)){
-    all_plots[["cdist"]] <- GaussiansMixturePlot(components, signatures,
+  if ("cdist" %in% names(components)) {
+    all_plots[["cdist"]] <- GaussiansMixturePlot(components,
+                                                 signatures,
                                                  sig_of_interest,
                                                  component = 'cdist',
                                                  threshold = threshold)
   }
-
 
   return(all_plots)
 }
@@ -194,19 +360,26 @@ MixtureModelPlots <- function(components,
 #'
 #' @description
 #'
-#' This function plots the mixture models for a component that is composed of gaussians.
-#' All mixture components are plotted, but those elevated for the indicated signature are shaded.
+#' This function plots the mixture model for a component that is composed of gaussians.
+#' All mixture components are plotted. \ccr
+#' Optionally, the user can provide a matrix of components by signatures and indicate a `sig_of_interest`.
+#' This will result in the lower-weight components (the curves) for the indicated signature being greyed out. \cr
+#' The threshold for this grey-shading functionality can be changed using the `threshold` parameter.
 #' \cr
 #' Additionally, an inlay plot is created out of the 'important' components if... \cr
 #' 1. Some components have been 'squashed' down \cr
 #' 2. There are any. - i.e. at least 1 weight > 0.05 \cr
 #'
-#' @param components A list of S4 objects belonging to the class 'flexmix'.
+#' @param components A list of either matrices/dataframes containing the distribution parameters (mean and sd) or S4 objects belonging to the class 'flexmix'. \cr
+#' If providing dataframes, place parameters in rows and each component along the columns. \cr
+#' Mean in row 1, and sd in row 2.
 #' @param signatures (optional) A dataframe with components in the rows and signatures in the columns.
-#' @param sig_of_interest (optional) A single integer or a vector of integers corresponding the signatures for which to make plots. \cr
-#' In the absence of any value passed in for this parameter, plots for just the first signature will be returned.
-#' @param component (optional) Which component to draw the gaussian curves for. (options: segsize, changepoint, copynumber)
+#' @param sig_of_interest (optional) Integer. A single integer corresponding the column from the signatures input param.
+#' @param log_flag (optional) Logical. If TRUE, draw the log-transformed curves instead.
+#' @param component (optional) String. Which component to draw the gaussian curves for. (options: segsize, changepoint, copynumber)
 #' @param inlay_flag (optional) Boolean flag to turn on/off the inlay plot.
+#' @param threshold (optional) Numeric. 'Important' component weights cut-off. \cr
+#' If signatures are provided, the cut-off to use in grey-shading vs. colouring the most important components.
 #' @returns A ggplot.
 #'
 #'
@@ -274,9 +447,17 @@ GaussiansMixturePlot <- function(components,
   colnames(plotparam_df) <- c("mean", "sd")
   plotparam_df$component <- factor(1:nrow(plotparam_df))
   x_vals <- seq(xmin, xmax, length.out = 1000)  # Increase the number of points for a smoother line
+  y_vals <- list()
+  for (i in 1:ncol(plotparam)) {
+    y_vals[[i]] <- dnorm(x_vals, mean = plotparam[1, i], sd = plotparam[2, i])
+  }
+  ymax <- max(unlist(y_vals), na.rm = TRUE)
+  miny <- min(unlist(y_vals), na.rm = TRUE)
+  ymin_adj <- (ymax - miny)/4
+  ymin <- -ymin_adj
 
   # Make the main plot
-  main_plot <- ggplot2::ggplot(data = data.frame(x = c(1,xmax)),
+  main_plot <- ggplot2::ggplot(data = data.frame(x = c(0, xmax)),
                                ggplot2::aes(x)) +
     ggplot2::ylab("") +
     ggplot2::xlab(paste0(component, " mixture components")) +
@@ -285,20 +466,20 @@ GaussiansMixturePlot <- function(components,
                    axis.title = ggplot2::element_text(size = 12),
                    panel.grid.minor = ggplot2::element_blank(),
                    panel.grid.major = ggplot2::element_blank()) +
-    ggplot2::scale_x_continuous(breaks = plotbreaks)
+    ggplot2::scale_x_continuous(breaks = plotbreaks) +
+    ggplot2::coord_cartesian(ylim = c(ymin, ymax))
 
   for (i in 1:ncol(plotparam)) {
     if (shading[i] < threshold) {
       linecolour <- "grey"
-      linealpha <- 0.4
+      linealpha <- 0.5
     } else {
       linecolour <- segpalette[i]
-      linealpha <- ifelse(shading[i] < 0.5, 0.5, shading[i])
+      linealpha <- ifelse(shading[i] < 0.6, 0.6, shading[i])
     }
-    y_vals <- dnorm(x_vals, mean = plotparam[1, i], sd = plotparam[2, i])
 
     main_plot <- main_plot +
-      ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals),
+      ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals[[i]]),
                          ggplot2::aes(x = x, y = y),
                          size = 1,
                          color = linecolour,
@@ -308,19 +489,21 @@ GaussiansMixturePlot <- function(components,
                           color = linecolour,
                           alpha = linealpha) +
       ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],
-                         ggplot2::aes(x = mean, y = -1,
-                                      label = if (mean > 10) {
+                         ggplot2::aes(x = mean,
+                                      y = ymin/2,
+                                      label = if (mean > 50) {
                                         round(mean)
                                         } else { round(mean, 3)} ),
                          angle = 90,
                          vjust = if (i == 1) {
-                           -0.5
-                         } else if (round(plotparam_df[i, ][[1]],3) -
+                           ymin/4
+                         } else if (round(plotparam_df[i, ][[1]], 3) -
                                     round(plotparam_df[i-1, ][[1]], 3) < 0.01) {
-                           1.5
+                           ymin_adj/4
                          } else {
-                           -0.5
+                           ymin/4
                          },
+                         size = 12/.pt,
                          color = linecolour,
                          alpha = linealpha)
   }
@@ -330,19 +513,36 @@ GaussiansMixturePlot <- function(components,
   # 1. Some components have been 'squashed' down
   # 2. There are any. - i.e. at least 1 weight > 0.05
   if ((plotparam[1, dim(plotparam)[2]]/plotparam[1,1] > 20) &&
-      (sum(shading > 0.05) >= 1) && inlay_flag) {
-    mask <- shading > 0.05
+      (sum(shading > threshold) >= 1) && inlay_flag) {
+
+    # Define new component vars for inset plot
+    mask <- shading > threshold
     plotparam2 <- plotparam[,mask, drop = FALSE]
+    plotparam_df <- as.data.frame(t(plotparam2))
+    colnames(plotparam_df) <- c("mean", "sd")
+    plotparam_df$component <- factor(1:nrow(plotparam_df))
     shading2 <- shading[mask]
     segpalette <- segpalette[mask]
     min_comp <- plotparam2[,which(plotparam2[1,] == min(plotparam2[1,]))]
     max_comp <- plotparam2[,which(plotparam2[1,] == max(plotparam2[1,]))]
-    xmin <- min_comp[1] - (min_comp[2]*1.75)
-    xmax <- max_comp[1] + (max_comp[2]*1.75)
-    digits <- nchar(as.character(round(xmax/2)))
+
+    # Define inset plot layout
+    xmin2 <- pmax(min_comp[1] - (min_comp[2]*3), 0)
+    xmax2 <- max_comp[1] + (max_comp[2]*3)
+    digits <- nchar(as.character(round(xmax2/2)))
     plotbreaks <- c(10^(digits-1), (10^digits)/2, 10^digits)
-    plotbreaks <- plotbreaks[xmax > plotbreaks]
-    inlay_plot <- ggplot2::ggplot(data = data.frame(x = c(0, xmax)),
+    plotbreaks <- plotbreaks[xmax2 > plotbreaks]
+    x_vals2 <- seq(xmin2, xmax2, length.out = 1000)
+    y_vals2 <- list()
+    for (i in 1:ncol(plotparam2)) {
+      y_vals2[[i]] <- dnorm(x_vals2, mean = plotparam2[1, i], sd = plotparam2[2, i])
+    }
+    ymax2 <- max(unlist(y_vals2), na.rm = TRUE)
+    miny2 <- min(unlist(y_vals2), na.rm = TRUE)
+    ymin_adj2 <- (ymax2 - miny2)/3
+    ymin2 <- -ymin_adj2
+
+    inlay_plot <- ggplot2::ggplot(data = data.frame(x = c(xmin2, xmax2)),
                                   ggplot2::aes(x)) +
       ggplot2::ylab("") + ggplot2::xlab("") +
       ggplot2::theme_bw() +
@@ -350,48 +550,52 @@ GaussiansMixturePlot <- function(components,
                      axis.title = ggplot2::element_text(size = 8),
                      panel.grid.minor = ggplot2::element_blank(),
                      panel.grid.major = ggplot2::element_blank()) +
-      ggplot2::scale_x_continuous(breaks = plotbreaks)
+      ggplot2::scale_x_continuous(breaks = plotbreaks) +
+      ggplot2::coord_cartesian(ylim = c(ymin2, ymax2))
 
-    plotparam_df <- as.data.frame(t(plotparam2))
-    colnames(plotparam_df) <- c("mean", "sd")
-    plotparam_df$component <- factor(1:nrow(plotparam_df))
-
-    x_vals <- seq(0, xmax, length.out = 1000)  # Increase the number of points for a smoother line
     for (i in 1:ncol(plotparam2)) {
-      y_vals <- dnorm(x_vals, mean = plotparam[1, i], sd = plotparam[2, i])
+      if (shading2[i] < threshold) {
+        linecolour <- "grey"
+        linealpha <- 0.5
+      } else {
+        linecolour <- segpalette[i]
+        linealpha <- ifelse(shading2[i] < 0.6, 0.6, shading2[i])
+      }
+
       inlay_plot <- inlay_plot +
-        ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals),
+        ggplot2::geom_line(data = data.frame(x = x_vals2, y = y_vals2[[i]]),
                            ggplot2::aes(x = x, y = y),
                            size = 1,
-                           color = ifelse(shading2[i] < threshold, "grey", segpalette[i]),
-                           alpha = ifelse(shading2[i] < threshold, 0.5, shading2[i]))+
+                           color = linecolour,
+                           alpha = linealpha) +
         ggplot2::geom_vline(xintercept = plotparam2[1, i],
                             linetype = "dashed",
-                            color = ifelse(shading2[i] < threshold, "grey", segpalette[i]),
-                            alpha = ifelse(shading2[i] < threshold, 0.5, shading2[i]))+
+                            color = linecolour,
+                            alpha = linealpha) +
         ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],
-                           ggplot2::aes(x = mean, y = -2,
+                           ggplot2::aes(x = mean, y = ymin2/2,
                                         label = if (mean > 10) {
                                           round(mean)
                                         } else { round(mean, 3)} ),
                            angle = 90,
                            vjust = if (i == 1) {
-                             -0.5
-                           } else if (round(plotparam_df[i, ][[1]],3) - round(plotparam_df[i-1, ][[1]],3)<0.05) {
-                             1.5
+                             ymin2/4
+                           } else if (round(plotparam_df[i, ][[1]],3) -
+                                      round(plotparam_df[i-1, ][[1]],3) < 0.05) {
+                             ymin_adj2/4
                            } else {
-                             -0.5
+                             ymin2/4
                            },
-                           color = ifelse(shading2[i] < threshold, "grey", segpalette[i]),
-                           alpha = ifelse(shading2[i] < threshold, 0.5, shading2[i]))
+                           size = 12/.pt,
+                           color = linecolour,
+                           alpha = linealpha)
     }
     # Overwrite earlier final plot with inset plot version
     final_plot <-
       cowplot::ggdraw() +
       cowplot::draw_plot(main_plot) +
-      cowplot::draw_plot(inlay_plot, x = 0.5, y = .5, width = .45, height = .45)
+      cowplot::draw_plot(inlay_plot, x = 0.5, y = 0.5, width = .45, height = .45)
   }
-
   return(final_plot)
 }
 
@@ -401,15 +605,18 @@ GaussiansMixturePlot <- function(components,
 #' @description
 #'
 #' This function plots the mixture models for a component that is composed of poisson distributions.
-#' All mixture components are plotted, but those elevated for the specified signature are shaded.
+#' All mixture components are plotted. \cr
+#' Optionally, the user can provide a matrix of components by signatures and indicate a `sig_of_interest`.
+#' This will result in the lower-weight components (the curves) for the indicated signature being greyed out. \cr
+#' The threshold for this grey-shading functionality can be changed using the `threshold` parameter.
 #'
-#' @param components A list of S4 objects belonging to the class 'flexmix'.
+#' @param components A list of either matrices/dataframes containing the distribution parameter (lambda) or S4 objects belonging to the class 'flexmix'. \cr
+#' If providing dataframes, place parameter in row and each component along the columns. \cr
 #' @param signatures (optional) A dataframe with components in the rows and signatures in the columns.
-#' @param sig_of_interest (optional) A single integer or a vector of integers corresponding the signatures for which to make plots. \cr
-#' In the absence of any value passed in for this parameter, plots for just the first signature will be returned.
-#' @param component (optional) Which component to draw the poisson 'curves' for. (options: bp10MB, osCN, bpchrarm)
+#' @param sig_of_interest (optional) Integer. A single integer corresponding the column from the signatures input param.
+#' @param component (optional) String. Which component to draw the poisson 'curves' for. (options: bp10MB, osCN, bpchrarm)
+#' @param threshold (optional) Numeric. If signatures are provided, the cut-off to use in grey-shading vs. colouring the most important components.
 #' @returns A ggplot.
-#'
 #'
 #' @export
 PoissonsMixturePlot <- function(components,
@@ -432,7 +639,7 @@ PoissonsMixturePlot <- function(components,
       inherits(components[[1]], "matrix")) {
     plotparam <- components[[component]]
   } else if (inherits(components[[1]], "flexmix")) {
-    plotparam <- flexmix::parameters(t(components[[component]]))
+    plotparam <- t(flexmix::parameters(components[[component]]))
   } else {
     stop("Input format not recognized for component models, please provide a dataframes/matrix/flexmix object. \n
          See function docs.")
@@ -469,7 +676,15 @@ PoissonsMixturePlot <- function(components,
   xmin <- pmax(min_comp - 3*sqrt(min_comp), 0)
   plotparam_df <- as.data.frame(plotparam)
   colnames(plotparam_df) <- c("lambda")
-  x_vals <- round(seq(0, xmax, length.out = 1000))  # Increase the number of points for a smoother line
+  x_vals <- round(seq(xmin, xmax, length.out = 1000))  # Increase the number of points for a smoother line
+  y_vals <- list()
+  for (i in 1:length(plotparam)) {
+    y_vals[[i]] <- dpois(x = x_vals, lambda = plotparam[i])
+  }
+  ymax <- max(unlist(y_vals), na.rm = TRUE)
+  miny <- min(unlist(y_vals), na.rm = TRUE)
+  ymin_adj <- (ymax - miny)/4
+  ymin <- -ymin_adj
 
   # Make the main plot
   main_plot <- ggplot2::ggplot(data = data.frame(x = c(0,round(xmax))),
@@ -479,19 +694,21 @@ PoissonsMixturePlot <- function(components,
     ggplot2::theme(axis.text = ggplot2::element_text(size = 10),
                    axis.title = ggplot2::element_text(size = 12),
                    panel.grid.minor = ggplot2::element_blank(),
-                   panel.grid.major = ggplot2::element_blank())
+                   panel.grid.major = ggplot2::element_blank()) +
+    ggplot2::coord_cartesian(ylim = c(ymin, ymax))
+
 
   for (i in 1:length(plotparam)) {
     if (shading[i] < threshold) {
       linecolour <- "grey"
-      linealpha <- 0.4
+      linealpha <- 0.5
     } else {
       linecolour <- segpalette[i]
-      linealpha <- ifelse(shading[i] < 0.5, 0.5, shading[i])
+      linealpha <- ifelse(shading[i] < 0.6, 0.6, shading[i])
     }
-    y_vals <- dpois(x = x_vals, lambda = plotparam[i])
+
     main_plot <- main_plot +
-      ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals),
+      ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals[[i]]),
                          ggplot2::aes(x = x, y = y),
                          size = 1,
                          color = linecolour,
@@ -501,24 +718,25 @@ PoissonsMixturePlot <- function(components,
                           color = linecolour,
                           alpha = linealpha) +
       ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],  # Ensure it's treated as a data frame
-                         ggplot2::aes(x = lambda, y = 0,
+                         ggplot2::aes(x = lambda,
+                                      y = ymin/2,
                                       label = if (lambda > 10) {
                                         round(lambda)
                                       } else { round(lambda, 3)} ),
                          angle = 90,
                          vjust = if (i == 1) {
-                           -0.5
+                           ymin/4
                          } else if (round(plotparam_df$lambda[i], 3) -
                                     round(plotparam_df$lambda[i - 1], 3) < 0.01) {
-                           1.5
+                           ymin_adj/4
                          } else {
-                           -0.5
+                           ymin/4
                          },
                          hjust = 1,
+                         size = 12/.pt,
                          color = linecolour,
                          alpha = linealpha)
   }
-
   return(main_plot)
 }
 

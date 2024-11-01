@@ -1,168 +1,18 @@
-# This is a script containing plotting functions (and helpers) for shallow WGS analysis
+# File contains plotting functions (and helpers) for shallow WGS analysis
 
-# List of functions + notes:
-# SignatureExposuresPlot
+###########################
+### Functions
+###########################
 # ACNDiversityPlot
 # SortHeatmap
 # PlotAnnotationBars
 # SummaryCNPlot <- Should be converted to a ggplot whenever convenient
 # RCNDiversityPlot
-# RelativeCNSegmentsPlot <- made redundant? Can be removed soon, test CNSegmentsPlot on WisecondorX output to make sure
 # CNSegmentsPlot
 # RelToAbsSegPos
 # AddGenesToPlot
 # QualityPlot
 
-
-#' Create Heatmap of Signature Exposures
-#'
-#' Converts signature-per-sample data to a heatmap, optionally saves it as a png, and returns the ggplot.
-#' Samples are sorted for display based on their maximum signature exposure.
-#' Heatmap is plotted in the viridis colour-scheme.
-#'
-#' @param signatures Dataframe. Expects a dataframe of signature exposures (rows) by samples (columns).
-#' @param order (optional) Character vector. Defines the order in which samples will be plotted. \cr
-#' This is particularly useful when plotting more than 1 heatmap next to one another. \cr
-#' Allows samples to line-up horizontally. \cr
-#' Example: \cr
-#' `c("CC-CHM-1341", "CC-CHM-1347", "CC-CHM-1355", CC-CHM-1361", "CC-HAM-0369", "CC-HAM-0374", "CC-HAM-0379", "CC-HAM-0383", "CC-HAM-0385")`
-#' @param transpose (optional) Logical. If set to TRUE the function returns the order in which samples were plotted.
-#' @param colour_scheme (optional) Character. Value passed to the `viridis::scale_fill_viridis` option parameter. ex. 'A' or 'B'
-#' @param colour_dir (optional) Either 1 OR -1. Value passed to the `viridis::scale_fill_viridis` direction parameter.
-#' @param cm_begin (optional) Float. Value within range [0,1]. Value passed to the `viridis::scale_fill_viridis` direction parameter.
-#' @param title (optional) String or TRUE. Pass in a title for the plot or set to TRUE and one will be generated.
-#' @param obj_name (optional) String. Adds a tag to the end of the filename if saving the image. \cr
-#' Only used if the save_path parameter is also set.
-#' @return A list of a ggplot2 object and vector of the ordered sample names.
-#'
-#' @export
-SignatureExposuresPlot <- function (signatures,
-                                    order = FALSE,
-                                    transpose = FALSE,
-                                    colour_scheme = 'D',
-                                    colour_dir = 1,
-                                    cm_begin = 0,
-                                    addtitle = NULL,
-                                    obj_name = 'sig_exposures_obj') {
-
-  # If columns don't sum to 1, scale
-  if (!all(colSums(signatures) == 1)) {
-    signatures <- NormaliseMatrix(signatures)
-  }
-  # Convert data to long format and add column for max. sig. exposure
-  signatures <- as.data.frame(signatures)
-  nsigs <- nrow(signatures)
-  long_data <- tidyr::gather(signatures)
-  long_data$max_sig <- rep(apply(signatures, 2, function(x) which.max(x)),
-                           times = 1,
-                           each = nsigs)
-  long_data$sigs <- rep(1:nsigs,dim(signatures)[2])
-  colnames(long_data) <- c('X', 'Z', 'max_sig', 'Y')
-  long_data <- long_data %>% dplyr::arrange(max_sig)
-  long_data$X <- factor(long_data$X, levels = unique(long_data$X))
-
-  if (!isFALSE(order)) {
-    long_data$X <- factor(long_data$X, levels = order)
-  }
-
-  # Build Plot
-  g <- ggplot2::ggplot(long_data, ggplot2::aes(X, Y, fill = Z)) +
-    ggplot2::geom_tile() +
-    viridis::scale_fill_viridis(discrete = FALSE,
-                                option = colour_scheme,
-                                direction = colour_dir,
-                                begin = cm_begin) +
-    ggplot2::theme(plot.title = ggplot2::element_text(size = 20),
-          axis.ticks.x = ggplot2::element_blank(),
-          # axis.text.x = element_text(size = 15, angle = 75, vjust = 0.5, hjust=0.5),
-          axis.text.x = ggplot2::element_blank(),
-          axis.title.x = ggplot2::element_text(size = 14),
-          axis.text.y = ggplot2::element_text(size = 14),
-          legend.title = ggplot2::element_text(size = 16)) +
-    ggplot2::labs(fill = 'Signature \nExposure', x = "Samples", y = " ") +
-    ggplot2::scale_y_discrete(limits = paste0('S', 1:dim(signatures)[1]))
-
-  if (transpose != FALSE) {
-    g <- g + ggplot2::theme(plot.title = ggplot2::element_text(size = 20),
-                   axis.ticks.y = ggplot2::element_blank(),
-                   axis.text.x = ggplot2::element_text(size = 14),
-                   axis.title.x = ggplot2::element_text(size = 14),
-                   axis.text.y = ggplot2::element_blank(),
-                   legend.title = ggplot2::element_text(size = 16)) +
-      ggplot2::coord_flip()
-  }
-
-  if (!is.null(addtitle)) {
-    if (isTRUE(title)) {title <- "Signature exposures called per sample"}
-    g <- g + ggplot2::ggtitle(title)
-  }
-
-  output <- list(plot = g, ordering = levels(long_data$X))
-  return(output)
-}
-
-
-#' Create Heatmap of Component loadings per Signature
-#'
-#' Converts Components-per-signature data to a heatmap, and returns the ggplot object.
-#' Components and Signatures are sorted for display according to the order provided.
-#' Heatmap is plotted using the viridis colour-schemes.
-#'
-#' @param signatures Dataframe. Expects a dataframe of signature exposures (rows) by samples (columns).
-#' @param transpose (optional) Logical. If set to TRUE the function returns the order in which samples were plotted.
-#' @param colour_scheme (optional) Character. Value passed to the `viridis::scale_fill_viridis` option parameter. ex. 'A' or 'B'
-#' @param colour_dir (optional) Either 1 OR -1. Value passed to the `viridis::scale_fill_viridis` direction parameter.
-#' @param cm_begin (optional) Float. Value within range [0,1]. Value passed to the `viridis::scale_fill_viridis` direction parameter.
-#'
-#' @return A ggplot2 object.
-#'
-#' @export
-ComponentSignaturesHeatmap <- function(signatures,
-                                       transpose = FALSE,
-                                       colour_scheme = 'C',
-                                       colour_dir = 1,
-                                       cm_begin = 0) {
-
-  sigs <- as.data.frame(signatures)
-  # If columns don't sum to 1, scale
-  if (!all(colSums(sigs) == 1)) {
-    sigs <- sweep(sigs, 2, colSums(sigs), FUN = "/")
-  }
-  ncomp <- ncol(sigs)
-  colnames(sigs) <- paste0('S', c(1:ncomp))
-  sigs$components <- factor(rownames(sigs), levels = rev(rownames(sigs)))
-  sigs <- sigs[,c(ncomp+1, 1:ncomp)]
-  long_data <- tidyr::gather(sigs, signature, exposure, -1)
-
-  # Build Plot
-  g <- ggplot2::ggplot(long_data, ggplot2::aes(x = signature,
-                                               y = components,
-                                               fill = exposure)) +
-    ggplot2::geom_tile() +
-    viridis::scale_fill_viridis(discrete = FALSE,
-                                option = colour_scheme,
-                                direction = -1,
-                                begin = cm_begin) +
-    ggplot2::theme(axis.ticks.x = ggplot2::element_blank(),
-                   axis.text.x = ggplot2::element_text(size = 12),
-                   axis.title.x = ggplot2::element_text(size = 14),
-                   axis.ticks.y = ggplot2::element_blank(),
-                   axis.text.y = ggplot2::element_text(size = 12),
-                   axis.title.y = ggplot2::element_text(size = 14),
-                   legend.position = "none") +
-    ggplot2::labs(x = "Signatures", y = "Components")
-  g
-
-  if (transpose != FALSE) {
-    g <- g + ggplot2::coord_flip() +
-      ggplot2::theme(axis.ticks.x = ggplot2::element_blank(),
-                     axis.text.x = ggplot2::element_text(size = 12,
-                                                         angle = 90,
-                                                         hjust = 1))
-  }
-
-  return(g)
-}
 
 
 #' Absolute Copy-Number Diversity Heatmap

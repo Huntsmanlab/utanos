@@ -8,7 +8,7 @@ RunShallowHRD(
   raw_ratios_file,
   log_transform = TRUE,
   include_chr_X = FALSE,
-  num_simulations = 1e+05,
+  num_simulations = 100000,
   shrd_save_path = FALSE,
   sample = NULL,
   seed = 1337,
