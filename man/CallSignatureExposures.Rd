@@ -8,9 +8,12 @@ CallSignatureExposures(
   copy_numbers_input,
   component_models = NULL,
   signatures = NULL,
+  cores = 1,
+  log_features = FALSE,
+  extra_features = FALSE,
   plot_savepath = NULL,
   sigs_savepath = NULL,
-  relativeCN_data = FALSE,
+  relative = FALSE,
   refgenome = "hg19"
 )
 }
@@ -31,7 +34,7 @@ Options: \cr
 
 \item{sigs_savepath}{(optional) String. The path where to save a csv of the calculated signature exposures. Please provide a directory.}
 
-\item{relativeCN_data}{(optional) Logical. If using relative Copy-Number data as input, set to true. Otherwise, ignore.}
+\item{relative}{(optional) Logical. If using relative Copy-Number data as input, set to TRUE. Otherwise, ignore.}
 
 \item{refgenome}{(optional) String. The reference genome used. (ex. 'hg19', or 'hg38')}
 
