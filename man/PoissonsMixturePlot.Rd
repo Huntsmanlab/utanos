@@ -5,27 +5,33 @@
 \title{Plot a Mixture of Poissons}
 \usage{
 PoissonsMixturePlot(
-  signatures,
   components,
+  signatures = NULL,
   sig_of_interest = 1,
+  log_flag = FALSE,
   component = "bp10MB",
   threshold = 0.3
 )
 }
 \arguments{
-\item{signatures}{A dataframe with components along the y-axis and signatures along the x.}
+\item{components}{A list of either matrices/dataframes containing the distribution parameter (lambda) or S4 objects belonging to the class 'flexmix'. \cr
+If providing dataframes, place parameter in row and each component along the columns. \cr}
 
-\item{components}{A list of S4 objects belonging to the class 'flexmix'.}
+\item{signatures}{(optional) A dataframe with components in the rows and signatures in the columns.}
 
-\item{sig_of_interest}{(optional) A single integer or a vector of integers corresponding the signatures for which to make plots. \cr
-In the absence of any value passed in for this parameter, plots for just the first signature will be returned.}
+\item{sig_of_interest}{(optional) Integer. A single integer corresponding the column from the signatures input param.}
 
-\item{component}{(optional) Which component to draw the poisson 'curves' for. (options: bp10MB, osCN, bpchrarm)}
+\item{component}{(optional) String. Which component to draw the poisson 'curves' for. (options: bp10MB, osCN, bpchrarm)}
+
+\item{threshold}{(optional) Numeric. If signatures are provided, the cut-off to use in grey-shading vs. colouring the most important components.}
 }
 \value{
 A ggplot.
 }
 \description{
 This function plots the mixture models for a component that is composed of poisson distributions.
-All mixture components are plotted, but those elevated for the specified signature are shaded.
+All mixture components are plotted. \cr
+Optionally, the user can provide a matrix of components by signatures and indicate a \code{sig_of_interest}.
+This will result in the lower-weight components (the curves) for the indicated signature being greyed out. \cr
+The threshold for this grey-shading functionality can be changed using the \code{threshold} parameter.
 }
