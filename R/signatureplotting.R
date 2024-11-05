@@ -251,7 +251,7 @@ StackedExposuresPlot <- function (input_matrix,
 #'
 #' @description
 #'
-#' This function (MixtureModelPlots), for an indicated CN-Signature (), returns a list of six ggplots.
+#' This wrapper function (MixtureModelPlots), for an indicated CN-Signature (), returns a list of six ggplots.
 #' Each plot visualizes the mixture model used for each feature.
 #' All mixture components are plotted. \cr
 #' Optionally, the user can provide a matrix of components by signatures and indicate a `sig_of_interest`.
@@ -279,54 +279,70 @@ MixtureModelPlots <- function(components,
               inherits(components, 'list'))
   stopifnot("Components argument must be a list of flexmix objects or tables." =
               (inherits(components[[1]], 'flexmix') |
-                 inherits(components[[1]], 'data.frame')))
-  stopifnot("Signatures argument must be tabular in the form of a matrix/dataframe/datatable." =
-              (inherits(signatures, 'matrix') |
-                 inherits(signatures, 'data.frame') |
-                 inherits(signatures, 'data.table')))
-  stopifnot("The indicated signature (sig_of_interest parameter) must be an
-            integer less than or equal to the # of columns in 'signatures'." =
-              dim(signatures) >= sig_of_interest)
+                 inherits(components[[1]], 'data.frame') |
+                 inherits(signatures, 'matrix')))
+  if (!is.null(signatures)) {
+    stopifnot("Signatures argument must be tabular in the form of a matrix/dataframe/datatable." =
+                (inherits(signatures, 'matrix') |
+                   inherits(signatures, 'data.frame')))
+    stopifnot("The indicated signature (sig_of_interest parameter) must be an
+              integer less than or equal to the # of columns in 'signatures'." =
+                dim(signatures) >= sig_of_interest)
+  }
 
+  # Make plots
   all_plots <- list()
-  all_plots[["segmentsize"]] <- GaussiansMixturePlot(components,
-                                                     signatures,
-                                                     sig_of_interest,
-                                                     component = 'segsize',
-                                                     threshold = threshold)
-  all_plots[["breakpoint10MB"]] <- PoissonsMixturePlot(components,
+  if ("segsize" %in% names(components)) {
+    all_plots[["segmentsize"]] <- GaussiansMixturePlot(components,
                                                        signatures,
                                                        sig_of_interest,
-                                                       component = 'bp10MB',
-                                                       threshold = threshold)
-  all_plots[["oscillating"]] <- PoissonsMixturePlot(components,
-                                                    signatures,
-                                                    sig_of_interest,
-                                                    component = 'osCN',
-                                                    threshold = threshold)
-  all_plots[["changepoint"]] <- GaussiansMixturePlot(components,
-                                                     signatures,
-                                                     sig_of_interest,
-                                                     component = 'changepoint',
-                                                     threshold = threshold)
-  all_plots[["copynumber"]] <- GaussiansMixturePlot(components,
-                                                    signatures,
-                                                    sig_of_interest,
-                                                    component = 'copynumber',
-                                                    threshold = threshold)
-  all_plots[["breakpointsarm"]] <- PoissonsMixturePlot(components,
+                                                       component = 'segsize',
+                                                       threshold = threshold,
+                                                       log_flag = TRUE)
+  }
+  if ("bp10MB" %in% names(components)) {
+    all_plots[["breakpoint10MB"]] <- PoissonsMixturePlot(components,
+                                                         signatures,
+                                                         sig_of_interest,
+                                                         component = 'bp10MB',
+                                                         threshold = threshold)
+  }
+  if ("osCN" %in% names(components)) {
+    all_plots[["oscillating"]] <- PoissonsMixturePlot(components,
+                                                      signatures,
+                                                      sig_of_interest,
+                                                      component = 'osCN',
+                                                      threshold = threshold)
+  }
+  if ("changepoint" %in% names(components)) {
+    all_plots[["changepoint"]] <- GaussiansMixturePlot(components,
                                                        signatures,
                                                        sig_of_interest,
-                                                       component = 'bpchrarm',
+                                                       component = 'changepoint',
                                                        threshold = threshold)
-  if("nc50" %in% names(components)){
+  }
+  if ("copynumber" %in% names(components)) {
+    all_plots[["copynumber"]] <- GaussiansMixturePlot(components,
+                                                      signatures,
+                                                      sig_of_interest,
+                                                      component = 'copynumber',
+                                                      threshold = threshold)
+  }
+  if ("bpchrarm" %in% names(components)) {
+    all_plots[["breakpointsarm"]] <- PoissonsMixturePlot(components,
+                                                         signatures,
+                                                         sig_of_interest,
+                                                         component = 'bpchrarm',
+                                                         threshold = threshold)
+  }
+  if ("nc50" %in% names(components)) {
     all_plots[["nc50"]] <- PoissonsMixturePlot(components,
                                                signatures,
                                                sig_of_interest,
                                                component = 'nc50',
                                                threshold = threshold)
   }
-  if("cdist" %in% names(components)){
+  if ("cdist" %in% names(components)) {
     all_plots[["cdist"]] <- GaussiansMixturePlot(components,
                                                  signatures,
                                                  sig_of_interest,
@@ -492,12 +508,12 @@ GaussiansMixturePlot <- function(components,
     segpalette <- segpalette[mask]
     min_comp <- plotparam2[,which(plotparam2[1,] == min(plotparam2[1,]))]
     max_comp <- plotparam2[,which(plotparam2[1,] == max(plotparam2[1,]))]
-    xmin <- pmax(min_comp[1] - (min_comp[2]*3), 0)
-    xmax <- max_comp[1] + (max_comp[2]*3)
-    digits <- nchar(as.character(round(xmax/2)))
+    xmin2 <- pmax(min_comp[1] - (min_comp[2]*3), 0)
+    xmax2 <- max_comp[1] + (max_comp[2]*3)
+    digits <- nchar(as.character(round(xmax2/2)))
     plotbreaks <- c(10^(digits-1), (10^digits)/2, 10^digits)
-    plotbreaks <- plotbreaks[xmax > plotbreaks]
-    inlay_plot <- ggplot2::ggplot(data = data.frame(x = c(xmin, xmax)),
+    plotbreaks <- plotbreaks[xmax2 > plotbreaks]
+    inlay_plot <- ggplot2::ggplot(data = data.frame(x = c(xmin2, xmax2)),
                                   ggplot2::aes(x)) +
       ggplot2::ylab("") + ggplot2::xlab("") +
       ggplot2::theme_bw() +
@@ -511,7 +527,7 @@ GaussiansMixturePlot <- function(components,
     colnames(plotparam_df) <- c("mean", "sd")
     plotparam_df$component <- factor(1:nrow(plotparam_df))
 
-    x_vals <- seq(xmin, xmax, length.out = 1000)  # Increase the number of points for a smoother line
+    x_vals2 <- seq(xmin2, xmax2, length.out = 1000)  # Increase the number of points for a smoother line
     for (i in 1:ncol(plotparam2)) {
       if (shading2[i] < threshold) {
         linecolour <- "grey"
@@ -520,17 +536,17 @@ GaussiansMixturePlot <- function(components,
         linecolour <- segpalette[i]
         linealpha <- ifelse(shading2[i] < 0.6, 0.6, shading2[i])
       }
-      y_vals <- dnorm(x_vals, mean = plotparam[1, i], sd = plotparam[2, i])
+      y_vals2 <- dnorm(x_vals2, mean = plotparam2[1, i], sd = plotparam2[2, i])
       inlay_plot <- inlay_plot +
-        ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals),
+        ggplot2::geom_line(data = data.frame(x = x_vals2, y = y_vals2),
                            ggplot2::aes(x = x, y = y),
                            size = 1,
-                           color = ifelse(shading2[i] < threshold, "grey", segpalette[i]),
-                           alpha = ifelse(shading2[i] < threshold, 0.5, shading2[i]))+
+                           color = linecolour,
+                           alpha = linealpha) +
         ggplot2::geom_vline(xintercept = plotparam2[1, i],
                             linetype = "dashed",
-                            color = ifelse(shading2[i] < threshold, "grey", segpalette[i]),
-                            alpha = ifelse(shading2[i] < threshold, 0.5, shading2[i]))+
+                            color = linecolour,
+                            alpha = linealpha) +
         ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],
                            ggplot2::aes(x = mean, y = -2,
                                         label = if (mean > 10) {
@@ -539,13 +555,14 @@ GaussiansMixturePlot <- function(components,
                            angle = 90,
                            vjust = if (i == 1) {
                              -0.5
-                           } else if (round(plotparam_df[i, ][[1]],3) - round(plotparam_df[i-1, ][[1]],3)<0.05) {
+                           } else if (round(plotparam_df[i, ][[1]],3) -
+                                      round(plotparam_df[i-1, ][[1]],3)<0.05) {
                              1.5
                            } else {
                              -0.5
                            },
-                           color = ifelse(shading2[i] < threshold, "grey", segpalette[i]),
-                           alpha = ifelse(shading2[i] < threshold, 0.5, shading2[i]))
+                           color = linecolour,
+                           alpha = linealpha)
     }
     # Overwrite earlier final plot with inset plot version
     final_plot <-
@@ -597,7 +614,7 @@ PoissonsMixturePlot <- function(components,
       inherits(components[[1]], "matrix")) {
     plotparam <- components[[component]]
   } else if (inherits(components[[1]], "flexmix")) {
-    plotparam <- flexmix::parameters(t(components[[component]]))
+    plotparam <- t(flexmix::parameters(components[[component]]))
   } else {
     stop("Input format not recognized for component models, please provide a dataframes/matrix/flexmix object. \n
          See function docs.")
