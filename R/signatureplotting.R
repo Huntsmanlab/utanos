@@ -133,6 +133,8 @@ ComponentSignaturesHeatmap <- function(signatures,
   sigs$components <- factor(rownames(sigs), levels = rev(rownames(sigs)))
   sigs <- sigs[,c(ncomp+1, 1:ncomp)]
   long_data <- tidyr::gather(sigs, signature, exposure, -1)
+  long_data$signature <- factor(long_data$signature,
+                                levels = paste0('S', c(1:ncomp)))
 
   # Build Plot
   g <- ggplot2::ggplot(long_data, ggplot2::aes(x = signature,
@@ -445,9 +447,17 @@ GaussiansMixturePlot <- function(components,
   colnames(plotparam_df) <- c("mean", "sd")
   plotparam_df$component <- factor(1:nrow(plotparam_df))
   x_vals <- seq(xmin, xmax, length.out = 1000)  # Increase the number of points for a smoother line
+  y_vals <- list()
+  for (i in 1:ncol(plotparam)) {
+    y_vals[[i]] <- dnorm(x_vals, mean = plotparam[1, i], sd = plotparam[2, i])
+  }
+  ymax <- max(unlist(y_vals), na.rm = TRUE)
+  miny <- min(unlist(y_vals), na.rm = TRUE)
+  ymin_adj <- (ymax - miny)/4
+  ymin <- -ymin_adj
 
   # Make the main plot
-  main_plot <- ggplot2::ggplot(data = data.frame(x = c(1,xmax)),
+  main_plot <- ggplot2::ggplot(data = data.frame(x = c(0, xmax)),
                                ggplot2::aes(x)) +
     ggplot2::ylab("") +
     ggplot2::xlab(paste0(component, " mixture components")) +
@@ -456,20 +466,20 @@ GaussiansMixturePlot <- function(components,
                    axis.title = ggplot2::element_text(size = 12),
                    panel.grid.minor = ggplot2::element_blank(),
                    panel.grid.major = ggplot2::element_blank()) +
-    ggplot2::scale_x_continuous(breaks = plotbreaks)
+    ggplot2::scale_x_continuous(breaks = plotbreaks) +
+    ggplot2::coord_cartesian(ylim = c(ymin, ymax))
 
   for (i in 1:ncol(plotparam)) {
     if (shading[i] < threshold) {
       linecolour <- "grey"
-      linealpha <- 0.4
+      linealpha <- 0.5
     } else {
       linecolour <- segpalette[i]
-      linealpha <- ifelse(shading[i] < 0.5, 0.5, shading[i])
+      linealpha <- ifelse(shading[i] < 0.6, 0.6, shading[i])
     }
-    y_vals <- dnorm(x_vals, mean = plotparam[1, i], sd = plotparam[2, i])
 
     main_plot <- main_plot +
-      ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals),
+      ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals[[i]]),
                          ggplot2::aes(x = x, y = y),
                          size = 1,
                          color = linecolour,
@@ -479,19 +489,21 @@ GaussiansMixturePlot <- function(components,
                           color = linecolour,
                           alpha = linealpha) +
       ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],
-                         ggplot2::aes(x = mean, y = -1,
-                                      label = if (mean > 10) {
+                         ggplot2::aes(x = mean,
+                                      y = ymin/2,
+                                      label = if (mean > 50) {
                                         round(mean)
                                         } else { round(mean, 3)} ),
                          angle = 90,
                          vjust = if (i == 1) {
-                           -0.5
-                         } else if (round(plotparam_df[i, ][[1]],3) -
+                           ymin/4
+                         } else if (round(plotparam_df[i, ][[1]], 3) -
                                     round(plotparam_df[i-1, ][[1]], 3) < 0.01) {
-                           1.5
+                           ymin_adj/4
                          } else {
-                           -0.5
+                           ymin/4
                          },
+                         size = 12/.pt,
                          color = linecolour,
                          alpha = linealpha)
   }
@@ -502,17 +514,34 @@ GaussiansMixturePlot <- function(components,
   # 2. There are any. - i.e. at least 1 weight > 0.05
   if ((plotparam[1, dim(plotparam)[2]]/plotparam[1,1] > 20) &&
       (sum(shading > threshold) >= 1) && inlay_flag) {
+
+    # Define new component vars for inset plot
     mask <- shading > threshold
     plotparam2 <- plotparam[,mask, drop = FALSE]
+    plotparam_df <- as.data.frame(t(plotparam2))
+    colnames(plotparam_df) <- c("mean", "sd")
+    plotparam_df$component <- factor(1:nrow(plotparam_df))
     shading2 <- shading[mask]
     segpalette <- segpalette[mask]
     min_comp <- plotparam2[,which(plotparam2[1,] == min(plotparam2[1,]))]
     max_comp <- plotparam2[,which(plotparam2[1,] == max(plotparam2[1,]))]
+
+    # Define inset plot layout
     xmin2 <- pmax(min_comp[1] - (min_comp[2]*3), 0)
     xmax2 <- max_comp[1] + (max_comp[2]*3)
     digits <- nchar(as.character(round(xmax2/2)))
     plotbreaks <- c(10^(digits-1), (10^digits)/2, 10^digits)
     plotbreaks <- plotbreaks[xmax2 > plotbreaks]
+    x_vals2 <- seq(xmin2, xmax2, length.out = 1000)
+    y_vals2 <- list()
+    for (i in 1:ncol(plotparam2)) {
+      y_vals2[[i]] <- dnorm(x_vals2, mean = plotparam2[1, i], sd = plotparam2[2, i])
+    }
+    ymax2 <- max(unlist(y_vals2), na.rm = TRUE)
+    miny2 <- min(unlist(y_vals2), na.rm = TRUE)
+    ymin_adj2 <- (ymax2 - miny2)/3
+    ymin2 <- -ymin_adj2
+
     inlay_plot <- ggplot2::ggplot(data = data.frame(x = c(xmin2, xmax2)),
                                   ggplot2::aes(x)) +
       ggplot2::ylab("") + ggplot2::xlab("") +
@@ -521,24 +550,20 @@ GaussiansMixturePlot <- function(components,
                      axis.title = ggplot2::element_text(size = 8),
                      panel.grid.minor = ggplot2::element_blank(),
                      panel.grid.major = ggplot2::element_blank()) +
-      ggplot2::scale_x_continuous(breaks = plotbreaks)
+      ggplot2::scale_x_continuous(breaks = plotbreaks) +
+      ggplot2::coord_cartesian(ylim = c(ymin2, ymax2))
 
-    plotparam_df <- as.data.frame(t(plotparam2))
-    colnames(plotparam_df) <- c("mean", "sd")
-    plotparam_df$component <- factor(1:nrow(plotparam_df))
-
-    x_vals2 <- seq(xmin2, xmax2, length.out = 1000)  # Increase the number of points for a smoother line
     for (i in 1:ncol(plotparam2)) {
       if (shading2[i] < threshold) {
         linecolour <- "grey"
-        linealpha <- 0.4
+        linealpha <- 0.5
       } else {
         linecolour <- segpalette[i]
         linealpha <- ifelse(shading2[i] < 0.6, 0.6, shading2[i])
       }
-      y_vals2 <- dnorm(x_vals2, mean = plotparam2[1, i], sd = plotparam2[2, i])
+
       inlay_plot <- inlay_plot +
-        ggplot2::geom_line(data = data.frame(x = x_vals2, y = y_vals2),
+        ggplot2::geom_line(data = data.frame(x = x_vals2, y = y_vals2[[i]]),
                            ggplot2::aes(x = x, y = y),
                            size = 1,
                            color = linecolour,
@@ -548,19 +573,20 @@ GaussiansMixturePlot <- function(components,
                             color = linecolour,
                             alpha = linealpha) +
         ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],
-                           ggplot2::aes(x = mean, y = -2,
+                           ggplot2::aes(x = mean, y = ymin2/2,
                                         label = if (mean > 10) {
                                           round(mean)
                                         } else { round(mean, 3)} ),
                            angle = 90,
                            vjust = if (i == 1) {
-                             -0.5
+                             ymin2/4
                            } else if (round(plotparam_df[i, ][[1]],3) -
-                                      round(plotparam_df[i-1, ][[1]],3)<0.05) {
-                             1.5
+                                      round(plotparam_df[i-1, ][[1]],3) < 0.05) {
+                             ymin_adj2/4
                            } else {
-                             -0.5
+                             ymin2/4
                            },
+                           size = 12/.pt,
                            color = linecolour,
                            alpha = linealpha)
     }
@@ -568,9 +594,8 @@ GaussiansMixturePlot <- function(components,
     final_plot <-
       cowplot::ggdraw() +
       cowplot::draw_plot(main_plot) +
-      cowplot::draw_plot(inlay_plot, x = 0.5, y = .5, width = .45, height = .45)
+      cowplot::draw_plot(inlay_plot, x = 0.5, y = 0.5, width = .45, height = .45)
   }
-
   return(final_plot)
 }
 
@@ -652,6 +677,14 @@ PoissonsMixturePlot <- function(components,
   plotparam_df <- as.data.frame(plotparam)
   colnames(plotparam_df) <- c("lambda")
   x_vals <- round(seq(xmin, xmax, length.out = 1000))  # Increase the number of points for a smoother line
+  y_vals <- list()
+  for (i in 1:length(plotparam)) {
+    y_vals[[i]] <- dpois(x = x_vals, lambda = plotparam[i])
+  }
+  ymax <- max(unlist(y_vals), na.rm = TRUE)
+  miny <- min(unlist(y_vals), na.rm = TRUE)
+  ymin_adj <- (ymax - miny)/4
+  ymin <- -ymin_adj
 
   # Make the main plot
   main_plot <- ggplot2::ggplot(data = data.frame(x = c(0,round(xmax))),
@@ -661,19 +694,21 @@ PoissonsMixturePlot <- function(components,
     ggplot2::theme(axis.text = ggplot2::element_text(size = 10),
                    axis.title = ggplot2::element_text(size = 12),
                    panel.grid.minor = ggplot2::element_blank(),
-                   panel.grid.major = ggplot2::element_blank())
+                   panel.grid.major = ggplot2::element_blank()) +
+    ggplot2::coord_cartesian(ylim = c(ymin, ymax))
+
 
   for (i in 1:length(plotparam)) {
     if (shading[i] < threshold) {
       linecolour <- "grey"
-      linealpha <- 0.4
+      linealpha <- 0.5
     } else {
       linecolour <- segpalette[i]
-      linealpha <- ifelse(shading[i] < 0.5, 0.5, shading[i])
+      linealpha <- ifelse(shading[i] < 0.6, 0.6, shading[i])
     }
-    y_vals <- dpois(x = x_vals, lambda = plotparam[i])
+
     main_plot <- main_plot +
-      ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals),
+      ggplot2::geom_line(data = data.frame(x = x_vals, y = y_vals[[i]]),
                          ggplot2::aes(x = x, y = y),
                          size = 1,
                          color = linecolour,
@@ -683,24 +718,25 @@ PoissonsMixturePlot <- function(components,
                           color = linecolour,
                           alpha = linealpha) +
       ggplot2::geom_text(data = plotparam_df[i, , drop = FALSE],  # Ensure it's treated as a data frame
-                         ggplot2::aes(x = lambda, y = 0,
+                         ggplot2::aes(x = lambda,
+                                      y = ymin/2,
                                       label = if (lambda > 10) {
                                         round(lambda)
                                       } else { round(lambda, 3)} ),
                          angle = 90,
                          vjust = if (i == 1) {
-                           -0.5
+                           ymin/4
                          } else if (round(plotparam_df$lambda[i], 3) -
                                     round(plotparam_df$lambda[i - 1], 3) < 0.01) {
-                           1.5
+                           ymin_adj/4
                          } else {
-                           -0.5
+                           ymin/4
                          },
                          hjust = 1,
+                         size = 12/.pt,
                          color = linecolour,
                          alpha = linealpha)
   }
-
   return(main_plot)
 }
 
