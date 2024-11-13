@@ -458,6 +458,13 @@ FitMixtureModels <- function(CN_features, seed = 77777, min_comp = 2,
       }
 
       output <- unlist(temp_list, recursive = FALSE)
+      # Re-order components
+      gaussians <- as.logical(lapply(output, function(x) {
+        stringr::str_detect(x@model[[1]]@name, "Gaussian")}))
+      output[gaussians] <- lapply(output[gaussians], function(x) {
+        flexmix::relabel(x, by = "model", which = "mean")})
+      output[!gaussians] <- lapply(output[!gaussians], function(x) {
+        flexmix::relabel(x, by = order(flexmix::parameters(x)))})
 
     } else {
       # Multiple Core and Multiple Seeds
