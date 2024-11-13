@@ -32,8 +32,6 @@ Example: \cr
 
 \item{save_path}{(optional) String. Expects a path to a directory where the plot should be saved. (png)}
 
-<<<<<<< HEAD
-=======
 \item{rmblacklist}{optional \emph{NULL or character vector}. Filter the plot of blacklist regions from this genome. ex. 'hg19'}
 
 \item{addtitle}{(optional) Logical. If set to TRUE add a basic title to the plot.}
@@ -43,7 +41,6 @@ Example: \cr
 \item{ann_df}{(optional) Dataframe. Expects the same sample ids as passed to long_segments param. \cr
 See the roxygen docs for \code{PlotAnnotationBars()} for more details.}
 
->>>>>>> dbc9d64 (Moved SignatureExposuresPlot and ComponentSignaturesHeatmap functions to signatureplotting.R file. Final edits of GaussiansMixturePlot. Fixed up docs for the mixture model plotting functions)
 \item{obj_name}{(optional) String. Adds a tag to the end of the filename if saving the image. \cr
 Only used if the save_path parameter is also set.}
 }

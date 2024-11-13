@@ -26,7 +26,7 @@ If gaussians, mean in row 1, and sd in row 2.}
 A list of ggplots.
 }
 \description{
-This function (MixtureModelPlots), for an indicated CN-Signature (), returns a list of six ggplots.
+This wrapper function (MixtureModelPlots), for an indicated CN-Signature (), returns a list of six ggplots.
 Each plot visualizes the mixture model used for each feature.
 All mixture components are plotted. \cr
 Optionally, the user can provide a matrix of components by signatures and indicate a \code{sig_of_interest}.

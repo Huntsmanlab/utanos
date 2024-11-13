@@ -7,7 +7,7 @@
 FindThreshold(
   granges_obj,
   segments,
-  num_simulations = 100000,
+  num_simulations = 1e+05,
   second_round,
   seed
 )

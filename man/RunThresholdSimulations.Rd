@@ -5,7 +5,7 @@
 \title{Runs simulations to obtain a list of possible thresholds from the segment ratio differences}
 \usage{
 RunThresholdSimulations(
-  num_simulations = 100000,
+  num_simulations = 1e+05,
   all_ratio_differences,
   second_round = FALSE,
   seed

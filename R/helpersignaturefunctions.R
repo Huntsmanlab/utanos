@@ -3,6 +3,7 @@
 # The original code can be found here: https://bitbucket.org/britroc/cnsignatures/src/master/
 # The original code was a part of a publication in Nat. Gen. (August 2018)
 
+
 #' Fit a Mixture Model for a provided CN-Feature
 #'
 #' @description
