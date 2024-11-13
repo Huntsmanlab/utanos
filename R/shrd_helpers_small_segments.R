@@ -625,8 +625,7 @@ MergeSegmentsTwo <- function(granges_obj, small_segment, large_segments, j, belo
                                large_segment[4],
                                median(subsetGRobject$ratio),
                                large_segment[4] - small_segment[4] + 1,
-                               small_segment[8]),
-                             large_segments[j:N_large,])
+                               small_segment[8]))
     } else {
       large_segments = rbind(large_segments[1:(j-1),],
                              c(small_segment[1],
@@ -636,7 +635,8 @@ MergeSegmentsTwo <- function(granges_obj, small_segment, large_segments, j, belo
                                large_segment[4],
                                median(subsetGRobject$ratio),
                                large_segment[4] - small_segment[4] + 1,
-                               small_segment[8]))
+                               small_segment[8]),
+                             large_segments[j:N_large,])
     }
   }
   large_segments
