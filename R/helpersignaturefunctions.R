@@ -3,6 +3,13 @@
 # The original code can be found here: https://bitbucket.org/britroc/cnsignatures/src/master/
 # The original code was a part of a publication in Nat. Gen. (August 2018)
 
+#' Fit a Mixture Model for a provided CN-Feature
+#'
+#' @description
+#' Fit a Mixture Model of gaussians or poissons for a provided CN-Feature.
+#'
+#' @returns A flexmix object.
+#'
 #' @export
 FitComponent <- function(dat, dist = "norm", seed = 77777,
                          model_selection = "BIC",
