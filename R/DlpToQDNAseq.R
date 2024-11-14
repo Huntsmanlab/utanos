@@ -14,126 +14,139 @@
 #' @param genome_used (string) The reference genome used for alignment. (default: hg19)
 #' @param bin_size (integer) The bin size used during copy number calling in base pairs. (default: 500000)
 #' @param Xincluded (logical) Whether or not the X chromosome was included in this analysis. (default: FALSE)
+#' @param getfilter (logical) Grab the filtered read/segment files from the DLP output directories.
 #' @returns A QDNAseq object.
 #' @importClassesFrom QDNAseq QDNAseqCopyNumbers
 #' @export
 ###########################
-DlpToQDNAseq <- function(input_path, bin_size = 500000, genome = 'hg19', Xincluded = FALSE) {
-  # Construct the file pattern
-  file_pattern <- file.path(input_path, "hmmcopy", "*_segments.csv.gz")
+DlpToQDNAseq <- function(input_path,
+                         bin_size = 500000,
+                         genome = 'hg19',
+                         Xincluded = FALSE,
+                         getfiltered = FALSE) {
 
-  # List files matching the pattern
+
+  # Get the segments file
+  file_pattern <- file.path(input_path, "hmmcopy", "*_segments.csv.gz$")
   segment_files <- list.files(path = dirname(file_pattern),
                               pattern = basename(file_pattern),
                               full.names = TRUE)
-
-  # Filter for files that strictly end with "_segments.csv.gz"
-  segment_files <- segment_files[grepl("_segments\\.csv\\.gz$", segment_files)]
-
-  # Check how many files were found
   if (length(segment_files) == 0) {
     stop("No segment files found matching the pattern.")
   } else if (length(segment_files) > 1) {
-    stop("Expected exactly one segment file, but found: ", length(segment_files))
+    stop("Expected exactly one base segment file, but found: ", length(segment_files))
+  }
+  segment_file <- segment_files
+
+  # Get the copynumbers (reads) file
+  file_pattern <- file.path(input_path, "hmmcopy", "*_reads.csv.gz$")
+  cn_files <- list.files(path = dirname(file_pattern),
+                         pattern = basename(file_pattern),
+                         full.names = TRUE)
+  if (length(cn_files) == 0) {
+    stop("No reads files found matching the pattern.")
+  } else if (length(cn_files) > 1) {
+    stop("Expected exactly one base reads file, but found: ", length(cn_files))
+  }
+  cn_file <- cn_files
+
+  # If filtered file is available for both reads (cns) and segments use that instead
+  if (getfiltered) {
+    file_pattern_s <- file.path(input_path, "hmmcopy", "*_segments_filtered.csv.gz$")
+    file_pattern_c <- file.path(input_path, "hmmcopy", "*_reads_filtered.csv.gz$")
+    segment_files <- list.files(path = dirname(file_pattern_s),
+                                pattern = basename(file_pattern_s),
+                                full.names = TRUE)
+    cn_files <- list.files(path = dirname(file_pattern_c),
+                           pattern = basename(file_pattern_c),
+                           full.names = TRUE)
+    if (length(segment_files) == 1 && length(cn_files) == 1) {
+      segment_file <- segment_files
+      cn_file <- cn_files
+    } else {
+      warning("getfiltered flag set to TRUE but one or both segments and reads filtered files not found.")
+    }
   }
 
-  # Assign the single segment file path to a variable
-  segment_file <- segment_files[1]  # This will be the path of the found file
+  df_s <- data.table::fread(segment_file)
+  df_c <- data.table::fread(cn_file)
 
-  # Read the segment file
-  df <- data.table::fread(segment_file)
-
-  # Rename columns
-  names(df)[names(df) == "median"] <- "segVal"
-  names(df)[names(df) == "chr"] <- "chromosome"
-
-  # Select relevant columns
-  df <- df[, c("chromosome", "start", "end", "segVal", "cell_id")]
-
-  # Split data by cell_id
-  df_list <- split(df, df$cell_id)
-
-  # Convert segments to copy number
+  # Create bin-wise values from segments & format to wide for QDNAseq
+  names(df_s)[names(df_s) == "median"] <- "segVal"
+  names(df_s)[names(df_s) == "chr"] <- "chromosome"
+  df_s <- df_s[, c("chromosome", "start", "end", "segVal", "cell_id")]
+  df_list <- split(df_s, df_s$cell_id)
   long_segs <- SegmentsToCopyNumber(df_list,
                                     bin_size,
                                     genome = genome,
                                     Xincluded = Xincluded)
-
   long_segs <- long_segs[, c("chromosome", "start", "end", "segmented", "sample_id")]
-
-  # Set column names
   colnames(long_segs) <- c("chromosome", "start", "end", "state", "sample_id")
-
-  # Prepare data for QDNAseq
-  df <- long_segs %>%
+  wide_segs <- long_segs %>%
     tidyr::pivot_wider(names_from = sample_id, values_from = state, names_prefix = "copy_")
+  segs_cols <- grep("^copy_", colnames(wide_segs))
+  segs_matrix <- as.data.frame(wide_segs[, segs_cols, drop = FALSE])
 
-  # Create bins
+  # Brief aside to create bins
   bins <- Biobase::AnnotatedDataFrame(data.frame(
-    chromosome = df$chromosome,
-    start = df$start,
-    end = df$end,
-    row.names = paste(df$chromosome, df$start, df$end, sep = ':')
+    chromosome = wide_segs$chromosome,
+    start = wide_segs$start,
+    end = wide_segs$end,
+    row.names = paste(wide_segs$chromosome, wide_segs$start,
+                      wide_segs$end, sep = ':')
   ))
 
-  # Extract copy number and segmented data
-  copynumber_cols <- grep("^copy_", colnames(df))
-  rcn_matrix <- as.data.frame(df[, copynumber_cols, drop = FALSE])
-  rownames(rcn_matrix) <- rownames(bins)
-  colnames(rcn_matrix) <- stringr::str_replace(colnames(df)[copynumber_cols], "copy_", "")
-  rcn_matrix <- rcn_matrix %>%
+  rownames(segs_matrix) <- rownames(bins)
+  colnames(segs_matrix) <- stringr::str_replace(colnames(wide_segs)[segs_cols], "copy_", "")
+  segs_matrix <- segs_matrix %>%
     dplyr::mutate(dplyr::across(dplyr::everything(), ~ as.numeric(.x)))
 
-  segs_cols <- grep("^copy_", colnames(df))
-  segs_matrix <- as.data.frame(df[, segs_cols, drop = FALSE])
-  rownames(segs_matrix) <- rownames(bins)
-  colnames(segs_matrix) <- stringr::str_replace(colnames(df)[segs_cols], "copy_", "")
-  segs_matrix <- segs_matrix %>%
+  # Filter sex chromsomes from copynumbers & format to wide for QDNAseq
+  bin_wise_md <- df_c[,c("reads", "gc", "map", "cor_gc")]
+  cols_to_drop <- setdiff(names(df_c), c("chr", "start", "end",
+                                         "copy", "cell_id"))
+  df_c[, (cols_to_drop) := NULL]
+  if (Xincluded) {
+    df_c <- df_c[chr != "Y"]
+  } else {
+    df_c <- df_c[!(chr %in% c("Y", "X"))]
+  }
+  wide_cns <- data.table::dcast(df_c, chr + start + end ~ cell_id,
+                                value.var = "copy")
+  cn_matrix <- as.data.frame(wide_cns[, -(1:3), with = FALSE])
+  rownames(cn_matrix) <- rownames(bins)
+  cn_matrix <- cn_matrix %>%
     dplyr::mutate(dplyr::across(dplyr::everything(), ~ as.numeric(.x)))
 
   # Create QDNAseqCopyNumbers object
   copyNumbers <- new('QDNAseqCopyNumbers',
                      bins = bins,
-                     copynumber = as.matrix(rcn_matrix),
+                     copynumber = as.matrix(cn_matrix),
                      phenodata = Biobase::AnnotatedDataFrame(data.frame(
-                       sampleNames = colnames(rcn_matrix),
-                       row.names = colnames(rcn_matrix)
+                       sampleNames = colnames(cn_matrix),
+                       row.names = colnames(cn_matrix)
                      ))
   )
-
   # Assign segmented data
   Biobase::assayDataElement(copyNumbers, "segmented") <- as.matrix(segs_matrix)
 
-  # Prepare to read metadata
-  file_pattern <- file.path(input_path, "annotation", "*_metrics.csv.gz")
-
-  # List files matching the pattern
-  meta <- list.files(path = dirname(file_pattern),
+  # Read-in cell-wise metadata from metrics file
+  file_pattern <- file.path(input_path, "annotation", "*_metrics.csv.gz$")
+  cell_meta <- list.files(path = dirname(file_pattern),
                      pattern = basename(file_pattern),
                      full.names = TRUE)
-
-  # Filter for files that strictly end with "_metrics.csv.gz"
-  meta <- meta[grepl("metrics\\.csv\\.gz$", meta)]
-
-  # Check how many files were found
-  if (length(meta) == 0) {
+  if (length(cell_meta) == 0) {
     stop("No metrics files found matching the pattern.")
-  } else if (length(meta) > 1) {
-    stop("Expected exactly one metrics file, but found: ", length(meta))
+  } else if (length(cell_meta) > 1) {
+    stop("Expected exactly one metrics file, but found: ", length(cell_meta))
   }
+  meta_df <- data.table::fread(cell_meta)
 
-  meta <- meta[1]
-
-  # Read the file
-  meta_df <- data.table::fread(meta)
-
+  # Merge quality data into the phenoData of copyNumbers
   if ("cell_id" %in% colnames(meta_df)) {
-    # Merge quality data into the phenoData of copyNumbers
     pheno_data <- copyNumbers@phenoData@data
     pheno_data <- dplyr::left_join(pheno_data,
                                    meta_df, by = c("sampleNames" = "cell_id"))
-
-    # Update the phenoData with quality information
     copyNumbers@phenoData <- Biobase::AnnotatedDataFrame(pheno_data)
   } else {
     stop("Cell ID column not found in metrics")
