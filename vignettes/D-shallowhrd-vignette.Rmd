@@ -73,16 +73,16 @@ Let's extract the bin-wise and segment-wise rCN data form the QDNAseq object usi
 
 ```{r, eval=FALSE}
 > bin_df <- ExportBinsQDNAObj(object = rcn.obj, type = "copynumber", filter = TRUE) %>%
-+     tidyr::pivot_longer(cols = !c("feature", "chromosome", "start", "end"), names_to = "sample", values_to = "ratio") %>%
-+     dplyr::select(!feature)
+     tidyr::pivot_longer(cols = !c("feature", "chromosome", "start", "end"), names_to = "sample", values_to = "ratio") %>%
+     dplyr::select(!feature)
 
 > seg_df <- ExportBinsQDNAObj(object = rcn.obj, type = "segments", filter = TRUE) %>%
-+     tidyr::pivot_longer(cols = !c("feature", "chromosome", "start", "end"), names_to = "sample", values_to = "ratio_median") %>%
-+     dplyr::select(!feature)
+     tidyr::pivot_longer(cols = !c("feature", "chromosome", "start", "end"), names_to = "sample", values_to = "ratio_median") %>%
+     dplyr::select(!feature)
 
 > df_group <- dplyr::inner_join(x = bin_df, y = seg_df, by = dplyr::join_by(sample, chromosome, start, end)) %>%
-+     dplyr::select(!end) %>%
-+     dplyr::group_by(sample)
+     dplyr::select(!end) %>%
+     dplyr::group_by(sample)
 
 > df_list <- dplyr::group_split(df_group, .keep = FALSE)
 > names(df_list) <- dplyr::group_keys(df_group)$sample
@@ -107,11 +107,11 @@ shallowHRD expects rCN data to be log-transformed, so when we call `RunShallowHR
 
 ```{r, eval=FALSE}
 > shrd_result <- RunShallowHRD(raw_ratios_file = as.data.frame(df_list$`CC-CHM-1341`), 
-+               log_transform = TRUE,
-+               include_chr_X = TRUE,
-+               shrd_save_path = './',
-+               sample = 'CC-CHM-1341',
-+               plot = TRUE)
+               log_transform = TRUE,
+               include_chr_X = TRUE,
+               shrd_save_path = './',
+               sample = 'CC-CHM-1341',
+               plot = TRUE)
 ```
 
 When you run the code in the block above, you'll observe that every thousandth iteration of the sampling process for threshold determination is printed out (omitted here).
@@ -178,11 +178,11 @@ Let's take a quick look at a sample that is predicted to be borderline for HRD (
 
 ```{r, eval=FALSE}
 > shrd_result_borderline <- RunShallowHRD(raw_ratios_file = as.data.frame(df_list$`CC-HAM-0385`), 
-+               log_transform = TRUE,
-+               include_chr_X = TRUE,
-+               shrd_save_path = './',
-+               sample = 'CC-CHM-1341',
-+               plot = TRUE)
+               log_transform = TRUE,
+               include_chr_X = TRUE,
+               shrd_save_path = './',
+               sample = 'CC-HAM-0385',
+               plot = TRUE)
 
 > shrd_result_borderline
 $hrd_status
