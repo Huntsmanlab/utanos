@@ -5,32 +5,42 @@
 \title{Plot a Mixture of Gaussians}
 \usage{
 GaussiansMixturePlot(
-  signatures,
   components,
+  signatures = NULL,
   sig_of_interest = 1,
+  log_flag = FALSE,
   component = "segsize",
   inlay_flag = TRUE,
   threshold = 0.3
 )
 }
 \arguments{
-\item{signatures}{A dataframe with components along the y-axis and signatures along the x.}
+\item{components}{A list of either matrices/dataframes containing the distribution parameters (mean and sd) or S4 objects belonging to the class 'flexmix'. \cr
+If providing dataframes, place parameters in rows and each component along the columns. \cr
+Mean in row 1, and sd in row 2.}
 
-\item{components}{A list of S4 objects belonging to the class 'flexmix'.}
+\item{signatures}{(optional) A dataframe with components in the rows and signatures in the columns.}
 
-\item{sig_of_interest}{(optional) A single integer or a vector of integers corresponding the signatures for which to make plots. \cr
-In the absence of any value passed in for this parameter, plots for just the first signature will be returned.}
+\item{sig_of_interest}{(optional) Integer. A single integer corresponding the column from the signatures input param.}
 
-\item{component}{(optional) Which component to draw the gaussian curves for. (options: segsize, changepoint, copynumber)}
+\item{log_flag}{(optional) Logical. If TRUE, draw the log-transformed curves instead.}
+
+\item{component}{(optional) String. Which component to draw the gaussian curves for. (options: segsize, changepoint, copynumber)}
 
 \item{inlay_flag}{(optional) Boolean flag to turn on/off the inlay plot.}
+
+\item{threshold}{(optional) Numeric. 'Important' component weights cut-off. \cr
+If signatures are provided, the cut-off to use in grey-shading vs. colouring the most important components.}
 }
 \value{
 A ggplot.
 }
 \description{
-This function plots the mixture models for a component that is composed of gaussians.
-All mixture components are plotted, but those elevated for the indicated signature are shaded.
+This function plots the mixture model for a component that is composed of gaussians.
+All mixture components are plotted. \ccr
+Optionally, the user can provide a matrix of components by signatures and indicate a \code{sig_of_interest}.
+This will result in the lower-weight components (the curves) for the indicated signature being greyed out. \cr
+The threshold for this grey-shading functionality can be changed using the \code{threshold} parameter.
 \cr
 Additionally, an inlay plot is created out of the 'important' components if... \cr
 \enumerate{

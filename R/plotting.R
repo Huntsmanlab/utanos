@@ -1,99 +1,18 @@
-# This is a script containing plotting functions (and helpers) for shallow WGS analysis
+# File contains plotting functions (and helpers) for shallow WGS analysis
 
-# List of functions + notes:
-# SignatureExposuresPlot
+###########################
+### Functions
+###########################
 # ACNDiversityPlot
 # SortHeatmap
 # PlotAnnotationBars
 # SummaryCNPlot <- Should be converted to a ggplot whenever convenient
 # RCNDiversityPlot
-# RelativeCNSegmentsPlot <- made redundant? Can be removed soon, test CNSegmentsPlot on WisecondorX output to make sure
 # CNSegmentsPlot
 # RelToAbsSegPos
 # AddGenesToPlot
 # QualityPlot
 
-
-#' Create Heatmap of Signature Exposures
-#'
-#' Converts signature-per-sample data to a heatmap, optionally saves it as a png, and returns the ggplot.
-#' Samples are sorted for display based on their maximum signature exposure.
-#' Heatmap is plotted in the viridis colour-scheme.
-#'
-#' @param signatures Dataframe. Expects a dataframe of signature exposures (rows) by samples (columns).
-#' @param order (optional) Character vector. Defines the order in which samples will be plotted. \cr
-#' This is particularly useful when plotting more than 1 heatmap next to one another. \cr
-#' Allows samples to line-up horizontally. \cr
-#' Example: \cr
-#' `c("CC-CHM-1341", "CC-CHM-1347", "CC-CHM-1355", CC-CHM-1361", "CC-HAM-0369", "CC-HAM-0374", "CC-HAM-0379", "CC-HAM-0383", "CC-HAM-0385")`
-#' @param transpose (optional) Logical. If set to TRUE the function returns the order in which samples were plotted.
-#' @param save_path (optional) String. Expects a path to a directory where the plot should be saved. (png)
-#' @param obj_name (optional) String. Adds a tag to the end of the filename if saving the image. \cr
-#' Only used if the save_path parameter is also set.
-#' @return A list of a ggplot2 object and vector of the ordered sample names.
-#'
-#' @export
-SignatureExposuresPlot <- function (signatures,
-                                    order = FALSE,
-                                    transpose = FALSE,
-                                    save_path = FALSE,
-                                    addtitle = NULL,
-                                    obj_name = 'sig_exposures_obj') {
-
-  # Convert data to long format and add column for max. sig. exposure
-  nsigs <- nrow(signatures)
-  long_data <- tidyr::gather(signatures)
-  long_data$max_sig <- rep(apply(signatures, 2, function(x) which.max(x)),
-                           times = 1,
-                           each = nsigs)
-  long_data$sigs <- rep(1:nsigs,dim(signatures)[2])
-  colnames(long_data) <- c('X', 'Z', 'max_sig', 'Y')
-  long_data <- long_data %>% dplyr::arrange(max_sig)
-  long_data$X <- factor(long_data$X, levels = unique(long_data$X))
-
-  if (!isFALSE(order)) {
-    long_data$X <- factor(long_data$X, levels = order)
-  }
-
-  # Build Plot
-  g <- ggplot2::ggplot(long_data, ggplot2::aes(X, Y, fill=Z)) +
-    ggplot2::geom_tile() +
-    viridis::scale_fill_viridis(discrete=FALSE) +
-    ggplot2::theme(plot.title = ggplot2::element_text(size = 20),
-          axis.ticks.x = ggplot2::element_blank(),
-          # axis.text.x = element_text(size = 15, angle = 75, vjust = 0.5, hjust=0.5),
-          axis.text.x = ggplot2::element_blank(),
-          axis.title.x = ggplot2::element_text(size = 14),
-          axis.text.y = ggplot2::element_text(size = 14),
-          legend.title = ggplot2::element_text(size = 16)) +
-    ggplot2::labs(fill = 'Signature \nExposure', x = "Samples", y = " ") +
-    ggplot2::scale_y_discrete(limits = paste0('S', 1:dim(signatures)[1]))
-
-  if (transpose != FALSE) {
-    g <- g + ggplot2::theme(plot.title = ggplot2::element_text(size = 20),
-                   axis.ticks.y = ggplot2::element_blank(),
-                   axis.text.x = ggplot2::element_text(size = 14),
-                   axis.title.x = ggplot2::element_text(size = 14),
-                   axis.text.y = ggplot2::element_blank(),
-                   legend.title = ggplot2::element_text(size = 16)) +
-      ggplot2::coord_flip()
-  }
-
-  if (!is.null(addtitle)) {
-    g <- g + ggplot2::ggtitle("Signature exposures called per sample")
-  }
-
-  if (save_path != FALSE) {
-    if (transpose != FALSE) {
-      ggplot2::ggsave(paste0(save_path, "/signatures_heatmap_", obj_name,".png"), plot = g, width = 10, height = 15)
-    } else {
-      ggplot2::ggsave(paste0(save_path, "/signatures_heatmap_", obj_name,".png"), plot = g, width = 15, height = 10)
-    }
-  }
-  output <- list(plot = g, ordering = levels(long_data$X))
-
-  return(output)
-}
 
 
 #' Absolute Copy-Number Diversity Heatmap

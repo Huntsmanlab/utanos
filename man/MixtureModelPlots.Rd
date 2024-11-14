@@ -4,21 +4,32 @@
 \alias{MixtureModelPlots}
 \title{Plot Mixture Model Components by Signature}
 \usage{
-MixtureModelPlots(signatures, components, sig_of_interest = 1, threshold = 0.3)
+MixtureModelPlots(
+  components,
+  signatures = NULL,
+  sig_of_interest = 1,
+  threshold = 0.3
+)
 }
 \arguments{
-\item{signatures}{A dataframe with components along the y-axis and signatures along the x.}
+\item{components}{A list of either matrices/dataframes containing the relevant distribution parameters or S4 objects belonging to the class 'flexmix'. \cr
+If providing dataframes, place parameters in rows and each component along the columns. \cr
+If gaussians, mean in row 1, and sd in row 2.}
 
-\item{components}{A list of S4 objects belonging to the class 'flexmix'.}
+\item{signatures}{(optional) A dataframe with components along the x-axis and signatures along the y.}
 
-\item{sig_of_interest}{(optional) A single integer corresponding the signature for which to make plots. \cr
-In the absence of any value passed in for this parameter, plots for just the first signature will be returned.}
+\item{sig_of_interest}{(optional) Integer. A single integer corresponding the column from the signatures input param.}
+
+\item{threshold}{(optional) Numeric. If signatures are provided, the cut-off to use in grey-shading vs. colouring the most important components.}
 }
 \value{
 A list of ggplots.
 }
 \description{
-This function (MixtureModelPlots), for an indicated CN-Signature (S), returns a list of six ggplots.
-Each plot visualizes the mixture models used for each feature.
-All mixture components are plotted, but those elevated for S are shaded.
+This wrapper function (MixtureModelPlots), for an indicated CN-Signature (), returns a list of six ggplots.
+Each plot visualizes the mixture model used for each feature.
+All mixture components are plotted. \cr
+Optionally, the user can provide a matrix of components by signatures and indicate a \code{sig_of_interest}.
+This will result in the lower-weight components (the curves) for the indicated signature being greyed out. \cr
+The threshold for this grey-shading functionality can be changed using the \code{threshold} parameter.
 }
