@@ -543,11 +543,17 @@ GetSegmentedRcnForGene <- function (rcn_obj, gene) {
   }
 }
 
+
+#' Replacethe QDNAseq Assay Slots
+#'
+#' @description
+#' Replace the copynumber and/or segment QDNAseq slots with new matrices
+#'
+#' @export
 ReplaceQDNAseqAssaySlots <- function(cnobj, new_cns, new_segs) {
 
   # In case some samples need to be dropped, set a mask
-  missing_samples <- cnobj@phenoData@data$name %in% colnames(new_cns)
-
+  missing_samples <- colnames(Biobase::assayData(cnobj)$copynumber) %in% colnames(new_cns)
   if (any(!missing_samples)) {
     warning("Not all samples had ACN solutions.
     These samples are excluded from the returned acn object.
@@ -555,6 +561,7 @@ ReplaceQDNAseqAssaySlots <- function(cnobj, new_cns, new_segs) {
   }
 
   # Assemble a new QDNAseq object
+  Biobase::sampleNames(Biobase::phenoData(cnobj)) <- Biobase::sampleNames(Biobase::assayData(cnobj))
   new.cnobj <- new('QDNAseqCopyNumbers',
                     bins = cnobj@featureData@data,
                     copynumber = new_cns,
