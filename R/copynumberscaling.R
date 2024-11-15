@@ -543,6 +543,13 @@ GetSegmentedRcnForGene <- function (rcn_obj, gene) {
   }
 }
 
+
+#' Replacethe QDNAseq Assay Slots
+#'
+#' @description
+#' Replace the copynumber and/or segment QDNAseq slots with new matrices
+#'
+#' @export
 ReplaceQDNAseqAssaySlots <- function(cnobj, new_cns, new_segs) {
 
   # In case some samples need to be dropped, set a mask
