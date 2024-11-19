@@ -561,7 +561,7 @@ ReplaceQDNAseqAssaySlots <- function(cnobj, new_cns, new_segs) {
   }
 
   # Assemble a new QDNAseq object
-  sampleNames(phenoData(cnobj)) <- sampleNames(assayData(cnobj))
+  Biobase::sampleNames(Biobase::phenoData(cnobj)) <- Biobase::sampleNames(Biobase::assayData(cnobj))
   new.cnobj <- new('QDNAseqCopyNumbers',
                     bins = cnobj@featureData@data,
                     copynumber = new_cns,
