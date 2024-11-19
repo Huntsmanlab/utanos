@@ -553,8 +553,7 @@ GetSegmentedRcnForGene <- function (rcn_obj, gene) {
 ReplaceQDNAseqAssaySlots <- function(cnobj, new_cns, new_segs) {
 
   # In case some samples need to be dropped, set a mask
-  missing_samples <- cnobj@phenoData@data$name %in% colnames(new_cns)
-
+  missing_samples <- colnames(assayData(cnobj)$copynumber) %in% colnames(new_cns)
   if (any(!missing_samples)) {
     warning("Not all samples had ACN solutions.
     These samples are excluded from the returned acn object.
@@ -562,6 +561,7 @@ ReplaceQDNAseqAssaySlots <- function(cnobj, new_cns, new_segs) {
   }
 
   # Assemble a new QDNAseq object
+  sampleNames(phenoData(cnobj)) <- sampleNames(assayData(cnobj))
   new.cnobj <- new('QDNAseqCopyNumbers',
                     bins = cnobj@featureData@data,
                     copynumber = new_cns,
