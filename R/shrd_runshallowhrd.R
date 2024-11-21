@@ -213,8 +213,8 @@ RunShallowHRD <- function(raw_ratios_file, log_transform=TRUE, include_chr_X=FAL
 #'
 #' @export
 RunShallowHRDFromQDNA <- function(qdna_obj, include_chr_X=FALSE, num_simulations=100000, shrd_save_path=FALSE,
-                                  plot=FALSE, seed = 1337, cores = 1) {
-  # Note that ExportBinsQDNAObj does not log normalize
+                                  plot=FALSE, seed = 1337, cores = 1, log_transform = TRUE) {
+  # Note that ExportBinsQDNAObj does not log normalize by default
   bin_df <- ExportBinsQDNAObj(object = qdna_obj, type = "copynumber", filter = TRUE) %>%
     tidyr::pivot_longer(cols = !c("feature", "chromosome", "start", "end"), names_to = "sample", values_to = "ratio") %>%
     dplyr::select(!feature)
@@ -236,7 +236,7 @@ RunShallowHRDFromQDNA <- function(qdna_obj, include_chr_X=FALSE, num_simulations
 
     shrd_result <- foreach(sample=names(df_list)) %dopar% {
       RunShallowHRD(raw_ratios_file = as.data.frame(df_list[[sample]]),
-                    log_transform = TRUE,
+                    log_transform = log_transform,
                     include_chr_X = include_chr_X,
                     num_simulations = num_simulations,
                     shrd_save_path = shrd_save_path,
@@ -248,7 +248,7 @@ RunShallowHRDFromQDNA <- function(qdna_obj, include_chr_X=FALSE, num_simulations
   }
   else {
     shrd_result <- lapply(X = names(df_list), FUN = function(sample) RunShallowHRD(raw_ratios_file = as.data.frame(df_list[[sample]]),
-                                                                                   log_transform = TRUE,
+                                                                                   log_transform = log_transform,
                                                                                    include_chr_X = include_chr_X,
                                                                                    num_simulations = num_simulations,
                                                                                    shrd_save_path = shrd_save_path,
