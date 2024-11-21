@@ -80,7 +80,7 @@ AddChromosomeArmHelper <- function(df, include_chr_X, centromere_positions) {
       new_start = pos+1
     }
 
-    before_then_after_centromere <- df[,1] == i & df[,3] < pos & df[,4] > pos
+    before_then_after_centromere <- df[,1] == i & ((df[,3] <= pos & df[,4] > pos) | (df[,3] < pos & df[,4] >= pos))
     df[before_then_after_centromere, 2] = 1
 
     end_pos = df[before_then_after_centromere, 4]
