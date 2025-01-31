@@ -274,8 +274,8 @@ CalculateACNs <- function (cnobj, acnmethod,
   # reorder sample names in acn matrixes
   cnobj_samples <- Biobase::sampleNames(Biobase::phenoData(cnobj))
   col_order <- cnobj_samples[cnobj_samples %in% colnames(output[["acns"]])]
-  output[["acns"]] <- output[["acns"]][ , col_order]
-  output[["acns_segs"]] <- output[["acns_segs"]][ , col_order]
+  output[["acns"]] <- output[["acns"]][ , col_order, drop = FALSE]
+  output[["acns_segs"]] <- output[["acns_segs"]][ , col_order, drop = FALSE]
 
   if (return_S4) {
     cnobj <- ReplaceQDNAseqAssaySlots(cnobj, output[["acns"]], output[["acns_segs"]])
