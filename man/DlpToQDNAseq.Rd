@@ -6,7 +6,7 @@
 \usage{
 DlpToQDNAseq(
   input_path,
-  bin_size = 500000,
+  bin_size = 5e+05,
   genome = "hg19",
   Xincluded = FALSE,
   getfiltered = FALSE

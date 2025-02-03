@@ -1,7 +1,7 @@
 # helpersignaturefunctions.R
-# The functions in this file were copied from another code repository and in several cases modified.
-# The original code can be found here: https://bitbucket.org/britroc/cnsignatures/src/master/
-# The original code was a part of a publication in Nat. Gen. (August 2018)
+# Most of the functions in this file were copied from another code repository and in several cases modified.
+# That original code can be found here: https://bitbucket.org/britroc/cnsignatures/src/master/
+# It was a part of a publication in Nat. Gen. (August 2018)
 
 #' Fit a Mixture Model for a provided CN-Feature
 #'
@@ -661,3 +661,24 @@ GetDistsFromCentromere <- function(cn_profiles, centromeres, chrlen) {
   rownames(out) <- NULL
   data.frame(out, stringsAsFactors = F)
 }
+
+
+# fit_beta_glms <- function(predictor_index, X, Y) {
+#
+#   predictor <- X[predictor_index, ]
+#   models <- list()
+#
+#   for (j in seq_len(ncol(Y))) {
+#     response <- Y[, j]
+#     model <- glmnet(
+#       x = as.matrix(predictor),
+#       y = response,
+#       family = "binomial",
+#       alpha = 1
+#     )
+#
+#     models[[colnames(Y)[j]]] <- model
+#   }
+#
+#   return(list(models = models, predictor_index = predictor_index))
+# }

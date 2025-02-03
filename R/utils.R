@@ -103,11 +103,13 @@ SegmentsToCopyNumber <- function(segs, bin_size,
   genome_template1[, id := NULL]
 
   # Build data.frame of per-bin copy numbers
-  out <- rbindlist(replicate(length(segs), genome_template1, simplify = FALSE))
+  out <- data.table::rbindlist(replicate(length(segs),
+                                         genome_template1,
+                                         simplify = FALSE))
   out[, `:=`(segVal = NA_real_, sample_id = NA_character_)]
 
   for (i in 1:length(segs)) {
-    sample <- as.data.table(segs[[i]])
+    sample <- data.table::as.data.table(segs[[i]])
     sample[, `:=`(size = end - start + 1)]
     sample[, `:=`(nbins = floor(size / bin_size),
                   seg_id = seq_len(.N)), by = chromosome]
