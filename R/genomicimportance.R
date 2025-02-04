@@ -5,14 +5,15 @@
 ###########################
 #
 # FitGIModelsCNtoS
-# FitGIBetaModel
+# Jitter
+# FitGIModelsStoCN
 # MakeGIVectors
 #
 
 #' Fit a model to each bin in a CN-dataset predicting signature exposure
 #'
 #' @description
-#' Fit a model for each signature in Y given each bin of copy-numbers in CN dataset (X). \cr
+#' Fit a model for each signature in Y given each bin of copy-numbers in CN dataset X. \cr
 #' The two model options are a linear model and a beta model.
 #'
 #' @param X *S4* A QDNAseq object that contains \code{copynumber}, and/or \code{segmented} assay slots. \cr
@@ -136,6 +137,121 @@ FitGIModelsCNtoS <- function (X, Y,
 # Define jitter as a deterministic small perturbation based on value
 Jitter <- function(x, factor = 5e-5) {
   runif(length(x), min = -factor, max = factor)
+}
+
+
+#' Fit a model using CN-signature exposures to predict each bin in a CN-dataset
+#'
+#' @description
+#' Fit a model for each copy-number bin in Y given the signature exposures matrix X. \cr
+#' The rows of X and columns of Y should match. \cr
+#'
+#' Because signature exposures for a sample sum to 1, fitting a model as described encounters the issue of multi-collinearity.
+#' FitGIModelsStoCN overcomes that issue by first performing lasso regression and then fitting a linear model (LM).
+#' Lasso regression makes use of the \pkg{glmnet} package while the \pkg{stats} is called to fit each LM.
+#'
+#' This function is a complement to \link{FitGIModelsCNtoS}.
+#'
+#' @param X *matrix.* A matrix of samples (x) by signatures (y). Values are signature exposures. \cr
+#' `dim(X)[1]` must equal `dim(Y)[2]`
+#' @param Y *S4/matrix.* A QDNAseq object that contains \code{copynumber}, and/or \code{segmented} assay slots. \cr
+#' OR alternatively a matrix of bins (x) by samples (y) may be provided. The values being the copy-numbers.
+#' @param bin_indices (optional) *numeric/integer vector.* A single integer or a vector of integers. \cr
+#' Subsets the copy-number object to only run on the bins in these indices.
+#' @param data_slot (optional) *character.* If passing a QDNAseq object, the CN data slot to use. \cr
+#' Common options are "copynumber" (corrected or uncorrected read counts), "segmented", or "calls".
+#' @param run_parallel (optional) *logical.* If TRUE run job in parallel. Will automatically use 1 less than total cores available.
+#' @param cores (optional) *integer.* Alternatively/in-addition, the user may choose the number of cores to use. \cr
+#' Must be <= 1 less than the number available.
+#'
+#' @return A list of lists. One entry for each bin. Each bin then has a list of: \cr
+#' `model_predvals` \cr
+#' `predictor_index`
+#'
+#' @export
+FitGIModelsStoCN <- function (X, Y,
+                              bin_indices = NULL,
+                              data_slot = NULL,
+                              run_parallel = FALSE,
+                              cores = 1) {
+
+  # Validate inputs
+  stopifnot(inherits(X, 'matrix'))
+  stopifnot(dim(X)[1] == dim(Y)[2])
+  if (inherits(Y, c("QDNAseqCopyNumbers", "QDNAseqReadCounts"))) {
+    if (!is.null(data_slot)) {
+      stopifnot(data_slot %in% Biobase::assayDataElementNames(Y))
+    }
+    Y <- Biobase::assayDataElement(Y, data_slot)
+  } else {
+    stopifnot(inherits(Y, 'matrix'))
+  }
+  if (cores != 1) {
+    require(foreach)
+    available_cores <- parallel::detectCores() - 1
+    stopifnot(available_cores >= cores && cores > 0)
+    doMC::registerDoMC(cores)
+  } else if (run_parallel) {
+    available_cores <- parallel::detectCores() - 1
+    doMC::registerDoMC(available_cores)
+  }
+  if (!is.null(bin_indices)) {
+    stopifnot(all(bin_indices <= dim(Y)[1]))
+  } else {
+    bin_indices <- 1:nrow(Y)
+  }
+
+  # Run things in parallel if possible
+  n_sigs <- ncol(X)
+  message("Begin per-bin LM runs...")
+  results <- foreach(i = bin_indices,
+                     .packages = c("stats", "glmnet")) %dopar% {
+
+                       # Extract bin-level values and prep for modelling
+                       na_mask <- !is.na(Y[i, ])
+                       if (sum(na_mask) < (n_sigs - 1)) {
+                         return(list(model_predvals = list(), bin_index = i))
+                       } else {
+                         cn_outcome <- Y[i, na_mask]
+                       }
+                       coefs <- rep(NA, n_sigs)
+                       pvalues <- rep(NA, n_sigs)
+
+                       # Run lasso + lm
+                       cv_fit <- glmnet::cv.glmnet(X, cn_outcome, alpha = 1, standardize = TRUE)
+                       best_lambda <- cv_fit$lambda.min
+                       lasso_model <- glmnet::glmnet(X, cn_outcome, alpha = 1, lambda = best_lambda)
+                       lasso_coefs <- as.vector(coef(lasso_model))[-1]
+                       predictor_to_drop <- which(abs(lasso_coefs) == min(abs(lasso_coefs)))
+                       if (length(predictor_to_drop) == n_sigs) {
+                         return(list(model_predvals = list(), bin_index = i))
+                       } else {
+                         x <- X[, -predictor_to_drop]
+                       }
+                       final_model <- lm(cn_outcome ~ x)
+
+                       # Extract coefs and pvalues
+                       good_pred_idx <- setdiff(1:dim(X)[2], predictor_to_drop)
+                       good_pred_coef <- coef(final_model)[2:(1 + length(good_pred_idx))]
+                       coefs[good_pred_idx] <- good_pred_coef
+                       good_pred_pvals <- summary(final_model)$coefficients[2:(1 + length(good_pred_idx)), 4]
+                       pvalues[good_pred_idx] <- good_pred_pvals
+
+                       results <- list()
+                       for (j in 1:n_sigs) {
+                         results[[colnames(X)[j]]] <- c(coefs[j], pvalues[j])
+                       }
+
+                       return(list(model_predvals = results,
+                                   bin_index = bin_index))
+                     }
+
+  time.taken <- Sys.time() - start.time
+  message("Done")
+  message("Time elapsed: ", round(time.taken, digits = 2),
+          " ", attr(time.taken, "units"))
+
+  return(results)
 }
 
 

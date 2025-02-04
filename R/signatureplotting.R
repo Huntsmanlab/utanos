@@ -11,6 +11,7 @@
 # PoissonsMixturePlot
 # WassDistancePlot
 # SEAlluvialPlot
+# GenomicImportancePlot
 
 
 
@@ -896,3 +897,137 @@ SEAlluvialPlot <- function (exposA, exposB,
 
   return(list(plot = ggp, exposures_matrix = plotting_data))
 }
+
+
+#' Make a Genomic Importance plot
+#'
+#' @description
+#'
+#' This function processes p-values and coefficients from a list, transforms them into a long format,
+#' and produces a plot highlighting regions of the genome accordingly.
+#'
+#' @param importance *list.* A list of vectors. \cr
+#' There should be two vectors for each signature, one containing p-values and the other coefficients from a regression model.
+#' @param input_df *data frame.* A data frame with rownames to be used as column names. Ex. the input for \link{FitGIModelsCNtoS}.
+#' @param ref_genome *character.* The reference genome used in creating this dataset. ex. "hg19"
+#' @returns A ggplot object.
+#'
+#' @export
+GenomicImportancePlot <- function(importance,
+                                  input_df,
+                                  ref_genome = "hg19") {
+
+  # Extract p-values and coefficients from the importance list
+  pval_list <- importance[grepl("pvals$", names(importance))]
+  coef_list <- importance[grepl("coef$", names(importance))]
+
+  # Convert to data.tables
+  pval_dt <- data.table::data.table(do.call(rbind, pval_list))
+  coef_dt <- data.table::data.table(do.call(rbind, coef_list))
+
+  # Assign column names from the data frame rownames
+  colnames(pval_dt) <- rownames(input_df)
+  colnames(coef_dt) <- rownames(input_df)
+
+  # Re-shape pval input
+  data.table::setDT(pval_dt)
+  pval_dt[, signature := rownames(pval_dt)]
+  pval_dt[, signature := factor(signature)]
+  measure_cols <- setdiff(names(pval_dt), "signature")
+  pval_long <- data.table::melt(pval_dt,
+                                id.vars = "signature",
+                                variable.name = "genomic_location",
+                                measure.vars = measure_cols,
+                                value.name = "pval",
+                                variable.factor = FALSE)
+  pval_long[, genomic_location := factor(genomic_location, levels = measure_cols)]
+  data.table::setorder(pval_long, signature, genomic_location)
+  pval_long[, c("chr", "range") := data.table::tstrsplit(genomic_location, ":", fixed = TRUE)]
+  pval_long[, c("start", "end") := data.table::tstrsplit(range, "-", fixed = TRUE)]
+
+  # Re-shape coef input
+  data.table::setDT(coef_dt)
+  coef_dt[, signature := rownames(coef_dt)]
+  coef_dt[, signature := factor(signature)]
+  measure_cols <- setdiff(names(coef_dt), "signature")
+  coef_long <- data.table::melt(coef_dt,
+                                id.vars = "signature",
+                                variable.name = "genomic_location",
+                                measure.vars = measure_cols,
+                                value.name = "coef",
+                                variable.factor = FALSE)
+  coef_long[, genomic_location := factor(genomic_location, levels = measure_cols)]
+  data.table::setorder(coef_long, signature, genomic_location)
+  coef_long[, c("chr", "range") := data.table::tstrsplit(genomic_location, ":", fixed = TRUE)]
+  coef_long[, c("start", "end") := data.table::tstrsplit(range, "-", fixed = TRUE)]
+
+  # Merge, and scale
+  merge_long <- dplyr::left_join(pval_long, coef_long)
+  merge_long$sign <- sign(merge_long$coef)
+  merge_long$signed_pval <- -log10(merge_long$pval) * merge_long$sign
+  sfactor <- max(-log10(merge_long$pval[merge_long$pval > 0]), na.rm = TRUE) / max(merge_long$coef, na.rm = TRUE)
+  merge_long <- merge_long %>%
+    dplyr::mutate(combined = paste0(chr, ":", start))
+
+  # Mask blacklist regions
+  merge_long <- RemoveBlacklist(merge_long, ref_genome)
+  merge_long$pval[is.na(merge_long$state)] <- NA
+  merge_long$coef[is.na(merge_long$state)] <- NA
+
+  # Final plotting-specific format fuzting
+  merge_long$coef[is.na(merge_long$coef)] <- 0
+  merge_long$start <- as.numeric(merge_long$start)
+  merge_long$end <- as.numeric(merge_long$end)
+  merge_long$chr = factor(merge_long$chr, levels = c(1:22, "X", "Y"))
+
+  # Create the plot
+  final_plot <- ggplot2::ggplot(merge_long, ggplot2::aes(
+    x = start,
+    y = -log10(pval) * sign,
+    fill = signature
+  )) +
+    ggplot2::geom_bar(stat = "identity", na.rm = FALSE) +
+    ggplot2::geom_smooth(
+      ggplot2::aes(x = start, y = coef * sfactor),
+      method = "loess",
+      span = 0.2,
+      color = "grey20",
+      linewidth = 0.5,
+      alpha = 0.1
+    ) +
+    ggplot2::geom_hline(
+      yintercept = 0,
+      color = "gray60",
+      linewidth = 0.3
+    ) +
+    ggplot2::facet_grid(signature ~ chr, scales = "free_x", space = "free_x", switch = "x") +
+    ggplot2::scale_fill_manual(
+      values = c(setNames(viridis::turbo(length(unique(merge_long$signature))),
+                          unique(merge_long$signature)))
+    ) +
+    ggplot2::scale_y_continuous(
+      name = "Signed -log10(P-value)",
+      sec.axis = ggplot2::sec_axis(
+        transform = ~ scales::rescale(., to = range(merge_long$coef, na.rm = TRUE)),
+        name = "Coefficient"
+      )
+    ) +
+    ggplot2::labs(
+      title = "Signed -log10(P-value) by Signature and Genomic Location",
+      x = "Genomic Position (start)",
+      y = "Signed -log10(P-value)",
+      alpha = "Transparency by -log10(P-value)"
+    ) +
+    ggplot2::scale_x_continuous(limits = c(0, NA), breaks = NULL) +
+    ggplot2::theme(panel.spacing = ggplot2::unit(0.1, "lines"),
+                   axis.title = ggplot2::element_text(size = 12),
+                   legend.title = ggplot2::element_text(size = 14),
+                   legend.text = ggplot2::element_text(size = 12),
+                   axis.text.x = ggplot2::element_blank(),
+                   panel.grid.minor.x = ggplot2::element_blank(),
+                   panel.grid.major.x = ggplot2::element_blank() )
+
+  return(final_plot)
+}
+
+

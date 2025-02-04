@@ -263,7 +263,11 @@ RemoveBlacklist <- function(data, refgenome) {
   grData = GenomicRanges::makeGRangesFromDataFrame(data)
   overlaps = suppressWarnings(IRanges::findOverlaps(grData, grBL))
 
-  # Replace state of data rows with chr and start overlapping with blacklist
+  # If a 'state' column doesn't yet exist add one
+  # Then, mark rows by chr, start that overlap with the blacklist
+  if (!"state" %in% colnames(data)) {
+    data$state <- 0
+  }
   data$state = replace(data$state, overlaps@from, NA)
 
   # Return original dataframe with state of blacklisted segments of genome identified as low mapability

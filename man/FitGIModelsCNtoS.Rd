@@ -45,6 +45,6 @@ A list of lists. One entry for each bin. Each bin then has a list of: \cr
 \code{predictor_index}
 }
 \description{
-Fit a model for each signature in Y given each bin of copy-numbers in CN dataset (X). \cr
+Fit a model for each signature in Y given each bin of copy-numbers in CN dataset X. \cr
 The two model options are a linear model and a beta model.
 }
