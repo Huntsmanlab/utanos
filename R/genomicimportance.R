@@ -203,7 +203,8 @@ FitGIModelsStoCN <- function (X, Y,
 
   # Run things in parallel if possible
   n_sigs <- ncol(X)
-  message("Begin per-bin LM runs...")
+  message("Begin per-bin Lasso + LM runs...")
+  start.time <- Sys.time()
   results <- foreach(i = bin_indices,
                      .packages = c("stats", "glmnet")) %dopar% {
 
@@ -213,6 +214,7 @@ FitGIModelsStoCN <- function (X, Y,
                          return(list(model_predvals = list(), bin_index = i))
                        } else {
                          cn_outcome <- Y[i, na_mask]
+                         X <- X[na_mask,]
                        }
                        coefs <- rep(NA, n_sigs)
                        pvalues <- rep(NA, n_sigs)
@@ -243,7 +245,7 @@ FitGIModelsStoCN <- function (X, Y,
                        }
 
                        return(list(model_predvals = results,
-                                   bin_index = bin_index))
+                                   bin_index = i))
                      }
 
   time.taken <- Sys.time() - start.time
