@@ -11,7 +11,8 @@ RunShallowHRDFromQDNA(
   shrd_save_path = FALSE,
   plot = FALSE,
   seed = 1337,
-  cores = 1
+  cores = 1,
+  log_transform = TRUE
 )
 }
 \arguments{

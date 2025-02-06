@@ -18,16 +18,7 @@ In the absence of any value passed in for this parameter, plots for just the fir
 A list of ggplots.
 }
 \description{
-<<<<<<< HEAD
 This function (MixtureModelPlots), for an indicated CN-Signature (S), returns a list of six ggplots.
 Each plot visualizes the mixture models used for each feature.
 All mixture components are plotted, but those elevated for S are shaded.
-=======
-This wrapper function (MixtureModelPlots), for an indicated CN-Signature (), returns a list of six ggplots.
-Each plot visualizes the mixture model used for each feature.
-All mixture components are plotted. \cr
-Optionally, the user can provide a matrix of components by signatures and indicate a \code{sig_of_interest}.
-This will result in the lower-weight components (the curves) for the indicated signature being greyed out. \cr
-The threshold for this grey-shading functionality can be changed using the \code{threshold} parameter.
->>>>>>> a2add82 (export fitcomponent for convenience in granular approach to modelling attempt 2.)
 }
