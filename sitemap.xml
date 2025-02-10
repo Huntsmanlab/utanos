@@ -2,11 +2,10 @@
 <url><loc>https://huntsmanlab.github.io/utanos/404.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/LICENSE-text.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/LICENSE.html</loc></url>
-<url><loc>https://huntsmanlab.github.io/utanos/articles/0_quickstart-vignette.html</loc></url>
-<url><loc>https://huntsmanlab.github.io/utanos/articles/1_samplequality-vignette.html</loc></url>
-<url><loc>https://huntsmanlab.github.io/utanos/articles/2_cndiversityandscaling-vignette.html</loc></url>
-<url><loc>https://huntsmanlab.github.io/utanos/articles/3_cnsignatures-vignette.html</loc></url>
-<url><loc>https://huntsmanlab.github.io/utanos/articles/4_shallowhrd-vignette.html</loc></url>
+<url><loc>https://huntsmanlab.github.io/utanos/articles/A-samplequality-vignette.html</loc></url>
+<url><loc>https://huntsmanlab.github.io/utanos/articles/B-cndiversityandscaling-vignette.html</loc></url>
+<url><loc>https://huntsmanlab.github.io/utanos/articles/C-cnsignatures-vignette.html</loc></url>
+<url><loc>https://huntsmanlab.github.io/utanos/articles/D-shallowhrd-vignette.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/articles/index.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/articles/utanos.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/authors.html</loc></url>
@@ -44,6 +43,7 @@
 <url><loc>https://huntsmanlab.github.io/utanos/reference/FindBigSegmentsIndices.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/FindRascalSolutions.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/FindThreshold.html</loc></url>
+<url><loc>https://huntsmanlab.github.io/utanos/reference/FitComponent.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/FitMixtureModels.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/GatherSegmentsByLevels.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/GatherSegmentsByRatioMedian.html</loc></url>
@@ -88,10 +88,10 @@
 <url><loc>https://huntsmanlab.github.io/utanos/reference/QuantifySignatures.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/RCNDiversityPlot.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/RatioDiffBelowThreshold.html</loc></url>
-<url><loc>https://huntsmanlab.github.io/utanos/reference/RelativeCNSegmentsPlot.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/RelativeToAbsoluteCopyNumber.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/RemoveCentromereTelomeres.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/RemoveSpuriousRegions.html</loc></url>
+<url><loc>https://huntsmanlab.github.io/utanos/reference/ReplaceQDNAseqAssaySlots.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/RunShallowHRD.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/RunShallowHRDFromQDNA.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/RunThresholdSimulations.html</loc></url>
