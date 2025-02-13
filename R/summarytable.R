@@ -204,6 +204,118 @@ MakeSummaryTable <- function(CNobj,
 }
 
 
+#' Makes a summary table of per-gene coefficients and pvals from GI output
+#'
+#' @description
+#'
+#' MakeGISummaryTable takes as input a list of vectors (Ex. the output from \link{FitGIModelsCNtoS}). \cr
+#' For each provided bin that passes the coefficient and p-value thresholds the function finds all genes that overlap the region.
+#' It then builds an output table composed of the median calculated GI values per-gene.
+#' The output tables for each input signature are all stacked.
+#'
+#' @param GI_vectors *list.* A list of vectors (Ex. the output from \link{FitGIModelsCNtoS}). \cr
+#' Two vectors (pvals and coefficients) for each signature. \cr
+#' One additional vector of the genomic bins for which the regression values correspond.
+#' All vectors must have the same length.
+#' @param ref_genome *character.* The reference genome used in creating this dataset. ex. "hg19" \cr
+#' Make sure this char vector matches the database provided to the 'edb' parameter.
+#' @param coef_threshold *numeric.* Don't consider any bins where the coef falls below this value.
+#' @param pval_threshold *numeric.* Don't consider any bins where the p-value falls above this value.
+#' @param rm_blacklist *logical.* If TRUE, remove the blacklist regions for this genome (low mappability etc.).
+#' If FALSE, then don't.
+#' @param edb *Formal class EnsDb.* This parameter expects an ensembl DB object for the corresponding genome provided to the 'ref_genome' param. \cr
+#' Ex. EnsDb.Hsapiens.v75::EnsDb.Hsapiens.v75 or EnsDb.Mmusculus.v79::EnsDb.Mmusculus.v79
+#'
+#' @returns A data.table. One row per gene composed of the median calculated GI values across the corresponding bins.
+#'
+#' @export
+MakeGISummaryTable <- function(GI_vectors,
+                               ref_genome = NULL,
+                               coef_threshold = 0.1,
+                               pval_threshold = 0.05,
+                               rm_blacklist = TRUE,
+                               edb = EnsDb.Hsapiens.v75::EnsDb.Hsapiens.v75) {
+
+  # Initial checks and input validation
+  stopifnot(!is.null(ref_genome))
+  ref_db <- switch(ref_genome,
+                   "hg19" = "EnsDb.Hsapiens.v75",
+                   "hg38" = "EnsDb.Hsapiens.v86",
+                   "mm10" = "EnsDb.Mmusculus.v79",
+                   stop("Unsupported reference genome: ", ref_genome))
+  stopifnot(ensembldb::ensemblVersion(edb) == gsub("\\D", "", ref_db))
+  if (!requireNamespace(ref_db, quietly = TRUE)) {
+    stop(paste0("Package ", ref_db, " is required for ref genome ", ref_genome,
+                " but is not installed. Please install it using:\n",
+                "BiocManager::install('", ref_db, "')"))
+  } else {
+    gr_genes <- GenomicFeatures::genes(edb)
+  }
+  if (inherits(GI_vectors, c("list"))) {
+    GI_vectors <- as.data.frame(GI_vectors)
+  }
+  stopifnot(inherits(GI_vectors, c("data.frame")))
+
+  ### Filtering section
+  colnames(GI_vectors)[grepl("genomic|ranges",
+                             names(GI_vectors))] <- "genomic_location"
+  dt <- data.table::as.data.table(GI_vectors)
+  dt_long <- data.table::melt(dt, id.vars = "genomic_location",
+                              variable.name = "measure",
+                              value.name = "value")
+  dt_long[, c("signature", "type") := data.table::tstrsplit(measure, "_", fixed = TRUE)]
+  dt_long[, genomic_location := factor(genomic_location, levels = GI_vectors$genomic_location)]
+  dt <- data.table::dcast(dt_long,
+                          genomic_location + signature ~ type,
+                          value.var = "value", sort = FALSE)
+  data.table::setorder(dt, signature, genomic_location)
+  dt <- dt[!(is.na(bincoef) & is.na(binpvals))]
+  dt[, c("chromosome", "range") := data.table::tstrsplit(genomic_location, ":", fixed = TRUE)]
+  dt[, c("start", "end") := data.table::tstrsplit(range, "-", fixed = TRUE)]
+  dt[, chromosome := factor(chromosome, levels = unique(chromosome))]
+  dt$start <- as.numeric(dt$start)
+  dt$end <- as.numeric(dt$end)
+  dt[, range := NULL]
+  # Mask blacklist regions
+  dt <- RemoveBlacklist(dt, ref_genome)
+  dt <- dt[!is.na(state)]
+  dt[, state := NULL]
+  # Filter rows by thresholds
+  dt <- dt[abs(bincoef) >= coef_threshold & binpvals <= pval_threshold]
+
+  ### Make data.table by gene from long format
+  GIcoords.gr <- dt %>% dplyr::select(signature, chromosome, start, end)
+  GIcoords.gr <- GenomicRanges::makeGRangesFromDataFrame(GIcoords.gr)
+  gr_pc_genes <- ensembldb::genes(edb, filter = AnnotationFilter::GeneBiotypeFilter("protein_coding"))
+  overlaps <- IRanges::findOverlaps(GIcoords.gr, gr_pc_genes)
+  genes_table <- data.table::as.data.table(as.data.frame(
+    gr_pc_genes))[overlaps@to,
+                  .(start_gene = start,
+                    end_gene = end,
+                    strand,
+                    gene_id,
+                    gene_name)]
+  genes_table <- cbind(dt[overlaps@from], genes_table)
+  data.table::setcolorder(genes_table, c(setdiff(names(genes_table), "gene_name"), "gene_name"))
+  data.table::setcolorder(genes_table, c("signature", setdiff(names(genes_table), "signature")))
+  genes_table <- genes_table[, .(
+    start_bin = data.table::first(start),
+    end_bin = data.table::last(end),
+    median_coef = median(bincoef),
+    median_pval = median(binpvals),
+    start_gene = data.table::first(start_gene),
+    end_gene = data.table::first(end_gene),
+    strand = data.table::first(strand),
+    gene_id = data.table::first(gene_id)
+  ), by = .(signature, chromosome, gene_name)]
+
+  # Order the final table
+  data.table::setorder(genes_table, signature, chromosome, start_bin)
+
+  return(genes_table)
+}
+
+
 #' Generate Human Readable Relative Copy-Number Profiles
 #'
 #' @description
