@@ -57,6 +57,7 @@ Setting the <code>order</code> parameter overrules this behaviour.</p>
 <span>  save_path <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  rmblacklist <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  addtitle <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  sample_labels <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  ann_df <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  obj_name <span class="op">=</span> <span class="st">"version1"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -86,6 +87,23 @@ Example: <br><code>c("CC-CHM-1341", "CC-CHM-1347", "CC-CHM-1355", CC-CHM-1361", 
 
 <dt id="arg-save-path">save_path<a class="anchor" aria-label="anchor" href="#arg-save-path"></a></dt>
 <dd><p>(optional) String. Expects a path to a directory where the plot should be saved. (png)</p></dd>
+
+
+<dt id="arg-rmblacklist">rmblacklist<a class="anchor" aria-label="anchor" href="#arg-rmblacklist"></a></dt>
+<dd><p>optional <em>NULL or character vector</em>. Filter the plot of blacklist regions from this genome. ex. 'hg19'</p></dd>
+
+
+<dt id="arg-addtitle">addtitle<a class="anchor" aria-label="anchor" href="#arg-addtitle"></a></dt>
+<dd><p>(optional) Logical. If set to TRUE add a basic title to the plot.</p></dd>
+
+
+<dt id="arg-sample-labels">sample_labels<a class="anchor" aria-label="anchor" href="#arg-sample-labels"></a></dt>
+<dd><p>(optional) Logical. If set to TRUE, display sample names and y-axis ticks.</p></dd>
+
+
+<dt id="arg-ann-df">ann_df<a class="anchor" aria-label="anchor" href="#arg-ann-df"></a></dt>
+<dd><p>(optional) Dataframe. Expects the same sample ids as passed to long_segments param. <br>
+See the roxygen docs for <code><a href="PlotAnnotationBars.html">PlotAnnotationBars()</a></code> for more details.</p></dd>
 
 
 <dt id="arg-obj-name">obj_name<a class="anchor" aria-label="anchor" href="#arg-obj-name"></a></dt>

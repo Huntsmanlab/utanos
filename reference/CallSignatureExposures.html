@@ -54,9 +54,12 @@ and described more robustly here https://www.nature.com/articles/s41588-018-0179
 <span>  <span class="va">copy_numbers_input</span>,</span>
 <span>  component_models <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  signatures <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cores <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  log_features <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  extra_features <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  plot_savepath <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sigs_savepath <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  relativeCN_data <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  relative <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  refgenome <span class="op">=</span> <span class="st">"hg19"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -91,8 +94,8 @@ Options: <br>
 <dd><p>(optional) String. The path where to save a csv of the calculated signature exposures. Please provide a directory.</p></dd>
 
 
-<dt id="arg-relativecn-data">relativeCN_data<a class="anchor" aria-label="anchor" href="#arg-relativecn-data"></a></dt>
-<dd><p>(optional) Logical. If using relative Copy-Number data as input, set to true. Otherwise, ignore.</p></dd>
+<dt id="arg-relative">relative<a class="anchor" aria-label="anchor" href="#arg-relative"></a></dt>
+<dd><p>(optional) Logical. If using relative Copy-Number data as input, set to TRUE. Otherwise, ignore.</p></dd>
 
 
 <dt id="arg-refgenome">refgenome<a class="anchor" aria-label="anchor" href="#arg-refgenome"></a></dt>

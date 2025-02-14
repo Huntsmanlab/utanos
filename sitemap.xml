@@ -28,6 +28,7 @@
 <url><loc>https://huntsmanlab.github.io/utanos/reference/CleanBamRatiosFrame.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/CollapseTableToSegments.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/CollapsedSegs.html</loc></url>
+<url><loc>https://huntsmanlab.github.io/utanos/reference/ComponentSignaturesHeatmap.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/CopyNumberSegments.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/CopySegFlat.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/CorrectLeftovers.html</loc></url>
@@ -100,9 +101,9 @@
 <url><loc>https://huntsmanlab.github.io/utanos/reference/ShrinkReprTMP.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/SignatureExposuresPlot.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/SmallMissingChrArms.html</loc></url>
+<url><loc>https://huntsmanlab.github.io/utanos/reference/StackedExposuresPlot.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/SummaryCNPlot.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/TumourFraction.html</loc></url>
-<url><loc>https://huntsmanlab.github.io/utanos/reference/TwoFeatureScatterPlot.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/WassDistancePlot.html</loc></url>
 <url><loc>https://huntsmanlab.github.io/utanos/reference/index.html</loc></url>
 </urlset>
