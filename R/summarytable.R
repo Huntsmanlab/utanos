@@ -277,9 +277,11 @@ MakeGISummaryTable <- function(GI_vectors,
   dt$end <- as.numeric(dt$end)
   dt[, range := NULL]
   # Mask blacklist regions
-  dt <- RemoveBlacklist(dt, ref_genome)
-  dt <- dt[!is.na(state)]
-  dt[, state := NULL]
+  if (rm_blacklist) {
+    dt <- RemoveBlacklist(dt, ref_genome)
+    dt <- dt[!is.na(state)]
+    dt[, state := NULL]
+  }
   # Filter rows by thresholds
   dt <- dt[abs(bincoef) >= coef_threshold & binpvals <= pval_threshold]
 

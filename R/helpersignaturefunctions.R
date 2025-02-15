@@ -592,6 +592,7 @@ GetPloidy <- function(cn_profiles) {
 }
 
 
+#' @export
 NormaliseMatrix <- function(signature_by_sample,
                             sig_thresh = 0.01) {
   norm_const <- colSums(signature_by_sample)
