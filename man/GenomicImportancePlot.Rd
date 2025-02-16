@@ -4,15 +4,31 @@
 \alias{GenomicImportancePlot}
 \title{Make a Genomic Importance plot}
 \usage{
-GenomicImportancePlot(importance, input_df, ref_genome = "hg19")
+GenomicImportancePlot(
+  importance,
+  ref_genome = "hg19",
+  focus = "coefs",
+  p_threshold = 0.1,
+  threshold_line = TRUE,
+  ylims = NULL,
+  rm_blacklist = TRUE
+)
 }
 \arguments{
 \item{importance}{\emph{list.} A list of vectors. \cr
 There should be two vectors for each signature, one containing p-values and the other coefficients from a regression model.}
 
-\item{input_df}{\emph{data frame.} A data frame with rownames to be used as column names. Ex. the input for \link{FitGIModelsCNtoS}.}
-
 \item{ref_genome}{\emph{character.} The reference genome used in creating this dataset. ex. "hg19"}
+
+\item{focus}{\emph{character.} (optional) Choose which of the two regression outputs to plot. Two options 'coefs' and 'pvals'.}
+
+\item{p_threshold}{\emph{numeric.} (optional) Begin reducing opacity at this value (used in the sigmoid applied to pvals for opacity).}
+
+\item{threshold_line}{\emph{logical.} (optional) If TRUE, when focus == 'pvals', draw a dotted red line at p_threshold.}
+
+\item{ylims}{\emph{numeric vector.} (optional) Provide two values for the lower and upper ylimits of the graph. ex. c(-5, 5)}
+
+\item{rm_blacklist}{\emph{logical.} (optional) Filter out hg19 blacklist regions.}
 }
 \value{
 A ggplot object.
