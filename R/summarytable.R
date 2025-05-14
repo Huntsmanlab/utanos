@@ -105,6 +105,20 @@ MakeSummaryTable <- function(CNobj,
                    start = QDNAseq::bpstart(CNobj),
                    end = QDNAseq::bpend(CNobj))
 
+  # Add gain / loss metrics per bin to output table
+  nclass <- 3
+  if (!is.null(CGHbase::probamp(CNobj))) { nclass <- nclass + 1 }
+  if (!is.null(CGHbase::probdloss(CNobj))) { nclass <- nclass + 1 }
+  if(nclass==3) {
+    df$loss.freq <- rowMeans(CGHbase::probloss(CNobj))
+    df$gain.freq <- rowMeans(CGHbase::probgain(CNobj)) }
+  if(nclass==4) {
+    df$loss.freq <- rowMeans(CGHbase::probloss(CNobj))
+    df$gain.freq <- rowMeans(CGHbase::probgain(CNobj)) + rowMeans(CGHbase::probamp(CNobj)) }
+  if(nclass==5) {
+    df$loss.freq <- rowMeans(CGHbase::probloss(CNobj)) + rowMeans(CGHbase::probdloss(CNobj))
+    df$gain.freq <- rowMeans(CGHbase::probgain(CNobj)) + rowMeans(CGHbase::probamp(CNobj)) }
+
   # Determine mean copy number
   cns <- log2(CGHbase::segmented(CNobj))
   com_cns <- as.data.frame(cns) %>% dplyr::mutate(mean = rowMeans(dplyr::across(where(is.numeric))))
