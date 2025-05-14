@@ -70,6 +70,7 @@ CollapseTableToSegments <- function(df) {
 #' @param ref_genome (optional) String. The reference genome used for alignment. \cr
 #' Options: 'hg19', 'hg38', and 'mm10'
 #' @param save_path (optional) String. A path (directory) to where segment tables should be saved. ex. '~/Documents/test_project'.
+#' @param use_calls (optional) Logical. If TRUE, gain/loss calls (e.g. CGHcall) are used to calculate gain/loss counts and proportions.
 #' @returns A list of data frames. Always the summary_table, optionally a peaks data frame.
 #'
 #' @export
@@ -80,7 +81,8 @@ MakeSummaryTable <- function(CNobj,
                              find_peaks = FALSE,
                              snames = FALSE,
                              ref_genome = "hg19",
-                             save_path = FALSE) {
+                             save_path = FALSE,
+                             use_calls = FALSE) {
 
   # Initial checks
   if (!("EnsDb.Hsapiens.v75" %in% installed.packages()) &&
@@ -103,30 +105,26 @@ MakeSummaryTable <- function(CNobj,
                    start = QDNAseq::bpstart(CNobj),
                    end = QDNAseq::bpend(CNobj))
 
+  # Determine mean copy number
   cns <- log2(CGHbase::segmented(CNobj))
   com_cns <- as.data.frame(cns) %>% dplyr::mutate(mean = rowMeans(dplyr::across(where(is.numeric))))
   df$mean.cn <- com_cns$mean
-
-  # Add gain / loss metrics per bin to output table
-  nclass <- 3
-  if (!is.null(CGHbase::probamp(CNobj))) { nclass <- nclass + 1 }
-  if (!is.null(CGHbase::probdloss(CNobj))) { nclass <- nclass + 1 }
-  if(nclass==3) {
-    df$loss.freq <- rowMeans(CGHbase::probloss(CNobj))
-    df$gain.freq <- rowMeans(CGHbase::probgain(CNobj)) }
-  if(nclass==4) {
-    df$loss.freq <- rowMeans(CGHbase::probloss(CNobj))
-    df$gain.freq <- rowMeans(CGHbase::probgain(CNobj)) + rowMeans(CGHbase::probamp(CNobj)) }
-  if(nclass==5) {
-    df$loss.freq <- rowMeans(CGHbase::probloss(CNobj)) + rowMeans(CGHbase::probdloss(CNobj))
-    df$gain.freq <- rowMeans(CGHbase::probgain(CNobj)) + rowMeans(CGHbase::probamp(CNobj)) }
-
-  bin_cns_loss <- as.data.frame(cns < lowT) %>% dplyr::mutate(total = rowSums(dplyr::across(where(is.logical))))
-  bin_cns_gain <- as.data.frame(cns > highT) %>% dplyr::mutate(total = rowSums(dplyr::across(where(is.logical))))
-  df$loss.count <- bin_cns_loss$total
-  df$gain.count <- bin_cns_gain$total
-  df$loss.prop <- bin_cns_loss$total/dim(cns)[2]
-  df$gain.prop <- bin_cns_gain$total/dim(cns)[2]
+  
+  # Calculate gains and losses by calls or segmented copy number
+  if (use_calls) {
+    bin_calls <- CGHbase::calls(CNobj)
+    bin_loss <- as.data.frame(bin_calls < 0) %>% dplyr::mutate(total = rowSums(dplyr::across(where(is.logical))))
+    bin_gain <- as.data.frame(bin_calls > 0) %>% dplyr::mutate(total = rowSums(dplyr::across(where(is.logical))))
+  } else {
+    bin_loss <- as.data.frame(cns < lowT) %>% dplyr::mutate(total = rowSums(dplyr::across(where(is.logical))))
+    bin_gain <- as.data.frame(cns > highT) %>% dplyr::mutate(total = rowSums(dplyr::across(where(is.logical))))
+  }
+  
+  # Add gains/losses to output table
+  df$loss.count <- bin_loss$total
+  df$gain.count <- bin_gain$total
+  df$loss.prop <- bin_loss$total/dim(cns)[2]
+  df$gain.prop <- bin_gain$total/dim(cns)[2]
 
   # Add per-gain or loss sample names to output table
   mat <- as.data.frame(t(colnames(bin_cns_loss)[1:dim(cns)[2]])) %>% dplyr::slice(rep(1:dplyr::n(), each = dim(bin_cns_loss)[1]))
