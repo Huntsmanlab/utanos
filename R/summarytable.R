@@ -141,15 +141,15 @@ MakeSummaryTable <- function(CNobj,
   df$gain.prop <- bin_gain$total/dim(cns)[2]
 
   # Add per-gain or loss sample names to output table
-  mat <- as.data.frame(t(colnames(bin_cns_loss)[1:dim(cns)[2]])) %>% dplyr::slice(rep(1:dplyr::n(), each = dim(bin_cns_loss)[1]))
+  mat <- as.data.frame(t(colnames(bin_loss)[1:dim(cns)[2]])) %>% dplyr::slice(rep(1:dplyr::n(), each = dim(bin_loss)[1]))
   mat <- as.matrix(mat)
-  mask <- as.matrix(bin_cns_loss[,c(1:dim(cns)[2])])
+  mask <- as.matrix(bin_loss[,c(1:dim(cns)[2])])
   mat[!mask] <- NA
   mat <- as.data.frame(mat) %>% tidyr::unite("names", everything(), sep = ',', na.rm = TRUE)
   df$loss.samples <- mat$names
-  mat <- as.data.frame(t(colnames(bin_cns_gain)[1:dim(cns)[2]])) %>% dplyr::slice(rep(1:dplyr::n(), each = dim(bin_cns_gain)[1]))
+  mat <- as.data.frame(t(colnames(bin_gain)[1:dim(cns)[2]])) %>% dplyr::slice(rep(1:dplyr::n(), each = dim(bin_gain)[1]))
   mat <- as.matrix(mat)
-  mask <- as.matrix(bin_cns_gain[,c(1:dim(cns)[2])])
+  mask <- as.matrix(bin_gain[,c(1:dim(cns)[2])])
   mat[!mask] <- NA
   mat <- as.data.frame(mat) %>% tidyr::unite("names", everything(), sep = ',', na.rm = TRUE)
   df$gain.samples <- mat$names
