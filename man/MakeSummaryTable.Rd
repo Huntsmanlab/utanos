@@ -14,7 +14,8 @@ MakeSummaryTable(
   find_peaks = FALSE,
   snames = FALSE,
   ref_genome = "hg19",
-  save_path = FALSE
+  save_path = FALSE,
+  use_calls = FALSE
 )
 }
 \arguments{
@@ -42,6 +43,8 @@ This parameter helps filter out noise.}
 Options: 'hg19', 'hg38', and 'mm10'}
 
 \item{save_path}{(optional) String. A path (directory) to where segment tables should be saved. ex. '~/Documents/test_project'.}
+
+\item{use_calls}{(optional) Logical. If TRUE, gain/loss calls (e.g. CGHcall) are used to calculate gain/loss counts and proportions.}
 }
 \value{
 A list of data frames. Always the summary_table, optionally a peaks data frame.
